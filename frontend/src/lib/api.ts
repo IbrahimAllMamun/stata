@@ -1,15 +1,9 @@
 // src/lib/api.ts
-// Central API client for the STATA Express backend
-
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-// ─── Token helpers ────────────────────────────────────────────────────────────
 
 export const getToken = (): string | null => localStorage.getItem('stata_token');
 export const setToken = (token: string) => localStorage.setItem('stata_token', token);
 export const removeToken = () => localStorage.removeItem('stata_token');
-
-// ─── Core fetch wrapper ───────────────────────────────────────────────────────
 
 interface RequestOptions {
   method?: string;
@@ -31,18 +25,20 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     body: isFormData
       ? (body as FormData)
       : body
-      ? JSON.stringify(body)
-      : undefined,
+        ? JSON.stringify(body)
+        : undefined,
   });
 
   const data = await res.json();
   if (!res.ok) {
+    // Surface the actual validation errors, not just the generic message
+    if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+      throw new Error(data.errors.join(', '));
+    }
     throw new Error(data.message || 'Request failed');
   }
   return data;
 }
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Pagination {
   total: number;
@@ -122,10 +118,7 @@ export interface DashboardStats {
   past_events: number;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 export const api = {
-  // Members
   register: (data: {
     batch: number;
     full_name: string;
@@ -147,41 +140,30 @@ export const api = {
     if (params?.batch) qs.set('batch', String(params.batch));
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
-    return request<{ success: boolean; data: Member[]; pagination: Pagination }>(
-      `/members?${qs}`
-    );
+    return request<{ success: boolean; data: Member[]; pagination: Pagination }>(`/members?${qs}`);
   },
 
-  // Committees
   getCommittees: () =>
     request<{ success: boolean; data: Committee[] }>('/committees'),
 
-  // Posts
   getPosts: (params?: { page?: number; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
-    return request<{ success: boolean; data: Post[]; pagination: Pagination }>(
-      `/posts?${qs}`
-    );
+    return request<{ success: boolean; data: Post[]; pagination: Pagination }>(`/posts?${qs}`);
   },
 
   getPostBySlug: (slug: string) =>
     request<{ success: boolean; data: Post }>(`/posts/${slug}`),
 
-  // Events
   getEvents: (type?: 'upcoming' | 'past') => {
     const qs = type ? `?type=${type}` : '';
-    return request<{ success: boolean; data: Event[]; pagination: Pagination }>(
-      `/events${qs}`
-    );
+    return request<{ success: boolean; data: Event[]; pagination: Pagination }>(`/events${qs}`);
   },
 
   getEventById: (id: string) =>
     request<{ success: boolean; data: Event }>(`/events/${id}`),
 };
-
-// ─── Admin API ────────────────────────────────────────────────────────────────
 
 export const adminApi = {
   login: (username: string, password: string) =>
@@ -193,7 +175,6 @@ export const adminApi = {
   getDashboard: () =>
     request<{ success: boolean; data: DashboardStats }>('/admin/dashboard'),
 
-  // Posts
   createPost: (formData: FormData) =>
     request<{ success: boolean; data: Post }>('/admin/posts', {
       method: 'POST',
@@ -209,9 +190,7 @@ export const adminApi = {
     }),
 
   deletePost: (id: string) =>
-    request<{ success: boolean; message: string }>(`/admin/posts/${id}`, {
-      method: 'DELETE',
-    }),
+    request<{ success: boolean; message: string }>(`/admin/posts/${id}`, { method: 'DELETE' }),
 
   togglePost: (id: string) =>
     request<{ success: boolean; data: { id: string; published: boolean } }>(
@@ -219,7 +198,6 @@ export const adminApi = {
       { method: 'PATCH' }
     ),
 
-  // Events
   createEvent: (formData: FormData) =>
     request<{ success: boolean; data: Event }>('/admin/events', {
       method: 'POST',
@@ -235,11 +213,8 @@ export const adminApi = {
     }),
 
   deleteEvent: (id: string) =>
-    request<{ success: boolean; message: string }>(`/admin/events/${id}`, {
-      method: 'DELETE',
-    }),
+    request<{ success: boolean; message: string }>(`/admin/events/${id}`, { method: 'DELETE' }),
 
-  // Committees
   createCommittee: (acting_year: number) =>
     request<{ success: boolean; data: Committee }>('/admin/committee', {
       method: 'POST',
@@ -254,12 +229,8 @@ export const adminApi = {
     }),
 
   deleteCommittee: (id: string) =>
-    request<{ success: boolean; message: string }>(`/admin/committee/${id}`, {
-      method: 'DELETE',
-    }),
+    request<{ success: boolean; message: string }>(`/admin/committee/${id}`, { method: 'DELETE' }),
 };
-
-// ─── Image URL helper ─────────────────────────────────────────────────────────
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
 

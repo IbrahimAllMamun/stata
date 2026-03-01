@@ -2,8 +2,15 @@
 const Joi = require('joi');
 
 const registerSchema = Joi.object({
-  batch: Joi.number().integer().min(1990).max(2100).required()
-    .messages({ 'any.required': 'Batch is required', 'number.base': 'Batch must be a number' }),
+  // batch is an ordinal number (Batch 1, Batch 15, Batch 22...) NOT a calendar year
+  batch: Joi.number().integer().min(1).max(999).required()
+    .messages({
+      'any.required': 'Batch is required',
+      'number.base': 'Batch must be a number',
+      'number.integer': 'Batch must be a whole number',
+      'number.min': 'Batch must be at least 1',
+      'number.max': 'Batch must be 999 or less',
+    }),
   full_name: Joi.string().trim().min(2).max(100).required(),
   email: Joi.string().email().lowercase().required(),
   phone_number: Joi.string().trim().min(7).max(20).required(),
@@ -11,7 +18,7 @@ const registerSchema = Joi.object({
   job_title: Joi.string().trim().max(100).optional().allow('', null),
   organisation: Joi.string().trim().max(200).optional().allow('', null),
   organisation_address: Joi.string().trim().max(300).optional().allow('', null),
-  // Accept both real booleans and the strings "true"/"false" from form radio buttons
+  // Accept both real booleans AND the strings "true"/"false" from radio buttons
   notify_events: Joi.boolean().truthy('true').falsy('false').required()
     .messages({ 'any.required': 'notify_events selection is required' }),
 });
@@ -24,13 +31,13 @@ const loginSchema = Joi.object({
 const postSchema = Joi.object({
   title: Joi.string().trim().min(3).max(200).required(),
   content: Joi.string().min(10).required(),
-  published: Joi.boolean().optional(),
+  published: Joi.boolean().truthy('true').falsy('false').optional(),
 });
 
 const updatePostSchema = Joi.object({
   title: Joi.string().trim().min(3).max(200).optional(),
   content: Joi.string().min(10).optional(),
-  published: Joi.boolean().optional(),
+  published: Joi.boolean().truthy('true').falsy('false').optional(),
 });
 
 const eventSchema = Joi.object({

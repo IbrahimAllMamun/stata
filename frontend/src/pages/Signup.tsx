@@ -43,7 +43,7 @@ export default function Register() {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!form.batch || isNaN(Number(form.batch))) e.batch = 'Valid batch year is required';
+    if (!form.batch || isNaN(Number(form.batch)) || Number(form.batch) < 1) e.batch = "Valid batch number is required";
     if (!form.full_name.trim()) e.full_name = 'Full name is required';
     if (!form.email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email format';
@@ -125,7 +125,7 @@ export default function Register() {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Batch <span className="text-red-500">*</span></label>
-                <input type="number" value={form.batch} onChange={set('batch')} placeholder="e.g. 2018" min="1990" max="2100" className={inputCls(!!errors.batch)} />
+                <input type="number" value={form.batch} onChange={set('batch')} placeholder="e.g. 15" min="1" max="999" className={inputCls(!!errors.batch)} />
                 {errors.batch && <p className="mt-1 text-xs text-red-500">{errors.batch}</p>}
               </div>
               <div>
