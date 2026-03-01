@@ -1,0 +1,109 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id                   String           @id @default(uuid())
+  batch                Int
+  full_name            String
+  email                String           @unique
+  phone_number         String
+  alternative_phone    String?
+  job_title            String?
+  organisation         String?
+  organisation_address String?
+  notify_events        Boolean
+  created_at           DateTime         @default(now())
+
+  committee_members    CommitteeMember[]
+
+  @@index([batch])
+  @@index([email])
+  @@map("members")
+}
+
+model Admin {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  password   String
+  role       String   @default("admin")
+  created_at DateTime @default(now())
+
+  posts  Post[]
+  events Event[]
+
+  @@map("admins")
+}
+
+model Committee {
+  id          String   @id @default(uuid())
+  acting_year Int      @unique
+  created_at  DateTime @default(now())
+
+  members CommitteeMember[]
+
+  @@map("committees")
+}
+
+model CommitteeMember {
+  id           String    @id @default(uuid())
+  committee_id String
+  member_id    String
+  position     Position
+  image_url    String
+  created_at   DateTime  @default(now())
+
+  committee Committee @relation(fields: [committee_id], references: [id], onDelete: Cascade)
+  member    Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@unique([committee_id, position])
+  @@map("committee_members")
+}
+
+enum Position {
+  PRESIDENT
+  GENERAL_SECRETARY
+}
+
+model Post {
+  id           String   @id @default(uuid())
+  title        String
+  slug         String   @unique
+  content      String
+  cover_image  String?
+  published    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  created_by   String
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([slug])
+  @@index([created_at])
+  @@map("posts")
+}
+
+model Event {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  event_date   DateTime
+  location     String?
+  banner_image String?
+  is_upcoming  Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  created_by   String
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([event_date])
+  @@index([is_upcoming])
+  @@map("events")
+}
