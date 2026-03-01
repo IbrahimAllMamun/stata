@@ -298,7 +298,7 @@ export default function People() {
               }`}
           >
             <Crown className="w-4 h-4" />
-            Committees
+            Leaders
           </button>
         </div>
       </div>
@@ -334,19 +334,6 @@ export default function People() {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-4 mb-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block" />
-                President / General Secretary
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-blue-50 border border-blue-200 inline-block" />
-                Committee Member
-              </span>
-              <span className="flex items-center gap-1.5 text-[#2F5BEA]">
-                Click a row to view full details
-              </span>
-            </div>
 
             {loadingMembers ? (
               <div className="text-center py-16">
@@ -437,7 +424,7 @@ export default function People() {
                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold ${isCurrent ? 'bg-[#2F5BEA] text-white' : 'bg-[#F5F7FA] text-[#1F2A44] border border-gray-200'
                           }`}>
                           {isCurrent && <span className="w-2 h-2 rounded-full bg-white animate-pulse" />}
-                          {isCurrent ? 'Current Committee' : `Committee — ${committee.acting_year}`}
+                          {isCurrent ? 'Current Committee' : `${committee.acting_year} - ${committee.acting_year + 1}`}
                         </div>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>

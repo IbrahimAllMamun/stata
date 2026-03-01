@@ -125,7 +125,7 @@ export default function Register() {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Batch <span className="text-red-500">*</span></label>
-                <input type="number" value={form.batch} onChange={set('batch')} placeholder="e.g. 15" min="1" max="999" className={inputCls(!!errors.batch)} />
+                <input type="number" value={form.batch} onChange={set('batch')} placeholder="e.g. 26" min="1" max="999" className={inputCls(!!errors.batch)} />
                 {errors.batch && <p className="mt-1 text-xs text-red-500">{errors.batch}</p>}
               </div>
               <div>
@@ -135,7 +135,7 @@ export default function Register() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
-                <input type="email" value={form.email} onChange={set('email')} placeholder="your@email.com" className={inputCls(!!errors.email || emailTaken)} />
+                <input type="email" value={form.email} onChange={set('email')} placeholder="example@isrt.ac.bd" className={inputCls(!!errors.email || emailTaken)} />
                 {(errors.email || emailTaken) && <p className="mt-1 text-xs text-red-500">{errors.email || 'This email is already registered'}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -156,21 +156,21 @@ export default function Register() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 bg-[#1F2A44] text-white">
               <Briefcase className="w-5 h-5" />
-              <h2 className="font-semibold">Job Details</h2>
+              <h2 className="font-semibold">Job Related Information</h2>
               <span className="ml-auto text-xs opacity-60">Optional</span>
             </div>
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-                <input type="text" value={form.job_title} onChange={set('job_title')} placeholder="e.g. Software Engineer, Statistician" className={inputCls(false)} />
+                <input type="text" value={form.job_title} onChange={set('job_title')} placeholder="e.g. Data Scientist, Statistician" className={inputCls(false)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Organisation</label>
-                <input type="text" value={form.organisation} onChange={set('organisation')} placeholder="e.g. Bangladesh Bank" className={inputCls(false)} />
+                <input type="text" value={form.organisation} onChange={set('organisation')} placeholder="e.g. Bangladesh Bank, Pathao" className={inputCls(false)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-                <input type="text" value={form.organisation_address} onChange={set('organisation_address')} placeholder="City, Country" className={inputCls(false)} />
+                <input type="text" value={form.organisation_address} onChange={set('organisation_address')} placeholder="Address" className={inputCls(false)} />
               </div>
             </div>
           </div>
@@ -183,7 +183,6 @@ export default function Register() {
               <span className="ml-auto text-xs opacity-80">* Required</span>
             </div>
             <div className="p-6 space-y-3">
-              <p className="text-sm text-gray-500 mb-4">You must select one option to proceed.</p>
               <label className={radioCls(form.notify_events === 'true')}>
                 <input type="radio" name="notify_events" checked={form.notify_events === 'true'}
                   onChange={() => setForm(f => ({ ...f, notify_events: 'true' }))} className="w-4 h-4 accent-[#2F5BEA] mt-0.5 flex-shrink-0" />

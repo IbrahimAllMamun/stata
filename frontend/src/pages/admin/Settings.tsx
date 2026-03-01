@@ -1,4 +1,4 @@
-// src/pages/admin/Settings.tsx — Committee Management
+// src/pages/admin/Settings.tsx - Committee Management
 import { useEffect, useState } from 'react';
 import { Crown, Plus, Trash2, Upload, Users, X, CheckCircle } from 'lucide-react';
 import { adminApi, api, Member, Committee, imageUrl } from '../../lib/api';
@@ -170,10 +170,10 @@ export default function AdminSettings() {
                     onChange={e => setForm(f => ({ ...f, committee_id: e.target.value }))}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
                   >
-                    <option value="">— Select year —</option>
+                    <option value="">- Select year -</option>
                     {sortedCommittees.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.acting_year === currentYear ? `${c.acting_year} (Current)` : c.acting_year}
+                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} (Current)` : `${c.acting_year} - ${c.acting_year + 1}`}
                       </option>
                     ))}
                   </select>
@@ -189,7 +189,7 @@ export default function AdminSettings() {
                     onChange={e => setForm(f => ({ ...f, position: e.target.value as any }))}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
                   >
-                    <option value="">— Select position —</option>
+                    <option value="">- Select position -</option>
                     <option value="PRESIDENT">President</option>
                     <option value="GENERAL_SECRETARY">General Secretary</option>
                   </select>
@@ -206,12 +206,12 @@ export default function AdminSettings() {
                   onChange={e => setForm(f => ({ ...f, member_id: e.target.value }))}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
                 >
-                  <option value="">— Select member —</option>
+                  <option value="">- Select member -</option>
                   {[...members]
                     .sort((a, b) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name))
                     .map(m => (
                       <option key={m.id} value={m.id}>
-                        {m.full_name} — Batch {m.batch}
+                        {m.full_name} - Batch {m.batch}
                         {m.organisation ? ` (${m.organisation})` : ''}
                       </option>
                     ))
@@ -229,7 +229,7 @@ export default function AdminSettings() {
                     <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" id="cm_image" />
                     <label htmlFor="cm_image" className="cursor-pointer flex flex-col items-center gap-1">
                       <Upload className="w-6 h-6 text-gray-400" />
-                      <span className="text-xs text-gray-500">Click to upload (jpg, png, webp — max 2MB)</span>
+                      <span className="text-xs text-gray-500">Click to upload (jpg, png, webp - max 2MB)</span>
                     </label>
                   </div>
                   {preview && (
@@ -272,7 +272,7 @@ export default function AdminSettings() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className={`text-sm font-bold ${c.acting_year === currentYear ? 'text-[#2F5BEA]' : 'text-[#1F2A44]'}`}>
-                        {c.acting_year === currentYear ? `${c.acting_year} — Current Committee` : `Committee ${c.acting_year}`}
+                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} (Current Committee)` : `${c.acting_year} - ${c.acting_year + 1}`}
                       </span>
                     </div>
                     <button onClick={() => handleDeleteCommittee(c.id, c.acting_year)}

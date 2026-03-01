@@ -103,7 +103,7 @@ export default function Events() {
         ) : displayed.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayed.map(event => (
-              <EventCard key={event.id} event={event} onClick={() => navigate(`/events/${event.id}`)} />
+              <EventCard key={event.id} event={event} onClick={() => navigate(`/events/${event.slug}`)} />
             ))}
           </div>
         ) : (

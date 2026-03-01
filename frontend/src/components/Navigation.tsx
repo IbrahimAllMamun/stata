@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, LayoutDashboard, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Logo from './Logo';
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,11 +12,11 @@ export default function Navigation() {
 
   const navLinks = [
     { name: 'Home', href: '/' },
-    { name: 'About', href: '/about' },
     { name: 'People', href: '/people' },
     { name: 'Events', href: '/events' },
     { name: 'Posts', href: '/posts' },
     { name: 'Gallery', href: '/gallery' },
+    { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -27,22 +28,18 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-10 h-10 bg-[#2F5BEA] rounded-full flex items-center justify-center">
-              <span className="text-xl font-bold">S</span>
-            </div>
-            <span className="text-xl font-bold">STATA</span>
+          <Link to="/" className="flex items-center flex-shrink-0">
+            <Logo size={36} scheme="light" />
           </Link>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive(item.href)
-                    ? 'text-[#F39C12] bg-white/10'
-                    : 'text-gray-300 hover:text-white hover:bg-white/5'
-                }`}>
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive(item.href)
+                  ? 'text-[#F39C12] bg-white/10'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5'
+                  }`}>
                 {item.name}
               </Link>
             ))}
@@ -79,9 +76,6 @@ export default function Navigation() {
               </>
             ) : (
               <>
-                <Link to="/login" className="text-sm text-gray-300 hover:text-white transition-colors px-3 py-2">
-                  Admin Login
-                </Link>
                 <Link to="/register" className="bg-[#2F5BEA] hover:bg-[#F39C12] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                   Register
                 </Link>
@@ -102,9 +96,8 @@ export default function Navigation() {
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href} onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.href) ? 'text-[#F39C12] bg-gray-800' : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                }`}>
+                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.href) ? 'text-[#F39C12] bg-gray-800' : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                  }`}>
                 {item.name}
               </Link>
             ))}
@@ -117,7 +110,6 @@ export default function Navigation() {
                 </>
               ) : (
                 <>
-                  <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-sm text-gray-300 hover:text-white hover:bg-gray-800">Admin Login</Link>
                   <Link to="/register" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-sm text-white bg-[#2F5BEA] hover:bg-[#F39C12] mt-1 text-center font-semibold">Register</Link>
                 </>
               )}

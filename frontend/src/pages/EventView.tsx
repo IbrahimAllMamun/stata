@@ -5,18 +5,18 @@ import { ArrowLeft, Calendar, MapPin } from 'lucide-react';
 import { api, Event, imageUrl } from '../lib/api';
 
 export default function EventView() {
-    const { id } = useParams<{ id: string }>();
+    const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
     const [event, setEvent] = useState<Event | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!id) return;
-        api.getEventById(id)
+        if (!slug) return;
+        api.getEventBySlug(slug)
             .then(res => setEvent(res.data))
             .catch(() => navigate('/events'))
             .finally(() => setLoading(false));
-    }, [id]);
+    }, [slug]);
 
     if (loading) return (
         <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -41,7 +41,6 @@ export default function EventView() {
                 </button>
 
                 <article className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                    {/* Banner */}
                     {imgSrc ? (
                         <div className="relative">
                             <img src={imgSrc} alt={event.title} className="w-full h-80 object-cover" />
@@ -64,7 +63,6 @@ export default function EventView() {
                     <div className="p-8">
                         <h1 className="text-3xl font-bold text-[#1F2A44] mb-6 leading-tight">{event.title}</h1>
 
-                        {/* Meta */}
                         <div className="flex flex-wrap gap-5 mb-8 pb-6 border-b border-gray-100">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-[#F5F7FA] flex items-center justify-center flex-shrink-0">
@@ -91,7 +89,6 @@ export default function EventView() {
                             )}
                         </div>
 
-                        {/* Description */}
                         {event.description && (
                             <div>
                                 <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">About this Event</h2>

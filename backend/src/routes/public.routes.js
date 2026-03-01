@@ -7,7 +7,7 @@ const { registerSchema } = require('../validators');
 const { register, getMembers, exportCSV } = require('../controllers/member.controller');
 const { getCommittees } = require('../controllers/committee.controller');
 const { getPosts, getPostBySlug } = require('../controllers/post.controller');
-const { getEvents, getEventById } = require('../controllers/event.controller');
+const { getEvents, getEventBySlug } = require('../controllers/event.controller');
 
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -31,6 +31,6 @@ router.get('/posts/:slug', getPostBySlug);
 
 // Events
 router.get('/events', getEvents);
-router.get('/events/:id', getEventById);
+router.get('/events/:slug', getEventBySlug);
 
 module.exports = router;

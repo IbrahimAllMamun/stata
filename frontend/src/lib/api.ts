@@ -80,6 +80,7 @@ export interface Post {
 export interface Event {
   id: string;
   title: string;
+  slug: string;
   description?: string | null;
   event_date: string;
   location?: string | null;
@@ -161,8 +162,8 @@ export const api = {
     return request<{ success: boolean; data: Event[]; pagination: Pagination }>(`/events${qs}`);
   },
 
-  getEventById: (id: string) =>
-    request<{ success: boolean; data: Event }>(`/events/${id}`),
+  getEventBySlug: (slug: string) =>
+    request<{ success: boolean; data: Event }>(`/events/${slug}`),
 };
 
 export const adminApi = {

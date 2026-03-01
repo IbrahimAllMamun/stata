@@ -1,5 +1,6 @@
 import { Facebook, Twitter, Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Logo from './Logo';
 
 export default function Footer() {
   return (
@@ -7,12 +8,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-[#2F5BEA] rounded-full flex items-center justify-center">
-                <span className="text-xl font-bold">S</span>
-              </div>
-              <span className="text-xl font-bold">STATA</span>
-            </div>
+            {/* Logo */}
+            <Link to="/" className="flex items-center flex-shrink-0">
+              <Logo size={36} scheme="light" />
+            </Link>
             <p className="text-gray-300 text-sm">
               Connecting Minds, Building Bonds, Nourishing Well-being.
             </p>
