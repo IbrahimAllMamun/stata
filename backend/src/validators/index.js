@@ -7,11 +7,12 @@ const registerSchema = Joi.object({
   full_name: Joi.string().trim().min(2).max(100).required(),
   email: Joi.string().email().lowercase().required(),
   phone_number: Joi.string().trim().min(7).max(20).required(),
-  alternative_phone: Joi.string().trim().min(7).max(20).optional().allow(''),
-  job_title: Joi.string().trim().max(100).optional().allow(''),
-  organisation: Joi.string().trim().max(200).optional().allow(''),
-  organisation_address: Joi.string().trim().max(300).optional().allow(''),
-  notify_events: Joi.boolean().required()
+  alternative_phone: Joi.string().trim().min(7).max(20).optional().allow('', null),
+  job_title: Joi.string().trim().max(100).optional().allow('', null),
+  organisation: Joi.string().trim().max(200).optional().allow('', null),
+  organisation_address: Joi.string().trim().max(300).optional().allow('', null),
+  // Accept both real booleans and the strings "true"/"false" from form radio buttons
+  notify_events: Joi.boolean().truthy('true').falsy('false').required()
     .messages({ 'any.required': 'notify_events selection is required' }),
 });
 
