@@ -63,4 +63,36 @@ const getDashboardStats = async (req, res, next) => {
   }
 };
 
-module.exports = { login, getDashboardStats };
+// Admin only: create a moderator account
+const createModerator = async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+
+    const existing = await prisma.admin.findUnique({ where: { username } });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Username already taken' });
+    }
+
+    const hashed = await bcrypt.hash(password, 12);
+    const moderator = await prisma.admin.create({
+      data: { username, password: hashed, role: 'moderator' },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Moderator created',
+      data: { id: moderator.id, username: moderator.username, role: moderator.role },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { login, getDashboardStats, createModerator };

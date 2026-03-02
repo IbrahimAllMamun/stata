@@ -1,6 +1,6 @@
 // src/pages/admin/Settings.tsx - Committee Management
 import { useEffect, useState } from 'react';
-import { Crown, Plus, Trash2, Upload, Users, X, CheckCircle } from 'lucide-react';
+import { Crown, Plus, Trash2, Upload, Users, X, CheckCircle, UserPlus, Shield } from 'lucide-react';
 import { adminApi, api, Member, Committee, imageUrl } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -17,6 +17,8 @@ export default function AdminSettings() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [creatingYear, setCreatingYear] = useState(false);
+  const [modForm, setModForm] = useState({ username: '', password: '' });
+  const [creatingMod, setCreatingMod] = useState(false);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -173,7 +175,7 @@ export default function AdminSettings() {
                     <option value="">- Select year -</option>
                     {sortedCommittees.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} (Current)` : `${c.acting_year} - ${c.acting_year + 1}`}
+                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} ★` : `${c.acting_year} - ${c.acting_year + 1}`}
                       </option>
                     ))}
                   </select>
@@ -212,7 +214,6 @@ export default function AdminSettings() {
                     .map(m => (
                       <option key={m.id} value={m.id}>
                         {m.full_name} - Batch {m.batch}
-                        {m.organisation ? ` (${m.organisation})` : ''}
                       </option>
                     ))
                   }
@@ -272,7 +273,7 @@ export default function AdminSettings() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className={`text-sm font-bold ${c.acting_year === currentYear ? 'text-[#2F5BEA]' : 'text-[#1F2A44]'}`}>
-                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} (Current Committee)` : `${c.acting_year} - ${c.acting_year + 1}`}
+                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} ★` : `${c.acting_year} - ${c.acting_year + 1}`}
                       </span>
                     </div>
                     <button onClick={() => handleDeleteCommittee(c.id, c.acting_year)}
@@ -288,6 +289,62 @@ export default function AdminSettings() {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Moderator Management */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
+        <h2 className="text-lg font-bold text-[#1F2A44] mb-5 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-[#9B59B6]" />
+          Create Moderator Account
+        </h2>
+        <p className="text-sm text-gray-500 mb-5">
+          Moderators can create and manage posts and events but cannot access committee settings.
+        </p>
+        <div className="space-y-4 max-w-sm">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+            <input
+              type="text"
+              value={modForm.username}
+              onChange={e => setModForm(f => ({ ...f, username: e.target.value }))}
+              placeholder="e.g. john_mod"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+            <input
+              type="password"
+              value={modForm.password}
+              onChange={e => setModForm(f => ({ ...f, password: e.target.value }))}
+              placeholder="Min. 8 characters"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent outline-none"
+            />
+          </div>
+          <button
+            disabled={creatingMod || !modForm.username || !modForm.password}
+            onClick={async () => {
+              if (!modForm.username || modForm.password.length < 8) {
+                showToast('Password must be at least 8 characters', false);
+                return;
+              }
+              setCreatingMod(true);
+              try {
+                await adminApi.createModerator(modForm.username, modForm.password);
+                showToast();
+                setModForm({ username: '', password: '' });
+              } catch (err: any) {
+                showToast(err.message || 'Failed to create moderator', false);
+              } finally {
+                setCreatingMod(false);
+              }
+            }}
+            className="flex items-center gap-2 bg-[#9B59B6] hover:bg-[#8E44AD] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            {creatingMod ? 'Creating...' : 'Create Moderator'}
+          </button>
         </div>
       </div>
     </div>

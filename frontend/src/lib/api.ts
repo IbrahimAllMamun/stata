@@ -229,6 +229,12 @@ export const adminApi = {
       isFormData: true,
     }),
 
+  createModerator: (username: string, password: string) =>
+    request<{ success: boolean; data: { id: string; username: string; role: string } }>('/admin/moderators', {
+      method: 'POST',
+      body: { username, password },
+    }),
+
   deleteCommittee: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/committee/${id}`, { method: 'DELETE' }),
 };

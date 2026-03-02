@@ -11,7 +11,9 @@ interface Admin {
 interface AuthContextType {
   admin: Admin | null;
   loading: boolean;
-  isAdmin: boolean;
+  isAdmin: boolean;        // true for both admin and moderator
+  isFullAdmin: boolean;    // true only for admin role
+  isModerator: boolean;    // true only for moderator role
   login: (username: string, password: string) => Promise<{ error: Error | null }>;
   logout: () => void;
 }
@@ -57,7 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ admin, loading, isAdmin: !!admin, login, logout }}>
+    <AuthContext.Provider value={{
+      admin,
+      loading,
+      isAdmin: !!admin,
+      isFullAdmin: admin?.role === 'admin',
+      isModerator: admin?.role === 'moderator',
+      login,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );
