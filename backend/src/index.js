@@ -48,7 +48,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Static uploads — served with cross-origin policy so images load in browser
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+const fs = require('fs');
+const uploadsDir = process.env.UPLOAD_PATH || '/tmp/uploads';
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
 
 // Health check
 app.get('/health', (req, res) => {

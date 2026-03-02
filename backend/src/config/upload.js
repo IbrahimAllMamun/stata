@@ -6,8 +6,10 @@ const { v4: uuidv4 } = require('uuid');
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 const storage = multer.diskStorage({
+  // src/config/upload.js — change destination:
   destination: (req, file, cb) => {
-    cb(null, process.env.UPLOAD_PATH || 'uploads');
+    const uploadPath = process.env.UPLOAD_PATH || '/tmp/uploads';  // <-- use /tmp on Render
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
