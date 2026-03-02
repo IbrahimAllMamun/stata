@@ -51,7 +51,13 @@ app.use(express.urlencoded({ extended: true }));
 const fs = require('fs');
 const uploadsDir = process.env.UPLOAD_PATH || '/tmp/uploads';
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
 app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(uploadsDir));
+
+app.use('/tmp/uploads', (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(uploadsDir));
