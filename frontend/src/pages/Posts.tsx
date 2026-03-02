@@ -40,7 +40,7 @@ export default function Posts() {
                   <h3 className="text-xl font-semibold text-[#1F2A44] mb-2 group-hover:text-[#2F5BEA] transition-colors">{post.title}</h3>
                   <p className="text-gray-600 mb-4 line-clamp-3">{post.content}</p>
                   <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    <span>{post.admin?.username}</span>
+                    {/* <span>{post.admin?.username}</span> */}
                     <span>{new Date(post.created_at).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center justify-end pt-4 border-t border-gray-200">
