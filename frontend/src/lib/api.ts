@@ -244,5 +244,7 @@ const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://lo
 export const imageUrl = (path: string | null | undefined): string | null => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `${API_BASE}${path}`;
+  // Normalize path: strip /tmp prefix so /tmp/uploads/x.jpg becomes /uploads/x.jpg
+  const normalizedPath = path.replace(/^\/tmp/, '');
+  return `${API_BASE}${normalizedPath}`;
 };
