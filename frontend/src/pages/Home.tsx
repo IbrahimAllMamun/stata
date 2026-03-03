@@ -11,8 +11,10 @@ function formatDate(dateStr: string) {
   });
 }
 
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, '').slice(0, 120) + (html.length > 120 ? '…' : '');
+function stripHtml(html: string | null | undefined) {
+  if (!html) return '';
+  const stripped = html.replace(/<[^>]*>/g, '');
+  return stripped.slice(0, 120) + (stripped.length > 120 ? '…' : '');
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
