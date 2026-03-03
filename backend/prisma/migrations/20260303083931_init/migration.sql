@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "MemberStatus" AS ENUM ('PENDING', 'APPROVED', 'ARCHIVED');
+
+-- CreateEnum
 CREATE TYPE "Position" AS ENUM ('PRESIDENT', 'GENERAL_SECRETARY');
 
 -- CreateTable
@@ -13,6 +16,7 @@ CREATE TABLE "members" (
     "organisation" TEXT,
     "organisation_address" TEXT,
     "notify_events" BOOLEAN NOT NULL,
+    "status" "MemberStatus" NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "members_pkey" PRIMARY KEY ("id")
@@ -69,6 +73,7 @@ CREATE TABLE "posts" (
 CREATE TABLE "events" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
     "description" TEXT,
     "event_date" TIMESTAMP(3) NOT NULL,
     "location" TEXT,
@@ -91,6 +96,9 @@ CREATE INDEX "members_batch_idx" ON "members"("batch");
 CREATE INDEX "members_email_idx" ON "members"("email");
 
 -- CreateIndex
+CREATE INDEX "members_status_idx" ON "members"("status");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "admins_username_key" ON "admins"("username");
 
 -- CreateIndex
@@ -107,6 +115,12 @@ CREATE INDEX "posts_slug_idx" ON "posts"("slug");
 
 -- CreateIndex
 CREATE INDEX "posts_created_at_idx" ON "posts"("created_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "events_slug_key" ON "events"("slug");
+
+-- CreateIndex
+CREATE INDEX "events_slug_idx" ON "events"("slug");
 
 -- CreateIndex
 CREATE INDEX "events_event_date_idx" ON "events"("event_date");

@@ -58,14 +58,14 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
             {[
               { label: 'Members', value: stats.total_members, color: 'bg-[#2F5BEA]', icon: Users },
-              { label: 'Pending', value: stats.pending_members, color: 'bg-amber-500', icon: UserCheck, highlight: stats.pending_members > 0 },
+              { label: 'Pending', value: stats.pending_members, color: 'bg-amber-500', icon: UserCheck },
               { label: 'Committees', value: stats.total_committees, color: 'bg-[#9B59B6]', icon: BarChart2 },
               { label: 'Posts', value: stats.total_posts, color: 'bg-[#F39C12]', icon: FileText },
               { label: 'Total Events', value: stats.total_events, color: 'bg-[#1F2A44]', icon: Calendar },
               { label: 'Upcoming', value: stats.upcoming_events, color: 'bg-[#2ECC71]', icon: Calendar },
               { label: 'Past Events', value: stats.past_events, color: 'bg-[#E74C3C]', icon: Calendar },
-            ].map(({ label, value, color, icon: Icon, highlight }) => (
-              <div key={label} className={`bg-white p-5 rounded-xl shadow-sm border ${highlight ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-100'}`}>
+            ].map(({ label, value, color, icon: Icon }) => (
+              <div key={label} className={`bg-white p-5 rounded-xl shadow-sm border ${label === 'Pending' && value > 0 ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-100'}`}>
                 <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-3`}>
                   <Icon className="w-5 h-5 text-white" />
                 </div>

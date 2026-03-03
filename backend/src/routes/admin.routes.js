@@ -29,7 +29,7 @@ router.get('/dashboard', getDashboardStats);
 
 // Member management — admin and moderator
 router.get('/members', getMembersByStatus);
-router.get('/members/pending-count', getPendingCount);
+router.get('/members/pending-count', getPendingCount);   // ← must be before /:id
 router.patch('/members/:id/status', updateMemberStatus);
 router.delete('/members/:id', deleteMember);
 

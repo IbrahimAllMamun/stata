@@ -111,6 +111,7 @@ export interface Committee {
 }
 
 export interface DashboardStats {
+  pending_members: number;
   total_members: number;
   total_committees: number;
   total_posts: number;
@@ -228,6 +229,21 @@ export const adminApi = {
       body: formData,
       isFormData: true,
     }),
+
+  getMembersByStatus: (status: string) =>
+    request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?status=${status}`),
+
+  updateMemberStatus: (id: string, status: string) =>
+    request<{ success: boolean }>(`/admin/members/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+
+  deleteMember: (id: string) =>
+    request<{ success: boolean }>(`/admin/members/${id}`, { method: 'DELETE' }),
+
+  getPendingCount: () =>
+    request<{ success: boolean; data: { count: number } }>('/admin/members/pending-count'),
 
   createModerator: (username: string, password: string) =>
     request<{ success: boolean; data: { id: string; username: string; role: string } }>('/admin/moderators', {

@@ -35,9 +35,12 @@ function MemberDetailModal({ member, onClose, onAction }: {
 
     const handle = async (action: 'APPROVED' | 'ARCHIVED' | 'PENDING' | 'DELETE') => {
         setLoading(true);
-        await onAction(member.id, action);
-        setLoading(false);
-        onClose();
+        try {
+            await onAction(member.id, action);
+        } finally {
+            setLoading(false);
+            onClose();
+        }
     };
 
     return (
@@ -151,7 +154,7 @@ export default function ManageMembers() {
         try {
             const res = await adminApi.getMembersByStatus(status);
             setMembers(res.data);
-        } catch {
+        } catch (_err) {
             showToast('Failed to load members', false);
         } finally {
             setLoading(false);
@@ -166,12 +169,14 @@ export default function ManageMembers() {
                 await adminApi.deleteMember(id);
                 showToast('Member deleted');
             } else {
-                await adminApi.updateMemberStatus(id, action);
+                const status: string = action;
+                await adminApi.updateMemberStatus(id, status);
                 showToast(`Member ${action.toLowerCase()}`);
             }
-            await load(tab);
-        } catch (err: any) {
-            showToast(err.message || 'Action failed', false);
+            load(tab);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Action failed';
+            showToast(msg, false);
         }
     };
 

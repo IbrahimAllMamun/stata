@@ -330,7 +330,7 @@ export default function AdminSettings() {
                 setCreatingMod(true);
                 try {
                   await adminApi.createModerator(modForm.username, modForm.password);
-                  showToast();
+                  showToast(`Moderator "${modForm.username}" created`);
                   setModForm({ username: '', password: '' });
                 } catch (err: any) {
                   showToast(err.message || 'Failed to create moderator', false);
