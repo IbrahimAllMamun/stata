@@ -18,6 +18,7 @@ import ManagePosts from './pages/admin/ManagePosts';
 import PostEditor from './pages/admin/PostEditor';
 import ManageEvents from './pages/admin/ManageEvents';
 import AdminSettings from './pages/admin/Settings';
+import ManageMembers from './pages/admin/ManageMembers';
 
 // Requires admin OR moderator
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -68,6 +69,7 @@ function App() {
             <Route path="admin/posts/new" element={<AdminRoute><PostEditor /></AdminRoute>} />
             <Route path="admin/posts/edit/:id" element={<AdminRoute><PostEditor /></AdminRoute>} />
             <Route path="admin/events" element={<AdminRoute><ManageEvents /></AdminRoute>} />
+            <Route path="admin/members" element={<AdminRoute><ManageMembers /></AdminRoute>} />
             {/* Admin only */}
             <Route path="admin/settings" element={<FullAdminRoute><AdminSettings /></FullAdminRoute>} />
           </Route>

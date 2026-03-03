@@ -14,6 +14,9 @@ const { login, getDashboardStats, createModerator } = require('../controllers/ad
 const { createCommittee, assignMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
+const {
+  getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember,
+} = require('../controllers/member.controller');
 
 // Public auth
 router.post('/login', validate(loginSchema), login);
@@ -21,8 +24,14 @@ router.post('/login', validate(loginSchema), login);
 // All routes below require authentication (admin OR moderator)
 router.use(authenticate);
 
-// Dashboard — both roles
+// Dashboard
 router.get('/dashboard', getDashboardStats);
+
+// Member management — admin and moderator
+router.get('/members', getMembersByStatus);
+router.get('/members/pending-count', getPendingCount);
+router.patch('/members/:id/status', updateMemberStatus);
+router.delete('/members/:id', deleteMember);
 
 // Moderator management — admin only
 router.post('/moderators', requireRole('admin'), createModerator);

@@ -19,13 +19,21 @@ model Member {
   organisation         String?
   organisation_address String?
   notify_events        Boolean
+  status               MemberStatus     @default(PENDING)
   created_at           DateTime         @default(now())
 
   committee_members    CommitteeMember[]
 
   @@index([batch])
   @@index([email])
+  @@index([status])
   @@map("members")
+}
+
+enum MemberStatus {
+  PENDING
+  APPROVED
+  ARCHIVED
 }
 
 model Admin {

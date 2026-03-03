@@ -1,6 +1,6 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from './Logo';
@@ -58,6 +58,9 @@ export default function Navigation() {
                     <Link to="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">
                       <LayoutDashboard className="w-4 h-4 text-[#2F5BEA]" /> Dashboard
                     </Link>
+                    <Link to="/admin/members" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50">
+                      <UserCheck className="w-4 h-4 text-amber-500" /> Member Approvals
+                    </Link>
                     <Link to="/admin/posts" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50">
                       <span className="w-4 h-4 text-[#F39C12]">✏️</span> Manage Posts
                     </Link>
@@ -105,6 +108,7 @@ export default function Navigation() {
               {isAdmin ? (
                 <>
                   <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium text-[#F39C12] hover:bg-gray-800">Dashboard</Link>
+                  <Link to="/admin/members" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium text-amber-400 hover:bg-gray-800">Member Approvals</Link>
                   <Link to="/admin/settings" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium text-purple-300 hover:bg-gray-800">Committee Settings</Link>
                   <button onClick={() => { logout(); setIsOpen(false); }} className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-red-400 hover:bg-gray-800">Logout</button>
                 </>
