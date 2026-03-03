@@ -1,105 +1,340 @@
 // src/pages/Home.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Users, Heart, Trophy, ArrowRight } from 'lucide-react';
-import { api, Post, imageUrl } from '../lib/api';
+import { Calendar, Users, Heart, Trophy, ArrowRight, MapPin, Clock, FileText, ChevronRight } from 'lucide-react';
+import { api, Post, Event, imageUrl } from '../lib/api';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, '').slice(0, 120) + (html.length > 120 ? '…' : '');
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
+}
+
+// ─── Section Header ───────────────────────────────────────────────────────────
+function SectionHeader({ label, title, subtitle, href, linkLabel }: {
+  label: string; title: string; subtitle: string; href: string; linkLabel: string;
+}) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+      <div>
+        <span className="text-xs font-bold tracking-widest uppercase text-[#2F5BEA] mb-2 block">{label}</span>
+        <h2 className="text-3xl md:text-4xl font-bold text-[#1F2A44] leading-tight">{title}</h2>
+        <p className="text-gray-500 mt-2 text-base">{subtitle}</p>
+      </div>
+      <Link to={href}
+        className="inline-flex items-center gap-2 text-sm font-semibold text-[#2F5BEA] hover:text-[#F39C12] transition-colors flex-shrink-0 group">
+        {linkLabel}
+        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </Link>
+    </div>
+  );
+}
+
+// ─── Event Card ───────────────────────────────────────────────────────────────
+function EventCard({ event }: { event: Event }) {
+  const img = imageUrl(event.banner_image);
+  const date = new Date(event.event_date);
+  const day = date.getDate();
+  const month = date.toLocaleString('en-US', { month: 'short' });
+
+  return (
+    <Link to={`/events/${event.slug}`}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+      {/* Banner */}
+      <div className="relative h-44 bg-gradient-to-br from-[#1F2A44] to-[#2F5BEA] overflow-hidden flex-shrink-0">
+        {img
+          ? <img src={img} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          : <div className="w-full h-full flex items-center justify-center opacity-20"><Calendar className="w-16 h-16 text-white" /></div>
+        }
+        {/* Date badge */}
+        <div className="absolute top-3 left-3 bg-white rounded-xl px-3 py-1.5 text-center shadow-md min-w-[48px]">
+          <div className="text-lg font-bold text-[#1F2A44] leading-none">{day}</div>
+          <div className="text-[10px] font-bold text-[#2F5BEA] uppercase tracking-wide">{month}</div>
+        </div>
+        {/* Upcoming badge */}
+        {event.is_upcoming && (
+          <div className="absolute top-3 right-3 bg-[#2ECC71] text-white text-xs font-bold px-2 py-1 rounded-full">
+            Upcoming
+          </div>
+        )}
+      </div>
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-bold text-[#1F2A44] text-lg mb-2 line-clamp-2 group-hover:text-[#2F5BEA] transition-colors">{event.title}</h3>
+        {event.description && (
+          <p className="text-gray-500 text-sm line-clamp-2 mb-3 flex-1">{stripHtml(event.description)}</p>
+        )}
+        <div className="flex flex-col gap-1 mt-auto pt-3 border-t border-gray-50">
+          {event.location && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+              <MapPin className="w-3.5 h-3.5 flex-shrink-0" /> {event.location}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <Clock className="w-3.5 h-3.5 flex-shrink-0" /> {formatDate(event.event_date)}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ─── Post Card ────────────────────────────────────────────────────────────────
+function PostCard({ post }: { post: Post }) {
+  const img = imageUrl(post.cover_image);
+  return (
+    <Link to={`/posts/${post.slug}`}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+      {img && (
+        <div className="h-44 overflow-hidden flex-shrink-0">
+          <img src={img} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        </div>
+      )}
+      {!img && (
+        <div className="h-44 bg-gradient-to-br from-[#F39C12]/10 to-[#2F5BEA]/10 flex items-center justify-center flex-shrink-0">
+          <FileText className="w-12 h-12 text-[#2F5BEA]/30" />
+        </div>
+      )}
+      <div className="p-5 flex flex-col flex-1">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-gray-400">{formatDate(post.created_at)}</span>
+          {post.admin && (
+            <span className="text-xs text-gray-300">·</span>
+          )}
+          {post.admin && (
+            <span className="text-xs text-gray-400">{post.admin.username}</span>
+          )}
+        </div>
+        <h3 className="font-bold text-[#1F2A44] text-lg mb-2 line-clamp-2 group-hover:text-[#2F5BEA] transition-colors">{post.title}</h3>
+        <p className="text-gray-500 text-sm line-clamp-3 flex-1">{stripHtml(post.content)}</p>
+        <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#2F5BEA] group-hover:text-[#F39C12] transition-colors">
+          Read more <ChevronRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
+    api.getEvents('upcoming')
+      .then(res => setUpcomingEvents(res.data.slice(0, 3)))
+      .catch(console.error)
+      .finally(() => setLoadingEvents(false));
+
     api.getPosts({ limit: 3 })
       .then(res => setLatestPosts(res.data))
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingPosts(false));
   }, []);
 
   return (
-    <div>
-      <section className="relative bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] text-white py-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">Welcome to STATA</h1>
-          <p className="text-xl md:text-2xl mb-4 text-gray-200">Student Welfare Organization of ISRT</p>
-          <p className="text-lg md:text-xl mb-8 text-gray-300 max-w-3xl mx-auto">Connecting Minds, Building Bonds, Nourishing Well-being</p>
+    <div className="bg-[#F5F7FA]">
+
+      {/* ── Hero ── */}
+      <section className="relative bg-[#1F2A44] text-white overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-[#2F5BEA] rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#F39C12] rounded-full translate-x-1/2 translate-y-1/2" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 py-24 md:py-32 text-center">
+          <div className="inline-block bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
+            Student Welfare Organization · ISRT
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight">
+            Welcome to <span className="text-[#F39C12]">STATA</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Connecting Minds, Building Bonds, Nourishing Well-being
+          </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/events" className="bg-[#F39C12] hover:bg-[#E67E22] text-white px-8 py-3 rounded-lg font-semibold transition-colors inline-flex items-center justify-center">
-              Explore Events <ArrowRight className="ml-2 w-5 h-5" />
+            <Link to="/events"
+              className="bg-[#F39C12] hover:bg-[#E67E22] text-white px-8 py-3.5 rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2 shadow-lg shadow-[#F39C12]/20">
+              Explore Events <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link to="/about" className="bg-white hover:bg-gray-100 text-[#1F2A44] px-8 py-3 rounded-lg font-semibold transition-colors">
-              Learn More
+            <Link to="/register"
+              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-3.5 rounded-xl font-semibold transition-colors">
+              Join STATA
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-[#1F2A44] mb-4 text-center">Our Mission</h2>
-        <p className="text-lg text-gray-600 text-center mb-12 max-w-3xl mx-auto">
-          STATA is dedicated to improving students' mental health and social bonding through meaningful activities and events.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      {/* ── Stats Bar ── */}
+      <section className="bg-[#2F5BEA] text-white">
+        <div className="max-w-7xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
           {[
-            { icon: Heart, color: 'bg-[#2F5BEA]', title: 'Mental Health', desc: 'Supporting student well-being through various activities and peer connections.' },
-            { icon: Users, color: 'bg-[#2ECC71]', title: 'Social Bonding', desc: 'Building strong relationships among students through shared experiences.' },
-            { icon: Calendar, color: 'bg-[#F39C12]', title: 'Events & Activities', desc: 'Organizing BBQ parties, tours, sports tournaments, and cultural events.' },
-            { icon: Trophy, color: 'bg-[#E74C3C]', title: 'Alumni Network', desc: 'Connecting current students with alumni for mentorship and guidance.' },
-          ].map(({ icon: Icon, color, title, desc }) => (
-            <div key={title} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
-              <div className={`w-12 h-12 ${color} rounded-full flex items-center justify-center mb-4`}><Icon className="w-6 h-6 text-white" /></div>
-              <h3 className="text-xl font-semibold text-[#1F2A44] mb-2">{title}</h3>
-              <p className="text-gray-600">{desc}</p>
+            { icon: Users, label: 'Members', value: '200+' },
+            { icon: Calendar, label: 'Events Held', value: '50+' },
+            { icon: Trophy, label: 'Batches', value: '15+' },
+            { icon: Heart, label: 'Years Active', value: '10+' },
+          ].map(({ icon: Icon, label, value }) => (
+            <div key={label} className="flex items-center gap-3 px-6 first:pl-0 last:pr-0">
+              <Icon className="w-6 h-6 opacity-70 flex-shrink-0" />
+              <div>
+                <div className="text-xl font-extrabold leading-none">{value}</div>
+                <div className="text-xs opacity-70 mt-0.5">{label}</div>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="bg-white py-16">
+      {/* ── Mission ── */}
+      <section className="max-w-7xl mx-auto px-4 py-20">
+        <div className="text-center mb-12">
+          <span className="text-xs font-bold tracking-widest uppercase text-[#2F5BEA] mb-2 block">What We Do</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-[#1F2A44]">Our Mission</h2>
+          <p className="text-gray-500 mt-3 max-w-2xl mx-auto">
+            STATA is dedicated to improving students' mental health and social bonding through meaningful activities and events.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[
+            { icon: Heart, color: 'bg-[#2F5BEA]', title: 'Mental Health', desc: 'Supporting student well-being through activities and peer connections.' },
+            { icon: Users, color: 'bg-[#2ECC71]', title: 'Social Bonding', desc: 'Building strong relationships through shared experiences.' },
+            { icon: Calendar, color: 'bg-[#F39C12]', title: 'Events', desc: 'Organizing BBQ parties, tours, sports tournaments, and cultural events.' },
+            { icon: Trophy, color: 'bg-[#E74C3C]', title: 'Alumni Network', desc: 'Connecting students with alumni for mentorship and guidance.' },
+          ].map(({ icon: Icon, color, title, desc }) => (
+            <div key={title} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}>
+                <Icon className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-[#1F2A44] mb-2">{title}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Events ── */}
+      <section className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-[#1F2A44] mb-4">Latest Updates</h2>
-            <p className="text-lg text-gray-600">Stay informed about our recent activities and announcements</p>
-          </div>
-          {loading ? (
-            <div className="text-center py-12"><div className="inline-block w-8 h-8 border-4 border-[#2F5BEA] border-t-transparent rounded-full animate-spin"></div></div>
-          ) : latestPosts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {latestPosts.map(post => (
-                <div key={post.id} className="bg-[#F5F7FA] rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow">
-                  {imageUrl(post.cover_image) && <img src={imageUrl(post.cover_image)!} alt={post.title} className="w-full h-48 object-cover" />}
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-[#1F2A44] mb-2">{post.title}</h3>
-                    <p className="text-gray-600 mb-4 line-clamp-3">{post.content}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-500">{post.admin?.username}</div>
-                      <Link to={`/posts/${post.slug}`} className="text-[#2F5BEA] hover:text-[#F39C12] font-medium transition-colors">Read More</Link>
-                    </div>
+          <SectionHeader
+            label="What's On"
+            title="Upcoming Events"
+            subtitle="Don't miss out on our latest events and activities"
+            href="/events"
+            linkLabel="All Events"
+          />
+          {loadingEvents ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+                  <Skeleton className="h-44 rounded-none" />
+                  <div className="p-5 space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-1/2" />
                   </div>
                 </div>
               ))}
             </div>
+          ) : upcomingEvents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {upcomingEvents.map(event => <EventCard key={event.id} event={event} />)}
+            </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">No posts yet. Check back soon!</div>
+            <div className="text-center py-16 bg-[#F5F7FA] rounded-2xl">
+              <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-400 font-medium">No upcoming events right now</p>
+              <Link to="/events" className="text-[#2F5BEA] text-sm font-semibold mt-2 inline-block hover:underline">
+                View past events →
+              </Link>
+            </div>
           )}
-          {latestPosts.length > 0 && (
+          {upcomingEvents.length > 0 && (
             <div className="text-center mt-8">
-              <Link to="/posts" className="text-[#2F5BEA] hover:text-[#F39C12] font-semibold inline-flex items-center transition-colors">
-                View All Posts <ArrowRight className="ml-2 w-5 h-5" />
+              <Link to="/events"
+                className="inline-flex items-center gap-2 bg-[#1F2A44] hover:bg-[#2F5BEA] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                View All Events <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           )}
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-[#2F5BEA] to-[#2ECC71] py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
-          <p className="text-lg mb-8">Be part of the STATA family and experience the joy of belonging to a supportive community.</p>
-          <Link to="/register" className="bg-white text-[#2F5BEA] px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block">
-            Register as Member
-          </Link>
+      {/* ── Posts ── */}
+      <section className="bg-[#F5F7FA] py-20">
+        <div className="max-w-7xl mx-auto px-4">
+          <SectionHeader
+            label="Latest News"
+            title="Announcements & Posts"
+            subtitle="Stay informed about our recent activities and updates"
+            href="/posts"
+            linkLabel="All Posts"
+          />
+          {loadingPosts ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+                  <Skeleton className="h-44 rounded-none" />
+                  <div className="p-5 space-y-3">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : latestPosts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {latestPosts.map(post => <PostCard key={post.id} post={post} />)}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-400 font-medium">No posts yet — check back soon!</p>
+            </div>
+          )}
+          {latestPosts.length > 0 && (
+            <div className="text-center mt-8">
+              <Link to="/posts"
+                className="inline-flex items-center gap-2 bg-[#1F2A44] hover:bg-[#2F5BEA] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                View All Posts <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* ── CTA ── */}
+      <section className="bg-[#1F2A44] py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <span className="text-xs font-bold tracking-widest uppercase text-[#F39C12] mb-4 block">Be Part of Something</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join the STATA Family</h2>
+          <p className="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
+            Be part of a supportive community that cares about your well-being and growth.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/register"
+              className="bg-[#F39C12] hover:bg-[#E67E22] text-white px-8 py-3.5 rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2">
+              Register as Member <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link to="/people"
+              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-3.5 rounded-xl font-semibold transition-colors">
+              Meet Our Members
+            </Link>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }
