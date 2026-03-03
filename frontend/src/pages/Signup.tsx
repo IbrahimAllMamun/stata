@@ -120,7 +120,7 @@ export default function Register() {
             <div className="flex items-center gap-3 px-6 py-4 bg-[#2F5BEA] text-white">
               <User className="w-5 h-5" />
               <h2 className="font-semibold">Personal Information</h2>
-              <span className="ml-auto text-xs opacity-80">* Required</span>
+              {/* <span className="ml-auto text-xs opacity-80">* Required</span> */}
             </div>
             <div className="p-6 space-y-5">
               <div>
@@ -157,7 +157,7 @@ export default function Register() {
             <div className="flex items-center gap-3 px-6 py-4 bg-[#1F2A44] text-white">
               <Briefcase className="w-5 h-5" />
               <h2 className="font-semibold">Job Related Information</h2>
-              <span className="ml-auto text-xs opacity-60">Optional</span>
+              {/* <span className="ml-auto text-xs opacity-60">Optional</span> */}
             </div>
             <div className="p-6 space-y-5">
               <div>
