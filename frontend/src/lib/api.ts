@@ -262,6 +262,9 @@ export const adminApi = {
     const url = `${BASE_URL}/admin/members/export-csv${qs.toString() ? '?' + qs.toString() : ''}`;
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   },
+
+  getApprovedBatches: () =>
+    request<{ success: boolean; data: number[] }>('/admin/members/batches'),
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';

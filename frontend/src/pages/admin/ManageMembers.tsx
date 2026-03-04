@@ -150,6 +150,14 @@ export default function ManageMembers() {
     const [csvBatch, setCsvBatch] = useState<string>('');
     const [csvNotify, setCsvNotify] = useState<string>('');
     const [csvLoading, setCsvLoading] = useState(false);
+    const [availableBatches, setAvailableBatches] = useState<number[]>([]);
+
+    // Load available batches once on mount
+    useEffect(() => {
+        adminApi.getApprovedBatches()
+            .then(res => setAvailableBatches(res.data))
+            .catch(() => { });
+    }, []);
 
     const handleExportCSV = async () => {
         setCsvLoading(true);
@@ -279,10 +287,9 @@ export default function ManageMembers() {
                                         onChange={e => setCsvBatch(e.target.value)}
                                         className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white pr-8">
                                         <option value="">All Batches</option>
-                                        {Array.from({ length: 20 }, (_, i) => {
-                                            const year = new Date().getFullYear() - i;
-                                            return <option key={year} value={year}>{year}</option>;
-                                        })}
+                                        {availableBatches.map(b => (
+                                            <option key={b} value={b}>{b}</option>
+                                        ))}
                                     </select>
                                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                 </div>

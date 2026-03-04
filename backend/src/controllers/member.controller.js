@@ -136,6 +136,21 @@ const exportCSV = async (req, res, next) => {
   }
 };
 
+// Distinct approved batches — for filter dropdowns
+const getApprovedBatches = async (req, res, next) => {
+  try {
+    const rows = await prisma.member.findMany({
+      where: { status: 'APPROVED' },
+      select: { batch: true },
+      distinct: ['batch'],
+      orderBy: { batch: 'asc' },
+    });
+    res.json({ success: true, data: rows.map(r => r.batch) });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
 // Get members by status (pending / approved / archived)
@@ -213,6 +228,6 @@ const deleteMember = async (req, res, next) => {
 };
 
 module.exports = {
-  register, getMembers, exportCSV,
+  register, getMembers, exportCSV, getApprovedBatches,
   getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember,
 };
