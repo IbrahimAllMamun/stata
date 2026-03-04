@@ -118,7 +118,26 @@ export interface DashboardStats {
   total_events: number;
   upcoming_events: number;
   past_events: number;
+  unread_messages: number;
 }
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'UNREAD' | 'READ' | 'ARCHIVED';
+  created_at: string;
+}
+
+export const contactApi = {
+  submit: (data: { name: string; email: string; subject: string; message: string }) =>
+    request<{ success: boolean; message: string; data: { id: string } }>('/contact', {
+      method: 'POST',
+      body: data,
+    }),
+};
 
 export const api = {
   register: (data: {
@@ -265,6 +284,26 @@ export const adminApi = {
 
   getApprovedBatches: () =>
     request<{ success: boolean; data: number[] }>('/admin/members/batches'),
+
+  getMessages: (params?: { status?: string; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    return request<{ success: boolean; data: ContactMessage[]; pagination: Pagination }>(`/admin/messages?${qs}`);
+  },
+
+  getUnreadMessageCount: () =>
+    request<{ success: boolean; data: { count: number } }>('/admin/messages/unread-count'),
+
+  updateMessageStatus: (id: string, status: 'UNREAD' | 'READ' | 'ARCHIVED') =>
+    request<{ success: boolean; data: ContactMessage }>(`/admin/messages/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+
+  deleteMessage: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/messages/${id}`, { method: 'DELETE' }),
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';

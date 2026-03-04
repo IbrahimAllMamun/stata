@@ -1,6 +1,6 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../lib/api';
@@ -10,18 +10,19 @@ export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
 
   const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'People', href: '/people' },
-    { name: 'Events', href: '/events' },
-    { name: 'Posts', href: '/posts' },
+    { name: 'Home',    href: '/' },
+    { name: 'People',  href: '/people' },
+    { name: 'Events',  href: '/events' },
+    { name: 'Posts',   href: '/posts' },
     { name: 'Gallery', href: '/gallery' },
-    { name: 'About', href: '/about' },
+    { name: 'About',   href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -49,15 +50,26 @@ export default function Navigation() {
   // Poll pending count
   useEffect(() => {
     if (!isAdmin) return;
-    const fetch = () => adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => { });
+    const fetch = () => adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => {});
     fetch();
     const t = setInterval(fetch, 60000);
     return () => clearInterval(t);
   }, [isAdmin]);
 
   useEffect(() => {
+    if (!isAdmin) return;
+    const fetchMsgs = () => adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => {});
+    fetchMsgs();
+    const t = setInterval(fetchMsgs, 60000);
+    return () => clearInterval(t);
+  }, [isAdmin]);
+
+  useEffect(() => {
     if (isAdmin && !location.pathname.startsWith('/admin/members')) {
-      adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => { });
+      adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => {});
+    }
+    if (isAdmin && !location.pathname.startsWith('/admin/messages')) {
+      adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => {});
     }
   }, [location.pathname, isAdmin]);
 
@@ -65,10 +77,11 @@ export default function Navigation() {
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   return (
-    <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
+    <nav className={`sticky top-0 z-50 transition-all duration-300 ${
+      scrolled
         ? 'bg-[#1F2A44]/95 backdrop-blur shadow-lg shadow-black/20'
         : 'bg-[#1F2A44]'
-      }`}>
+    }`}>
       {/* Top accent line */}
       <div className="h-0.5 bg-gradient-to-r from-[#2F5BEA] via-[#F39C12] to-[#2ECC71]" />
 
@@ -84,14 +97,16 @@ export default function Navigation() {
           <div className="hidden md:flex items-center gap-0.5">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
-                className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive(item.href)
+                className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150 group ${
+                  isActive(item.href)
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
-                  }`}>
+                }`}>
                 {item.name}
                 {/* Active indicator */}
-                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-[#F39C12] transition-all duration-200 ${isActive(item.href) ? 'w-4/5' : 'w-0 group-hover:w-1/2 group-hover:bg-white/30'
-                  }`} />
+                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-[#F39C12] transition-all duration-200 ${
+                  isActive(item.href) ? 'w-4/5' : 'w-0 group-hover:w-1/2 group-hover:bg-white/30'
+                }`} />
               </Link>
             ))}
           </div>
@@ -104,18 +119,19 @@ export default function Navigation() {
                 <div ref={dropdownRef} className="relative">
                   <button
                     onClick={() => setDropdownOpen(v => !v)}
-                    className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${dropdownOpen
+                    className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                      dropdownOpen
                         ? 'bg-white/15 text-white'
                         : 'text-[#F39C12] hover:bg-white/10'
-                      }`}>
+                    }`}>
                     <LayoutDashboard className="w-4 h-4" />
                     <span>{admin?.username}</span>
                     {isModerator && (
                       <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded">mod</span>
                     )}
-                    {pendingCount > 0 && (
+                    {(pendingCount + unreadMessages) > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                        {pendingCount > 9 ? '9+' : pendingCount}
+                        {(pendingCount + unreadMessages) > 9 ? '9+' : (pendingCount + unreadMessages)}
                       </span>
                     )}
                   </button>
@@ -155,6 +171,18 @@ export default function Navigation() {
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
                           <Calendar className="w-4 h-4 text-[#2ECC71]" />
                           Manage Events
+                        </Link>
+                        <Link to="/admin/messages"
+                          className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                          <span className="flex items-center gap-3">
+                            <MessageSquare className="w-4 h-4 text-[#9B59B6]" />
+                            Messages
+                          </span>
+                          {unreadMessages > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                              {unreadMessages > 99 ? '99+' : unreadMessages}
+                            </span>
+                          )}
                         </Link>
                         {isFullAdmin && (
                           <Link to="/admin/settings"
@@ -206,10 +234,11 @@ export default function Navigation() {
           <div className="px-3 py-3 space-y-0.5">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
-                className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive(item.href)
+                className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  isActive(item.href)
                     ? 'bg-white/10 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}>
+                }`}>
                 {isActive(item.href) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F39C12] mr-2.5 flex-shrink-0" />
                 )}
@@ -251,6 +280,13 @@ export default function Navigation() {
                 <Link to="/admin/events"
                   className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                   <Calendar className="w-4 h-4 text-[#2ECC71]" /> Manage Events
+                </Link>
+                <Link to="/admin/messages"
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Messages</span>
+                  {unreadMessages > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadMessages}</span>
+                  )}
                 </Link>
                 {isFullAdmin && (
                   <Link to="/admin/settings"

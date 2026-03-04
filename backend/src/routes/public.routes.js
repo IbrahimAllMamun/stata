@@ -22,6 +22,18 @@ router.post('/register', registerLimiter, validate(registerSchema), register);
 router.get('/members', getMembers);
 router.get('/members/export', exportCSV);
 
+// Contact
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many messages sent. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const { submitMessage } = require('../controllers/contact.controller');
+const { contactSchema } = require('../validators');
+router.post('/contact', contactLimiter, validate(contactSchema), submitMessage);
+
 // Committees
 router.get('/committees', getCommittees);
 

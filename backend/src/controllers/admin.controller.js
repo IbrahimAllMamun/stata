@@ -38,7 +38,7 @@ const login = async (req, res, next) => {
 
 const getDashboardStats = async (req, res, next) => {
   try {
-    const [totalMembers, pendingMembers, totalCommittees, totalPosts, totalEvents, upcomingEvents] =
+    const [totalMembers, pendingMembers, totalCommittees, totalPosts, totalEvents, upcomingEvents, unreadMessages] =
       await Promise.all([
         prisma.member.count({ where: { status: 'APPROVED' } }),
         prisma.member.count({ where: { status: 'PENDING' } }),
@@ -46,6 +46,7 @@ const getDashboardStats = async (req, res, next) => {
         prisma.post.count(),
         prisma.event.count(),
         prisma.event.count({ where: { event_date: { gte: new Date() } } }),
+        prisma.contactMessage.count({ where: { status: 'UNREAD' } }),
       ]);
 
     res.json({
@@ -58,6 +59,7 @@ const getDashboardStats = async (req, res, next) => {
         total_events: totalEvents,
         upcoming_events: upcomingEvents,
         past_events: totalEvents - upcomingEvents,
+        unread_messages: unreadMessages,
       },
     });
   } catch (err) {

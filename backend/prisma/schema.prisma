@@ -117,3 +117,23 @@ model Event {
   @@index([is_upcoming])
   @@map("events")
 }
+
+model ContactMessage {
+  id         String        @id @default(uuid())
+  name       String
+  email      String
+  subject    String
+  message    String
+  status     MessageStatus @default(UNREAD)
+  created_at DateTime      @default(now())
+
+  @@index([status])
+  @@index([created_at])
+  @@map("contact_messages")
+}
+
+enum MessageStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
