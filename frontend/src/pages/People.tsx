@@ -194,7 +194,7 @@ export default function People() {
         </div>
       </section>
 
-      <section className="bg-[#2F5BEA] text-white">
+      {/* <section className="bg-[#2F5BEA] text-white">
         <div className="max-w-7xl mx-auto px-4 py-5 grid grid-cols-3 divide-x divide-white/10">
           {[
             { label: "Total Members", value: loadingMembers ? "..." : members.length },
@@ -207,7 +207,7 @@ export default function People() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 flex">
@@ -281,13 +281,13 @@ export default function People() {
                       {filtered.map((member, idx) => (
                         <tr key={member.id} onClick={() => setSelectedMember(member)}
                           className={`cursor-pointer transition-colors ${member.is_president_or_secretary ? "bg-amber-50/50 hover:bg-amber-50" :
-                              member.is_committee_member ? "bg-blue-50/30 hover:bg-blue-50" : "hover:bg-gray-50"
+                            member.is_committee_member ? "bg-blue-50/30 hover:bg-blue-50" : "hover:bg-gray-50"
                             }`}>
                           <td className="px-5 py-4 text-gray-300 text-xs font-medium">{idx + 1}</td>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
                               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${member.is_president_or_secretary ? "bg-amber-500" :
-                                  member.is_committee_member ? "bg-[#2F5BEA]" : "bg-[#1F2A44]"
+                                member.is_committee_member ? "bg-[#2F5BEA]" : "bg-[#1F2A44]"
                                 }`}>
                                 {member.full_name.charAt(0).toUpperCase()}
                               </div>
