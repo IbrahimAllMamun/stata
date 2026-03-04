@@ -1,14 +1,17 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../lib/api';
 import Logo from './Logo';
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
 
@@ -22,25 +25,39 @@ export default function Navigation() {
     { name: 'Contact', href: '/contact' },
   ];
 
-  // Poll pending count every 60s when logged in
+  // Shrink navbar on scroll
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => { setIsOpen(false); setDropdownOpen(false); }, [location.pathname]);
+
+  // Poll pending count
   useEffect(() => {
     if (!isAdmin) return;
-    const fetch = () => {
-      adminApi.getPendingCount()
-        .then(res => setPendingCount(res.data.count))
-        .catch(() => { });
-    };
+    const fetch = () => adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => { });
     fetch();
-    const interval = setInterval(fetch, 60000);
-    return () => clearInterval(interval);
+    const t = setInterval(fetch, 60000);
+    return () => clearInterval(t);
   }, [isAdmin]);
 
-  // Refresh when navigating away from /admin/members
   useEffect(() => {
     if (isAdmin && !location.pathname.startsWith('/admin/members')) {
-      adminApi.getPendingCount()
-        .then(res => setPendingCount(res.data.count))
-        .catch(() => { });
+      adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => { });
     }
   }, [location.pathname, isAdmin]);
 
@@ -48,95 +65,133 @@ export default function Navigation() {
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   return (
-    <nav className="bg-[#1F2A44] text-white shadow-lg sticky top-0 z-50">
+    <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
+        ? 'bg-[#1F2A44]/95 backdrop-blur shadow-lg shadow-black/20'
+        : 'bg-[#1F2A44]'
+      }`}>
+      {/* Top accent line */}
+      <div className="h-0.5 bg-gradient-to-r from-[#2F5BEA] via-[#F39C12] to-[#2ECC71]" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className={`flex justify-between items-center transition-all duration-300 ${scrolled ? 'h-14' : 'h-16'}`}>
+
           {/* Logo */}
-          <Link to="/" className="flex items-center flex-shrink-0">
-            <Logo size={36} scheme="light" />
+          <Link to="/" className="flex items-center flex-shrink-0 opacity-95 hover:opacity-100 transition-opacity">
+            <Logo size={scrolled ? 30 : 34} scheme="light" />
           </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-0.5">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive(item.href)
-                    ? 'text-[#F39C12] bg-white/10'
-                    : 'text-gray-300 hover:text-white hover:bg-white/5'
+                className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive(item.href)
+                    ? 'text-white'
+                    : 'text-gray-400 hover:text-white'
                   }`}>
                 {item.name}
+                {/* Active indicator */}
+                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-[#F39C12] transition-all duration-200 ${isActive(item.href) ? 'w-4/5' : 'w-0 group-hover:w-1/2 group-hover:bg-white/30'
+                  }`} />
               </Link>
             ))}
           </div>
 
           {/* Right side */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
             {isAdmin ? (
               <>
-                <div className="relative group">
-                  {/* Admin button with badge */}
-                  <button className="relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#F39C12] rounded-md hover:bg-white/10 transition-colors">
+                {/* Admin dropdown */}
+                <div ref={dropdownRef} className="relative">
+                  <button
+                    onClick={() => setDropdownOpen(v => !v)}
+                    className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${dropdownOpen
+                        ? 'bg-white/15 text-white'
+                        : 'text-[#F39C12] hover:bg-white/10'
+                      }`}>
                     <LayoutDashboard className="w-4 h-4" />
-                    Admin
+                    <span>{admin?.username}</span>
+                    {isModerator && (
+                      <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded">mod</span>
+                    )}
                     {pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                         {pendingCount > 9 ? '9+' : pendingCount}
                       </span>
                     )}
                   </button>
 
-                  {/* Dropdown */}
-                  <div className="absolute right-0 mt-1 w-56 bg-white text-gray-800 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none group-hover:pointer-events-auto z-50 border border-gray-100">
-                    <Link to="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">
-                      <LayoutDashboard className="w-4 h-4 text-[#2F5BEA]" /> Dashboard
-                    </Link>
-                    <Link to="/admin/members" className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50">
-                      <span className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-amber-500" /> Member Approvals
-                      </span>
-                      {pendingCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                          {pendingCount > 99 ? '99+' : pendingCount}
-                        </span>
-                      )}
-                    </Link>
-                    <Link to="/admin/posts" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50">
-                      <span className="w-4 h-4 text-[#F39C12]">✏️</span> Manage Posts
-                    </Link>
-                    <Link to="/admin/events" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50">
-                      <span className="w-4 h-4">📅</span> Manage Events
-                    </Link>
-                    {isFullAdmin && (
-                      <Link to="/admin/settings" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 rounded-b-xl border-t border-gray-100">
-                        <Settings className="w-4 h-4 text-[#9B59B6]" /> Committee Settings
-                      </Link>
-                    )}
-                  </div>
-                </div>
-
-                <span className="text-xs text-gray-400 border-l border-gray-600 pl-3 flex items-center gap-1.5">
-                  {admin?.username}
-                  {isModerator && (
-                    <span className="bg-blue-500/20 text-blue-300 text-xs px-1.5 py-0.5 rounded">mod</span>
+                  {/* Dropdown panel */}
+                  {dropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-4 py-3">
+                        <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">Admin Panel</p>
+                        <p className="text-white font-bold text-sm mt-0.5">{admin?.username}</p>
+                      </div>
+                      <div className="py-1.5">
+                        <Link to="/admin"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                          <LayoutDashboard className="w-4 h-4 text-[#2F5BEA]" />
+                          Dashboard
+                        </Link>
+                        <Link to="/admin/members"
+                          className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                          <span className="flex items-center gap-3">
+                            <UserCheck className="w-4 h-4 text-amber-500" />
+                            Member Approvals
+                          </span>
+                          {pendingCount > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                              {pendingCount > 99 ? '99+' : pendingCount}
+                            </span>
+                          )}
+                        </Link>
+                        <Link to="/admin/posts"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                          <FileText className="w-4 h-4 text-[#F39C12]" />
+                          Manage Posts
+                        </Link>
+                        <Link to="/admin/events"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                          <Calendar className="w-4 h-4 text-[#2ECC71]" />
+                          Manage Events
+                        </Link>
+                        {isFullAdmin && (
+                          <Link to="/admin/settings"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors border-t border-gray-100 mt-1">
+                            <Settings className="w-4 h-4 text-[#9B59B6]" />
+                            Committee Settings
+                          </Link>
+                        )}
+                      </div>
+                      <div className="border-t border-gray-100 px-4 py-2">
+                        <button onClick={logout}
+                          className="w-full flex items-center gap-2 text-sm text-red-500 hover:text-red-600 py-1.5 transition-colors font-medium">
+                          <LogOut className="w-4 h-4" />
+                          Sign out
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </span>
-                <button onClick={logout} className="flex items-center gap-1 text-sm text-gray-300 hover:text-red-400 transition-colors">
-                  <LogOut className="w-4 h-4" />
-                </button>
+                </div>
               </>
             ) : (
-              <>
-                <Link to="/register" className="bg-[#2F5BEA] hover:bg-[#F39C12] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                  Register
-                </Link>
-              </>
+              <Link to="/register"
+                className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-[#2F5BEA]/30">
+                Register
+              </Link>
             )}
           </div>
 
-          {/* Mobile toggle — with badge */}
-          <button onClick={() => setIsOpen(!isOpen)} className="md:hidden relative text-white hover:text-[#F39C12] transition-colors">
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            {isAdmin && pendingCount > 0 && (
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setIsOpen(v => !v)}
+            className="md:hidden relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-all">
+            {isOpen
+              ? <X className="w-5 h-5" />
+              : <Menu className="w-5 h-5" />
+            }
+            {isAdmin && pendingCount > 0 && !isOpen && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                 {pendingCount > 9 ? '9+' : pendingCount}
               </span>
@@ -147,51 +202,73 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden bg-[#1F2A44] border-t border-gray-700">
-          <div className="px-2 pt-2 pb-3 space-y-1">
+        <div className="md:hidden border-t border-white/10 bg-[#1a2338]">
+          <div className="px-3 py-3 space-y-0.5">
             {navLinks.map(item => (
-              <Link key={item.name} to={item.href} onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.href) ? 'text-[#F39C12] bg-gray-800' : 'text-gray-300 hover:text-white hover:bg-gray-800'
+              <Link key={item.name} to={item.href}
+                className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive(item.href)
+                    ? 'bg-white/10 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}>
+                {isActive(item.href) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F39C12] mr-2.5 flex-shrink-0" />
+                )}
                 {item.name}
               </Link>
             ))}
-            <div className="border-t border-gray-700 pt-2 mt-2">
-              {isAdmin ? (
-                <>
-                  <Link to="/admin" onClick={() => setIsOpen(false)}
-                    className="block px-3 py-2 rounded-md text-sm font-medium text-[#F39C12] hover:bg-gray-800">
-                    Dashboard
-                  </Link>
-                  <Link to="/admin/members" onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-amber-400 hover:bg-gray-800">
-                    Member Approvals
-                    {pendingCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                        {pendingCount}
-                      </span>
-                    )}
-                  </Link>
-                  {isFullAdmin && (
-                    <Link to="/admin/settings" onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-sm font-medium text-purple-300 hover:bg-gray-800">
-                      Committee Settings
-                    </Link>
+          </div>
+
+          {/* Mobile admin / register */}
+          <div className="border-t border-white/10 px-3 py-3 space-y-0.5">
+            {isAdmin ? (
+              <>
+                <div className="flex items-center gap-2 px-4 py-2 mb-1">
+                  <div className="w-7 h-7 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold">
+                    {admin?.username?.[0]?.toUpperCase()}
+                  </div>
+                  <span className="text-white text-sm font-semibold">{admin?.username}</span>
+                  {isModerator && (
+                    <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto">mod</span>
                   )}
-                  <button onClick={() => { logout(); setIsOpen(false); }}
-                    className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-red-400 hover:bg-gray-800">
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/register" onClick={() => setIsOpen(false)}
-                    className="block px-3 py-2 rounded-md text-sm text-white bg-[#2F5BEA] hover:bg-[#F39C12] mt-1 text-center font-semibold">
-                    Register
+                </div>
+                <Link to="/admin"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <LayoutDashboard className="w-4 h-4 text-[#2F5BEA]" /> Dashboard
+                </Link>
+                <Link to="/admin/members"
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-3"><UserCheck className="w-4 h-4 text-amber-400" /> Member Approvals</span>
+                  {pendingCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                      {pendingCount}
+                    </span>
+                  )}
+                </Link>
+                <Link to="/admin/posts"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <FileText className="w-4 h-4 text-[#F39C12]" /> Manage Posts
+                </Link>
+                <Link to="/admin/events"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <Calendar className="w-4 h-4 text-[#2ECC71]" /> Manage Events
+                </Link>
+                {isFullAdmin && (
+                  <Link to="/admin/settings"
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                    <Settings className="w-4 h-4 text-purple-400" /> Committee Settings
                   </Link>
-                </>
-              )}
-            </div>
+                )}
+                <button onClick={() => { logout(); setIsOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors mt-1 border-t border-white/10 pt-3">
+                  <LogOut className="w-4 h-4" /> Sign out
+                </button>
+              </>
+            ) : (
+              <Link to="/register"
+                className="flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mx-1">
+                Register
+              </Link>
+            )}
           </div>
         </div>
       )}
