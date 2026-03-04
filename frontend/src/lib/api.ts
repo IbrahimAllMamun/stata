@@ -253,6 +253,15 @@ export const adminApi = {
 
   deleteCommittee: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/committee/${id}`, { method: 'DELETE' }),
+
+  exportMembersCSV: (filters: { batch?: number | ''; notify_events?: boolean | '' }) => {
+    const qs = new URLSearchParams();
+    if (filters.batch !== undefined && filters.batch !== '') qs.set('batch', String(filters.batch));
+    if (filters.notify_events !== undefined && filters.notify_events !== '') qs.set('notify_events', String(filters.notify_events));
+    const token = getToken();
+    const url = `${BASE_URL}/admin/members/export-csv${qs.toString() ? '?' + qs.toString() : ''}`;
+    return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  },
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';

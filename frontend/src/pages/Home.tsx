@@ -180,21 +180,27 @@ export default function Home() {
 
       {/* ── Stats Bar ── */}
       <section className="bg-[#2F5BEA] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
-          {[
-            { icon: Users, label: 'Members', value: '200+' },
-            { icon: Calendar, label: 'Events Held', value: '50+' },
-            { icon: Trophy, label: 'Batches', value: '15+' },
-            { icon: Heart, label: 'Years Active', value: '10+' },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-3 px-6 first:pl-0 last:pr-0">
-              <Icon className="w-6 h-6 opacity-70 flex-shrink-0" />
-              <div>
-                <div className="text-xl font-extrabold leading-none">{value}</div>
-                <div className="text-xs opacity-70 mt-0.5">{label}</div>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-0">
+            {[
+              { icon: Users, label: 'Members', value: '200+' },
+              { icon: Calendar, label: 'Events Held', value: '50+' },
+              { icon: Trophy, label: 'Batches', value: '15+' },
+              { icon: Heart, label: 'Years Active', value: '10+' },
+            ].map(({ icon: Icon, label, value }, i) => (
+              <div key={label} className={`flex items-center gap-3 px-6 py-1 ${i !== 3 ? 'border-r border-white/10' : ''
+                } ${i === 1 ? 'md:border-r-0' : ''
+                }`}>
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 opacity-90" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold leading-none">{value}</div>
+                  <div className="text-xs opacity-60 mt-1 font-medium">{label}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 

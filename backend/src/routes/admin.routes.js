@@ -15,7 +15,7 @@ const { createCommittee, assignMember, deleteCommittee } = require('../controlle
 const { createPost, updatePost, deletePost, togglePublish } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const {
-  getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember,
+  getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV,
 } = require('../controllers/member.controller');
 
 // Public auth
@@ -30,6 +30,7 @@ router.get('/dashboard', getDashboardStats);
 // Member management — admin and moderator
 router.get('/members', getMembersByStatus);
 router.get('/members/pending-count', getPendingCount);   // ← must be before /:id
+router.get('/members/export-csv', exportCSV);            // ← CSV download with filters
 router.patch('/members/:id/status', updateMemberStatus);
 router.delete('/members/:id', deleteMember);
 

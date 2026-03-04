@@ -84,31 +84,53 @@ const getMembers = async (req, res, next) => {
   }
 };
 
-// CSV export — approved only
+// CSV export — approved members with optional batch + notify_events filters
 const exportCSV = async (req, res, next) => {
   try {
+    const { batch, notify_events } = req.query;
+
+    const where = { status: 'APPROVED' };
+    if (batch && batch !== '') where.batch = parseInt(batch);
+    if (notify_events !== undefined && notify_events !== '') {
+      where.notify_events = notify_events === 'true';
+    }
+
     const members = await prisma.member.findMany({
-      where: { status: 'APPROVED' },
-      orderBy: [{ batch: 'asc' }, { full_name: 'asc' }],
+      where,
+      orderBy: [{ batch: 'asc' }, { notify_events: 'desc' }, { full_name: 'asc' }],
     });
 
     const headers = [
-      'id', 'batch', 'full_name', 'email', 'phone_number',
+      'batch', 'full_name', 'email', 'phone_number',
       'alternative_phone', 'job_title', 'organisation',
       'organisation_address', 'notify_events', 'created_at',
     ];
 
+    const displayHeaders = [
+      'Batch', 'Full Name', 'Email', 'Phone Number',
+      'Alternative Phone', 'Job Title', 'Organisation',
+      'Organisation Address', 'Notify Events', 'Registered At',
+    ];
+
+    const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
     const rows = members.map((m) =>
-      headers.map((h) => {
-        const val = m[h] ?? '';
-        return `"${String(val).replace(/"/g, '""')}"`;
-      }).join(',')
+      headers.map((h) => escape(h === 'notify_events' ? (m[h] ? 'Yes' : 'No') : m[h])).join(',')
     );
 
-    const csv = [headers.join(','), ...rows].join('\n');
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="stata_members.csv"');
-    res.send(csv);
+    // Build a descriptive filename
+    let filenameParts = ['stata_members'];
+    if (batch) filenameParts.push(`batch${batch}`);
+    if (notify_events !== undefined && notify_events !== '') {
+      filenameParts.push(notify_events === 'true' ? 'notify_yes' : 'notify_no');
+    }
+    filenameParts.push(new Date().toISOString().slice(0, 10));
+    const filename = filenameParts.join('_') + '.csv';
+
+    const csv = [displayHeaders.join(','), ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('\uFEFF' + csv); // BOM for Excel UTF-8 compatibility
   } catch (err) {
     next(err);
   }

@@ -4,6 +4,7 @@ import {
     Users, CheckCircle, Archive, Trash2, Clock,
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
+    Download, Filter, ChevronRight,
 } from 'lucide-react';
 import { adminApi } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -144,6 +145,45 @@ export default function ManageMembers() {
     const [selected, setSelected] = useState<RawMember | null>(null);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
+    // CSV export state
+    const [csvOpen, setCsvOpen] = useState(false);
+    const [csvBatch, setCsvBatch] = useState<string>('');
+    const [csvNotify, setCsvNotify] = useState<string>('');
+    const [csvLoading, setCsvLoading] = useState(false);
+
+    const handleExportCSV = async () => {
+        setCsvLoading(true);
+        try {
+            const filters: { batch?: number | ''; notify_events?: boolean | '' } = {};
+            if (csvBatch !== '') filters.batch = parseInt(csvBatch);
+            if (csvNotify !== '') filters.notify_events = csvNotify === 'true';
+
+            const res = await adminApi.exportMembersCSV(filters);
+            if (!res.ok) { showToast('Export failed', false); return; }
+
+            const blob = await res.blob();
+            const disposition = res.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            const filename = match ? match[1] : 'stata_members.csv';
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            const count = blob.size > 100 ? 'Downloaded' : 'No data';
+            showToast(`${count}: ${filename}`);
+        } catch {
+            showToast('Export failed', false);
+        } finally {
+            setCsvLoading(false);
+        }
+    };
+
     const showToast = (msg: string, ok = true) => {
         setToast({ msg, ok });
         setTimeout(() => setToast(null), 3000);
@@ -197,10 +237,117 @@ export default function ManageMembers() {
             <div className="max-w-6xl mx-auto">
 
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-[#1F2A44] mb-1">Member Approvals</h1>
-                    <p className="text-gray-500 text-sm">Review and manage member registrations</p>
+                <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                        <h1 className="text-3xl font-bold text-[#1F2A44] mb-1">Member Approvals</h1>
+                        <p className="text-gray-500 text-sm">Review and manage member registrations</p>
+                    </div>
+                    <button
+                        onClick={() => setCsvOpen(v => !v)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${csvOpen
+                                ? 'bg-[#1F2A44] text-white border-[#1F2A44]'
+                                : 'bg-white text-[#1F2A44] border-gray-200 hover:border-[#2F5BEA] hover:text-[#2F5BEA]'
+                            } shadow-sm`}>
+                        <Download className="w-4 h-4" />
+                        Export CSV
+                        <ChevronRight className={`w-4 h-4 transition-transform ${csvOpen ? 'rotate-90' : ''}`} />
+                    </button>
                 </div>
+
+                {/* CSV Export Panel */}
+                {csvOpen && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                        <div className="flex items-center gap-2 mb-5">
+                            <div className="w-8 h-8 rounded-lg bg-[#2F5BEA]/10 flex items-center justify-center">
+                                <Filter className="w-4 h-4 text-[#2F5BEA]" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-[#1F2A44]">Export Approved Members</h3>
+                                <p className="text-xs text-gray-400">Leave filters empty to download all approved members</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                            {/* Batch filter */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Batch
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={csvBatch}
+                                        onChange={e => setCsvBatch(e.target.value)}
+                                        className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white pr-8">
+                                        <option value="">All Batches</option>
+                                        {Array.from({ length: 20 }, (_, i) => {
+                                            const year = new Date().getFullYear() - i;
+                                            return <option key={year} value={year}>{year}</option>;
+                                        })}
+                                    </select>
+                                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Notification filter */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Event Notifications
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={csvNotify}
+                                        onChange={e => setCsvNotify(e.target.value)}
+                                        className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white pr-8">
+                                        <option value="">All Members</option>
+                                        <option value="true">Subscribed only</option>
+                                        <option value="false">Not subscribed only</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Active filters summary */}
+                        {(csvBatch !== '' || csvNotify !== '') && (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                <span className="text-xs text-gray-400 font-medium self-center">Filtering by:</span>
+                                {csvBatch !== '' && (
+                                    <span className="flex items-center gap-1 bg-[#2F5BEA]/10 text-[#2F5BEA] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                        Batch {csvBatch}
+                                        <button onClick={() => setCsvBatch('')} className="hover:text-red-500 transition-colors ml-0.5">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                                {csvNotify !== '' && (
+                                    <span className="flex items-center gap-1 bg-[#2F5BEA]/10 text-[#2F5BEA] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                        {csvNotify === 'true' ? 'Subscribed' : 'Not subscribed'}
+                                        <button onClick={() => setCsvNotify('')} className="hover:text-red-500 transition-colors ml-0.5">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                            <button
+                                onClick={handleExportCSV}
+                                disabled={csvLoading}
+                                className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 shadow-sm">
+                                {csvLoading
+                                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Preparing…</>
+                                    : <><Download className="w-4 h-4" /> Download CSV</>
+                                }
+                            </button>
+                            <button
+                                onClick={() => { setCsvBatch(''); setCsvNotify(''); }}
+                                className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                                Reset filters
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
