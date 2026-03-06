@@ -12,7 +12,7 @@ type TabStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    PENDING:  'bg-amber-100 text-amber-700 border-amber-200',
+    PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
     APPROVED: 'bg-green-100 text-green-700 border-green-200',
     REJECTED: 'bg-red-100 text-red-600 border-red-200',
   };
@@ -44,7 +44,7 @@ export default function ManagePosts() {
         adminApi.getPosts({ status: 'REJECTED', limit: 1 }),
       ]);
       setCounts({ PENDING: p.pagination.total, APPROVED: a.pagination.total, REJECTED: r.pagination.total });
-    } catch {}
+    } catch { }
   }, []);
 
   const load = useCallback(async (status: TabStatus) => {
@@ -96,9 +96,9 @@ export default function ManagePosts() {
   };
 
   const tabs: { key: TabStatus; label: string; color: string; icon: typeof Clock }[] = [
-    { key: 'PENDING',  label: 'Pending',  color: 'border-amber-500 text-amber-600',  icon: Clock },
-    { key: 'APPROVED', label: 'Approved', color: 'border-[#2ECC71] text-[#2ECC71]',  icon: CheckCircle },
-    { key: 'REJECTED', label: 'Rejected', color: 'border-red-400 text-red-500',      icon: XCircle },
+    { key: 'PENDING', label: 'Pending', color: 'border-amber-500 text-amber-600', icon: Clock },
+    { key: 'APPROVED', label: 'Approved', color: 'border-[#2ECC71] text-[#2ECC71]', icon: CheckCircle },
+    { key: 'REJECTED', label: 'Rejected', color: 'border-red-400 text-red-500', icon: XCircle },
   ];
 
   if (!isAdmin) return null;
@@ -130,15 +130,13 @@ export default function ManagePosts() {
           <div className="flex border-b border-gray-100">
             {tabs.map(({ key, label, color, icon: Icon }) => (
               <button key={key} onClick={() => { setTab(key); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
-                  tab === key ? color : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}>
+                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold border-b-2 transition-colors ${tab === key ? color : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}>
                 <Icon className="w-4 h-4" />
                 {label}
                 {counts[key] > 0 && (
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                    key === 'PENDING' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>{counts[key]}</span>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${key === 'PENDING' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>{counts[key]}</span>
                 )}
               </button>
             ))}

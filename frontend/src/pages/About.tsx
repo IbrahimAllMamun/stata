@@ -59,8 +59,8 @@ export default function About() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
-            { icon: Utensils, color: 'bg-[#F39C12]', title: 'Social Events', items: ['BBQ parties bringing students together in a relaxed atmosphere','Iftar Mahfil during Ramadan for community bonding','Khashi parties celebrating special occasions','Educational tours to explore and learn together'] },
-            { icon: Trophy, color: 'bg-[#E74C3C]', title: 'Sports & Recreation', items: ['Annual cricket tournaments for sports enthusiasts','Football tournaments promoting teamwork and fitness','Regular recreational activities and games','Collaborative events with other university organizations'] },
+            { icon: Utensils, color: 'bg-[#F39C12]', title: 'Social Events', items: ['BBQ parties bringing students together in a relaxed atmosphere', 'Iftar Mahfil during Ramadan for community bonding', 'Khashi parties celebrating special occasions', 'Educational tours to explore and learn together'] },
+            { icon: Trophy, color: 'bg-[#E74C3C]', title: 'Sports & Recreation', items: ['Annual cricket tournaments for sports enthusiasts', 'Football tournaments promoting teamwork and fitness', 'Regular recreational activities and games', 'Collaborative events with other university organizations'] },
           ].map(({ icon: Icon, color, title, items }) => (
             <div key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className={`${color} px-6 py-4 flex items-center gap-3`}><Icon className="w-5 h-5 text-white" /><h3 className="font-bold text-white text-lg">{title}</h3></div>

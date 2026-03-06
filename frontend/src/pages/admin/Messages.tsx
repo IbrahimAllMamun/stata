@@ -50,9 +50,8 @@ function MessageModal({ msg, onClose, onAction, onToggleFeatured }: {
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Featured star */}
             <button onClick={handleFeature} disabled={loading} title={msg.featured ? 'Remove from speeches' : 'Feature as speech'}
-              className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                msg.featured ? 'bg-[#F39C12] text-white' : 'bg-white/20 hover:bg-[#F39C12] text-white'
-              }`}>
+              className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${msg.featured ? 'bg-[#F39C12] text-white' : 'bg-white/20 hover:bg-[#F39C12] text-white'
+                }`}>
               <Star className="w-3.5 h-3.5" fill={msg.featured ? 'currentColor' : 'none'} />
             </button>
             <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
@@ -142,7 +141,7 @@ export default function Messages() {
         adminApi.getMessages({ status: 'ARCHIVED', limit: 1 }),
       ]);
       setCounts({ UNREAD: u.pagination.total, READ: r.pagination.total, ARCHIVED: a.pagination.total });
-    } catch {}
+    } catch { }
   }, []);
 
   const load = useCallback(async (status: TabStatus) => {
@@ -193,7 +192,7 @@ export default function Messages() {
         await adminApi.updateMessageStatus(msg.id, 'READ');
         setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'READ' } : m));
         setCounts(prev => ({ ...prev, UNREAD: Math.max(0, prev.UNREAD - 1), READ: prev.READ + 1 }));
-      } catch {}
+      } catch { }
     }
   };
 
@@ -205,9 +204,9 @@ export default function Messages() {
   );
 
   const tabs: { key: TabStatus; label: string; color: string; icon: typeof Mail }[] = [
-    { key: 'UNREAD',   label: 'Unread',   color: 'border-[#2F5BEA] text-[#2F5BEA]', icon: Mail },
-    { key: 'READ',     label: 'Read',     color: 'border-[#2ECC71] text-[#2ECC71]', icon: MailOpen },
-    { key: 'ARCHIVED', label: 'Archived', color: 'border-gray-400 text-gray-500',   icon: Archive },
+    { key: 'UNREAD', label: 'Unread', color: 'border-[#2F5BEA] text-[#2F5BEA]', icon: Mail },
+    { key: 'READ', label: 'Read', color: 'border-[#2ECC71] text-[#2ECC71]', icon: MailOpen },
+    { key: 'ARCHIVED', label: 'Archived', color: 'border-gray-400 text-gray-500', icon: Archive },
   ];
 
   if (authLoading) return (
@@ -239,15 +238,13 @@ export default function Messages() {
           <div className="flex border-b border-gray-100">
             {tabs.map(({ key, label, color, icon: Icon }) => (
               <button key={key} onClick={() => { setTab(key); setSearch(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
-                  tab === key ? color : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}>
+                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold border-b-2 transition-colors ${tab === key ? color : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}>
                 <Icon className="w-4 h-4" />
                 {label}
                 {counts[key] > 0 && (
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                    key === 'UNREAD' ? 'bg-[#2F5BEA] text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>{counts[key]}</span>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${key === 'UNREAD' ? 'bg-[#2F5BEA] text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>{counts[key]}</span>
                 )}
               </button>
             ))}
@@ -278,13 +275,11 @@ export default function Messages() {
               {filtered.map(msg => (
                 <div key={msg.id}
                   onClick={() => openMessage(msg)}
-                  className={`flex items-start gap-4 px-5 py-4 cursor-pointer transition-colors hover:bg-[#F5F7FA] group ${
-                    msg.status === 'UNREAD' ? 'bg-blue-50/30' : ''
-                  }`}>
+                  className={`flex items-start gap-4 px-5 py-4 cursor-pointer transition-colors hover:bg-[#F5F7FA] group ${msg.status === 'UNREAD' ? 'bg-blue-50/30' : ''
+                    }`}>
                   {/* Avatar */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                    msg.status === 'UNREAD' ? 'bg-[#2F5BEA] text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${msg.status === 'UNREAD' ? 'bg-[#2F5BEA] text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
                     {msg.name.charAt(0).toUpperCase()}
                   </div>
 
@@ -311,9 +306,8 @@ export default function Messages() {
                     {/* Feature star */}
                     <button title={msg.featured ? 'Remove from speeches' : 'Feature as speech'}
                       onClick={() => handleToggleFeatured(msg.id)}
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                        msg.featured ? 'bg-amber-100 text-amber-500' : 'bg-gray-50 hover:bg-amber-50 text-gray-300 hover:text-amber-400'
-                      }`}>
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${msg.featured ? 'bg-amber-100 text-amber-500' : 'bg-gray-50 hover:bg-amber-50 text-gray-300 hover:text-amber-400'
+                        }`}>
                       <Star className="w-3.5 h-3.5" fill={msg.featured ? 'currentColor' : 'none'} />
                     </button>
                     {msg.status !== 'ARCHIVED' && (
@@ -343,9 +337,8 @@ export default function Messages() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white flex items-center gap-2 ${
-          toast.ok ? 'bg-[#2ECC71]' : 'bg-[#E74C3C]'
-        }`}>
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white flex items-center gap-2 ${toast.ok ? 'bg-[#2ECC71]' : 'bg-[#E74C3C]'
+          }`}>
           {toast.msg}
         </div>
       )}

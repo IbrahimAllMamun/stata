@@ -113,7 +113,6 @@ export default function PostEditor() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Batch <span className="text-red-400">*</span>
-                  <span className="text-gray-400 font-normal ml-1">(1–3000)</span>
                 </label>
                 <input type="number" value={formData.author_batch} min={1} max={3000} required
                   onChange={e => setFormData({ ...formData, author_batch: e.target.value })}

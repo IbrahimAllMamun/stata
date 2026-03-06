@@ -111,7 +111,7 @@ export default function Register() {
               <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Approval</span>
             </div>
             <p className="text-sm text-amber-700 leading-relaxed">
-              Your membership is under review by our team. You will be notified once your account is approved. This usually takes 1–3 business days.
+              Your membership is under review by our team. You will be notified once your account is approved. This usually takes 1-3 business days.
             </p>
           </div>
 
@@ -120,12 +120,10 @@ export default function Register() {
             {[
               { step: '1', label: 'Application submitted', done: true },
               { step: '2', label: 'Admin review', done: false },
-              { step: '3', label: 'Account activated', done: false },
             ].map(({ step, label, done }) => (
               <div key={step} className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                  done ? 'bg-[#2ECC71] text-white' : 'bg-gray-100 text-gray-400'
-                }`}>{done ? '✓' : step}</div>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${done ? 'bg-[#2ECC71] text-white' : 'bg-gray-100 text-gray-400'
+                  }`}>{done ? '✓' : step}</div>
                 <span className={`text-sm ${done ? 'text-[#1F2A44] font-medium' : 'text-gray-400'}`}>{label}</span>
               </div>
             ))}
