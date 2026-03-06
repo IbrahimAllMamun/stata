@@ -10,6 +10,7 @@ import Gallery from './pages/Gallery';
 import Contact from './pages/Contact';
 import Posts from './pages/Posts';
 import PostView from './pages/PostView';
+import SubmitPost from './pages/SubmitPost';
 import Login from './pages/Login';
 import Register from './pages/Signup';
 import People from './pages/People';
@@ -59,6 +60,7 @@ function App() {
             <Route path="gallery" element={<Gallery />} />
             <Route path="contact" element={<Contact />} />
             <Route path="posts" element={<Posts />} />
+            <Route path="posts/submit" element={<SubmitPost />} />
             <Route path="posts/:slug" element={<PostView />} />
             <Route path="people" element={<People />} />
             <Route path="login" element={<Login />} />

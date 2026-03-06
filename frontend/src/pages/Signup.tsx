@@ -1,7 +1,7 @@
 // src/pages/Signup.tsx — Member Registration
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, CheckCircle, User, Briefcase, Bell } from 'lucide-react';
+import { UserPlus, CheckCircle, User, Briefcase, Bell, Clock, Home } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface FormState {
@@ -85,16 +85,57 @@ export default function Register() {
 
   if (success) return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 bg-[#F5F7FA]">
-      <div className="max-w-md w-full text-center bg-white p-10 rounded-2xl shadow-lg">
-        <div className="w-20 h-20 bg-[#2ECC71] rounded-full flex items-center justify-center mx-auto mb-5">
-          <CheckCircle className="w-10 h-10 text-white" />
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        {/* Gradient top bar */}
+        <div className="h-1.5 bg-gradient-to-r from-[#2F5BEA] via-[#F39C12] to-[#2ECC71]" />
+        <div className="p-8 text-center">
+          {/* Icon cluster */}
+          <div className="relative inline-flex mb-6">
+            <div className="w-20 h-20 bg-[#2ECC71]/10 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-10 h-10 text-[#2ECC71]" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center border-2 border-white">
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-extrabold text-[#1F2A44] mb-2">Registration Received!</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Your application has been submitted successfully.
+          </p>
+
+          {/* Pending notice */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Approval</span>
+            </div>
+            <p className="text-sm text-amber-700 leading-relaxed">
+              Your membership is under review by our team. You will be notified once your account is approved. This usually takes 1–3 business days.
+            </p>
+          </div>
+
+          {/* Steps */}
+          <div className="space-y-3 mb-6 text-left">
+            {[
+              { step: '1', label: 'Application submitted', done: true },
+              { step: '2', label: 'Admin review', done: false },
+              { step: '3', label: 'Account activated', done: false },
+            ].map(({ step, label, done }) => (
+              <div key={step} className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                  done ? 'bg-[#2ECC71] text-white' : 'bg-gray-100 text-gray-400'
+                }`}>{done ? '✓' : step}</div>
+                <span className={`text-sm ${done ? 'text-[#1F2A44] font-medium' : 'text-gray-400'}`}>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={() => navigate('/')}
+            className="w-full flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm">
+            <Home className="w-4 h-4" /> Back to Home
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-[#1F2A44] mb-2">Registration Successful!</h2>
-        <p className="text-gray-500 text-sm mb-1">Your member ID</p>
-        <p className="font-mono text-xs bg-gray-100 rounded px-3 py-2 text-gray-700 mb-6 break-all">{success}</p>
-        <button onClick={() => navigate('/')} className="bg-[#2F5BEA] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#F39C12] transition-colors">
-          Back to Home
-        </button>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import {
     Download, Filter, ChevronRight,
 } from 'lucide-react';
 import { adminApi } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext';
 
 type MemberStatus = 'PENDING' | 'APPROVED' | 'ARCHIVED';
 
@@ -137,7 +137,6 @@ function StatusBadge({ status }: { status: MemberStatus }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ManageMembers() {
-    const { isAdmin } = useAuth();
     const [members, setMembers] = useState<RawMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<MemberStatus>('PENDING');
@@ -253,8 +252,8 @@ export default function ManageMembers() {
                     <button
                         onClick={() => setCsvOpen(v => !v)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${csvOpen
-                                ? 'bg-[#1F2A44] text-white border-[#1F2A44]'
-                                : 'bg-white text-[#1F2A44] border-gray-200 hover:border-[#2F5BEA] hover:text-[#2F5BEA]'
+                            ? 'bg-[#1F2A44] text-white border-[#1F2A44]'
+                            : 'bg-white text-[#1F2A44] border-gray-200 hover:border-[#2F5BEA] hover:text-[#2F5BEA]'
                             } shadow-sm`}>
                         <Download className="w-4 h-4" />
                         Export CSV

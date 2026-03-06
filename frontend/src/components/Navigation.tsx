@@ -1,6 +1,6 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../lib/api';
@@ -17,12 +17,12 @@ export default function Navigation() {
   const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
 
   const navLinks = [
-    { name: 'Home',    href: '/' },
-    { name: 'People',  href: '/people' },
-    { name: 'Events',  href: '/events' },
-    { name: 'Posts',   href: '/posts' },
+    { name: 'Home', href: '/' },
+    { name: 'People', href: '/people' },
+    { name: 'Events', href: '/events' },
+    { name: 'Posts', href: '/posts' },
     { name: 'Gallery', href: '/gallery' },
-    { name: 'About',   href: '/about' },
+    { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -50,7 +50,7 @@ export default function Navigation() {
   // Poll pending count
   useEffect(() => {
     if (!isAdmin) return;
-    const fetch = () => adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => {});
+    const fetch = () => adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => { });
     fetch();
     const t = setInterval(fetch, 60000);
     return () => clearInterval(t);
@@ -58,7 +58,7 @@ export default function Navigation() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    const fetchMsgs = () => adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => {});
+    const fetchMsgs = () => adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => { });
     fetchMsgs();
     const t = setInterval(fetchMsgs, 60000);
     return () => clearInterval(t);
@@ -66,10 +66,10 @@ export default function Navigation() {
 
   useEffect(() => {
     if (isAdmin && !location.pathname.startsWith('/admin/members')) {
-      adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => {});
+      adminApi.getPendingCount().then(r => setPendingCount(r.data.count)).catch(() => { });
     }
     if (isAdmin && !location.pathname.startsWith('/admin/messages')) {
-      adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => {});
+      adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => { });
     }
   }, [location.pathname, isAdmin]);
 
@@ -77,11 +77,10 @@ export default function Navigation() {
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   return (
-    <nav className={`sticky top-0 z-50 transition-all duration-300 ${
-      scrolled
+    <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
         ? 'bg-[#1F2A44]/95 backdrop-blur shadow-lg shadow-black/20'
         : 'bg-[#1F2A44]'
-    }`}>
+      }`}>
       {/* Top accent line */}
       <div className="h-0.5 bg-gradient-to-r from-[#2F5BEA] via-[#F39C12] to-[#2ECC71]" />
 
@@ -97,16 +96,14 @@ export default function Navigation() {
           <div className="hidden md:flex items-center gap-0.5">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
-                className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150 group ${
-                  isActive(item.href)
+                className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive(item.href)
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
-                }`}>
+                  }`}>
                 {item.name}
                 {/* Active indicator */}
-                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-[#F39C12] transition-all duration-200 ${
-                  isActive(item.href) ? 'w-4/5' : 'w-0 group-hover:w-1/2 group-hover:bg-white/30'
-                }`} />
+                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-[#F39C12] transition-all duration-200 ${isActive(item.href) ? 'w-4/5' : 'w-0 group-hover:w-1/2 group-hover:bg-white/30'
+                  }`} />
               </Link>
             ))}
           </div>
@@ -119,11 +116,10 @@ export default function Navigation() {
                 <div ref={dropdownRef} className="relative">
                   <button
                     onClick={() => setDropdownOpen(v => !v)}
-                    className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                      dropdownOpen
+                    className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${dropdownOpen
                         ? 'bg-white/15 text-white'
                         : 'text-[#F39C12] hover:bg-white/10'
-                    }`}>
+                      }`}>
                     <LayoutDashboard className="w-4 h-4" />
                     <span>{admin?.username}</span>
                     {isModerator && (
@@ -204,10 +200,16 @@ export default function Navigation() {
                 </div>
               </>
             ) : (
-              <Link to="/register"
-                className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-[#2F5BEA]/30">
-                Register
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to="/posts/submit"
+                  className="flex items-center gap-1.5 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+                  <PenLine className="w-3.5 h-3.5" /> Post
+                </Link>
+                <Link to="/register"
+                  className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-[#2F5BEA]/30">
+                  Register
+                </Link>
+              </div>
             )}
           </div>
 
@@ -234,11 +236,10 @@ export default function Navigation() {
           <div className="px-3 py-3 space-y-0.5">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
-                className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive(item.href)
+                className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive(item.href)
                     ? 'bg-white/10 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}>
+                  }`}>
                 {isActive(item.href) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F39C12] mr-2.5 flex-shrink-0" />
                 )}
@@ -300,10 +301,16 @@ export default function Navigation() {
                 </button>
               </>
             ) : (
-              <Link to="/register"
-                className="flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mx-1">
-                Register
-              </Link>
+              <div className="flex flex-col gap-2 mx-1">
+                <Link to="/posts/submit"
+                  className="flex items-center justify-center gap-2 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                  <PenLine className="w-4 h-4" /> Write a Post
+                </Link>
+                <Link to="/register"
+                  className="flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                  Register
+                </Link>
+              </div>
             )}
           </div>
         </div>

@@ -80,21 +80,31 @@ enum Position {
 }
 
 model Post {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   title        String
-  slug         String   @unique
+  slug         String     @unique
   content      String
   cover_image  String?
-  published    Boolean  @default(true)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  created_by   String
+  status       PostStatus @default(PENDING)
+  published    Boolean    @default(false)
+  author_name  String
+  author_batch Int
+  created_by   String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
 
-  admin Admin @relation(fields: [created_by], references: [id])
+  admin Admin? @relation(fields: [created_by], references: [id])
 
   @@index([slug])
+  @@index([status])
   @@index([created_at])
   @@map("posts")
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Event {

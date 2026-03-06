@@ -32,12 +32,23 @@ const postSchema = Joi.object({
   title: Joi.string().trim().min(3).max(200).required(),
   content: Joi.string().min(10).required(),
   published: Joi.boolean().truthy('true').falsy('false').optional(),
+  author_name: Joi.string().trim().min(2).max(100).optional(),
+  author_batch: Joi.number().integer().min(1).max(3000).optional(),
 });
 
 const updatePostSchema = Joi.object({
   title: Joi.string().trim().min(3).max(200).optional(),
   content: Joi.string().min(10).optional(),
   published: Joi.boolean().truthy('true').falsy('false').optional(),
+  author_name: Joi.string().trim().min(2).max(100).optional(),
+  author_batch: Joi.number().integer().min(1).max(3000).optional(),
+});
+
+const submitPostSchema = Joi.object({
+  title:        Joi.string().trim().min(3).max(200).required(),
+  content:      Joi.string().min(10).required(),
+  author_name:  Joi.string().trim().min(2).max(100).required(),
+  author_batch: Joi.number().integer().min(1).max(3000).required(),
 });
 
 const eventSchema = Joi.object({
@@ -72,13 +83,9 @@ const contactSchema = Joi.object({
 });
 
 module.exports = {
-  registerSchema,
-  loginSchema,
-  postSchema,
-  updatePostSchema,
-  eventSchema,
-  updateEventSchema,
-  committeeSchema,
-  assignMemberSchema,
+  registerSchema, loginSchema,
+  postSchema, updatePostSchema, submitPostSchema,
+  eventSchema, updateEventSchema,
+  committeeSchema, assignMemberSchema,
   contactSchema,
 };

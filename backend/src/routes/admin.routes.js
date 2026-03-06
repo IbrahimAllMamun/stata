@@ -12,7 +12,7 @@ const {
 
 const { login, getDashboardStats, createModerator } = require('../controllers/admin.controller');
 const { createCommittee, assignMember, deleteCommittee } = require('../controllers/committee.controller');
-const { createPost, updatePost, deletePost, togglePublish } = require('../controllers/post.controller');
+const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage } = require('../controllers/contact.controller');
 const {
@@ -45,10 +45,14 @@ router.post('/committee/assign', requireRole('admin'), upload.single('image'), a
 router.delete('/committee/:id', requireRole('admin'), deleteCommittee);
 
 // Posts — admin and moderator
+router.get('/posts', getAdminPosts);
+router.get('/posts/pending-count', getPendingPostCount);
 router.post('/posts', upload.single('cover_image'), validate(postSchema), createPost);
 router.put('/posts/:id', upload.single('cover_image'), validate(updatePostSchema), updatePost);
 router.delete('/posts/:id', deletePost);
 router.patch('/posts/:id/toggle', togglePublish);
+router.patch('/posts/:id/approve', approvePost);
+router.patch('/posts/:id/reject', rejectPost);
 
 // Events — admin and moderator
 router.post('/events', upload.single('banner_image'), validate(eventSchema), createEvent);

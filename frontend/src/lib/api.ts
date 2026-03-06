@@ -71,7 +71,10 @@ export interface Post {
   slug: string;
   content: string;
   cover_image?: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   published: boolean;
+  author_name: string;
+  author_batch: number;
   created_at: string;
   updated_at: string;
   admin?: { id: string; username: string };
@@ -134,8 +137,14 @@ export interface ContactMessage {
 export const contactApi = {
   submit: (data: { name: string; email: string; subject: string; message: string }) =>
     request<{ success: boolean; message: string; data: { id: string } }>('/contact', {
-      method: 'POST',
-      body: data,
+      method: 'POST', body: data,
+    }),
+};
+
+export const postApi = {
+  submit: (formData: FormData) =>
+    request<{ success: boolean; message: string; data: { id: string } }>('/posts', {
+      method: 'POST', body: formData, isFormData: true,
     }),
 };
 
@@ -195,6 +204,23 @@ export const adminApi = {
 
   getDashboard: () =>
     request<{ success: boolean; data: DashboardStats }>('/admin/dashboard'),
+
+  getPosts: (params?: { page?: number; limit?: number; status?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.status) qs.set('status', params.status);
+    return request<{ success: boolean; data: Post[]; pagination: Pagination }>(`/admin/posts?${qs}`);
+  },
+
+  getPendingPostCount: () =>
+    request<{ success: boolean; data: { count: number } }>('/admin/posts/pending-count'),
+
+  approvePost: (id: string) =>
+    request<{ success: boolean; data: Post }>(`/admin/posts/${id}/approve`, { method: 'PATCH' }),
+
+  rejectPost: (id: string) =>
+    request<{ success: boolean; data: Post }>(`/admin/posts/${id}/reject`, { method: 'PATCH' }),
 
   createPost: (formData: FormData) =>
     request<{ success: boolean; data: Post }>('/admin/posts', {
