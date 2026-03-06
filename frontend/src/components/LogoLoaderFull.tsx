@@ -1,0 +1,138 @@
+// src/components/LogoLoader.tsx
+interface LogoLoaderFullProps {
+    size?: number;
+    scheme?: 'light' | 'dark';
+    className?: string;
+}
+
+export default function LogoLoaderFull({
+    size = 60,
+    scheme = 'dark',
+    className = '',
+}: LogoLoaderFullProps) {
+    const textFill = scheme === 'light' ? '#1F2A44' : '#FFFFFF';
+
+    return (
+        <div className={className} style={{ display: 'inline-block', lineHeight: 0 }}>
+            <style>{`
+        /* ── Icon entry ── */
+        @keyframes ll-swirl-orange {
+          0%   { opacity: 0; transform-origin: 44px 22px; transform: rotate(-40deg) scale(0.6); }
+          30%  { opacity: 1; transform: rotate(6deg) scale(1.04); }
+          55%  { transform: rotate(-3deg) scale(0.98); }
+          75%  { transform: rotate(1deg) scale(1); }
+          100% { transform: rotate(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes ll-swirl-red {
+          0%   { opacity: 0; transform-origin: 44px 72px; transform: rotate(40deg) scale(0.6); }
+          30%  { opacity: 1; transform: rotate(-6deg) scale(1.04); }
+          55%  { transform: rotate(3deg) scale(0.98); }
+          75%  { transform: rotate(-1deg) scale(1); }
+          100% { transform: rotate(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes ll-swirl-teal {
+          0%   { opacity: 0; transform-origin: 88px 50px; transform: rotate(60deg) scale(0.6); }
+          30%  { opacity: 1; transform: rotate(-8deg) scale(1.06); }
+          55%  { transform: rotate(4deg) scale(0.97); }
+          75%  { transform: rotate(-2deg) scale(1.01); }
+          100% { transform: rotate(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes ll-pop-circle {
+          0%   { opacity: 0; transform: scale(0); }
+          60%  { transform: scale(1.35); opacity: 1; }
+          80%  { transform: scale(0.88); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Text entry: slide in from right + fade ── */
+        @keyframes ll-text-in {
+          0%   { opacity: 0; transform: translateX(14px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ── Idle pulse (icon only) ── */
+        @keyframes ll-pulse-orange {
+          0%, 100% { opacity: 1; } 50% { opacity: 1; }
+        }
+        @keyframes ll-pulse-red {
+          0%, 100% { opacity: 1; } 50% { opacity: 1; }
+        }
+        @keyframes ll-pulse-teal {
+          0%, 100% { opacity: 1; } 50% { opacity: 1; }
+        }
+
+        .ll-orange-path {
+          animation:
+            ll-swirl-orange 0.65s cubic-bezier(.22,.68,0,1.2) 0.05s both,
+            ll-pulse-orange 2.2s ease-in-out 0.75s infinite;
+        }
+        .ll-orange-dot {
+          animation:
+            ll-pop-circle 0.5s cubic-bezier(.22,.68,0,1.3) 0.35s both,
+            ll-pulse-orange 2.2s ease-in-out 0.75s infinite;
+        }
+        .ll-red-path {
+          animation:
+            ll-swirl-red 0.65s cubic-bezier(.22,.68,0,1.2) 0.18s both,
+            ll-pulse-red 2.2s ease-in-out 1s infinite;
+        }
+        .ll-red-dot {
+          animation:
+            ll-pop-circle 0.5s cubic-bezier(.22,.68,0,1.3) 0.48s both,
+            ll-pulse-red 2.2s ease-in-out 1s infinite;
+        }
+        .ll-teal-path {
+          animation:
+            ll-swirl-teal 0.65s cubic-bezier(.22,.68,0,1.2) 0.32s both,
+            ll-pulse-teal 2.2s ease-in-out 1.25s infinite;
+        }
+        .ll-teal-dot {
+          animation:
+            ll-pop-circle 0.5s cubic-bezier(.22,.68,0,1.3) 0.62s both,
+            ll-pulse-teal 2.2s ease-in-out 1.25s infinite;
+        }
+
+        /* Text slides in after the last dot pops (~0.75s) */
+        .ll-text {
+          animation: ll-text-in 0.55s cubic-bezier(.22,.68,0,1.1) 0.72s both;
+        }
+      `}</style>
+
+            <svg
+                width={size * 3}
+                height={size}
+                viewBox="0 0 286.17 94.75"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                {/* ── Icon — animation identical to standalone LogoLoader ── */}
+                <path className="ll-orange-path" fill="#ED7437"
+                    d="M16.59,36.73s37.56-2.92,55.87-30.8C72.46,5.93,69.05,57.48,16.59,36.73Z" />
+                <circle className="ll-orange-dot" fill="#EB6426" cx="47.6" cy="25.8" r="7.65" />
+
+                <path className="ll-red-path" fill="#EE4955"
+                    d="M71.48,88.82S50.55,57.49,17.28,55.15C17.28,55.15,63.91,32.91,71.48,88.82Z" />
+                <circle className="ll-red-dot" fill="#EC2D39" cx="46.77" cy="67.12" r="7.65" />
+
+                <path className="ll-teal-path" fill="#84C8C6"
+                    d="M88.58,18.68S73,53,88.62,82.48C88.62,82.48,45.11,54.64,88.58,18.68Z" />
+                <circle className="ll-teal-dot" fill="#0DADA9" cx="83.21" cy="51.13" r="7.65" />
+
+                {/* ── Wordmark — slides in after icon settles ── */}
+                <g className="ll-text" fill={textFill}>
+                    <path d="M124,61.43c2.1,0,4.21-.1,6.31,0a5.2,5.2,0,0,0,5.17-3.77,7.73,7.73,0,0,0-.17-5.75A5.07,5.07,0,0,0,130,48.56c-2.14.1-3-.77-3-2.52,0-1.55.85-2.33,2.59-2.42a10.19,10.19,0,0,1,10.78,8.54c1,4.81-.26,9-4.07,12.27a8.63,8.63,0,0,1-5.72,1.95c-4.5.07-9,0-13.5,0-1.1,0-2.23-.11-2.71-1.41-.7-1.95.3-3.45,2.45-3.5,2.39-.06,4.78,0,7.18,0Z" />
+                    <path d="M252,31a7,7,0,0,1-.39,1.24q-8,16.29-16,32.54a3.31,3.31,0,0,1-1.36,1.34,2.2,2.2,0,0,1-2.77-.44,2.32,2.32,0,0,1-.24-2.8q8-16.33,16.06-32.69c.76-1.56,1.66-2,3.07-1.69S251.89,29.76,252,31Z" />
+                    <path d="M171.8,66.34c-2.59.06-3.58-1.54-2.67-3.44q2.85-6,5.77-11.87,5-10.17,10-20.32c.13-.25.26-.51.4-.76a2.48,2.48,0,0,1,3.48-1.23,2.61,2.61,0,0,1,.72,3.45l-9.3,18.92c-2.23,4.55-4.42,9.12-6.74,13.63A6.13,6.13,0,0,1,171.8,66.34Z" />
+                    <path d="M129.13,28.37c2,0,4,0,6,0s2.94.75,3,2.32-1.26,2.65-3.1,2.65c-3.73,0-7.47,0-11.21,0-2.83,0-4.59,1.73-4.87,4.74a5,5,0,0,0,4.11,5.52c1.84.34,2.52,1.33,2.15,3.18-.24,1.26-1.49,1.86-3,1.62-5.15-.81-8-5.5-8-10a9.8,9.8,0,0,1,8.21-10,47.34,47.34,0,0,1,6.74-.05Z" />
+                    <path d="M269.57,63.72c.06,1.62-.51,2.38-1.64,2.62a2.47,2.47,0,0,1-3-1.41q-3.21-6.26-6.42-12.51c-2.28-4.43-4.58-8.84-6.86-13.26a7,7,0,0,1-.48-1,2.51,2.51,0,0,1,1-3.11,2.43,2.43,0,0,1,3.25,1c.9,1.52,1.67,3.12,2.48,4.7q5.53,10.78,11,21.58A9.88,9.88,0,0,1,269.57,63.72Z" />
+                    <path d="M207.58,64.08a2.1,2.1,0,0,1-1.81,2.19A2.39,2.39,0,0,1,202.9,65q-4-7.92-8.08-15.82c-1.86-3.61-3.76-7.2-5.59-10.83a2.32,2.32,0,0,1,.88-3.23,2.47,2.47,0,0,1,3.39,1.18c.07.12.13.25.2.38q6.62,12.87,13.24,25.75A16.5,16.5,0,0,1,207.58,64.08Z" />
+                    <path d="M216.77,50.71c0-4.4,0-8.81,0-13.21,0-1.64.68-2.46,2.05-2.6,1.88-.19,2.69.55,2.7,2.59,0,5.7,0,11.39,0,17.09,0,3,0,5.93,0,8.9,0,2.06-.7,2.87-2.37,2.89s-2.38-.91-2.39-2.88Z" />
+                    <path d="M154.68,50.55c0-4.36,0-8.71,0-13.06,0-2,1.15-2.9,3.05-2.55a1.81,1.81,0,0,1,1.64,1.72,8.11,8.11,0,0,1,.05.86c0,8.7,0,17.41,0,26.11,0,2.19-1.46,3.24-3.34,2.53a2.23,2.23,0,0,1-1.39-2.41c0-4.4,0-8.8,0-13.2Z" />
+                    <path d="M219.15,28.36h11.06c1.92,0,2.81.77,2.84,2.45,0,1.51-1.05,2.53-2.82,2.54q-11,0-22,0a3.5,3.5,0,0,1-1.25-.22,2.6,2.6,0,0,1-1.7-2.84,2.25,2.25,0,0,1,2.49-1.89h11.35Z" />
+                    <path d="M157.2,33.36c-3.69,0-7.37,0-11,0a2.88,2.88,0,0,1-2.92-2.07c-.39-1.57.76-2.88,2.61-2.89,3.59,0,7.18,0,10.76,0,3.78,0,7.56,0,11.34,0,2.09,0,2.84.63,3,2.14.16,1.69-.92,2.8-2.82,2.82-3.63,0-7.27,0-10.9,0Z" />
+                    <path d="M250,54.9c-1.39,0-2.78.07-4.16,0a2.23,2.23,0,0,1-2.4-2.57A2.18,2.18,0,0,1,245.92,50c2.67-.06,5.35-.06,8,0a2.52,2.52,0,0,1,2.66,2.58c0,1.57-.77,2.31-2.57,2.38C252.69,55,251.35,54.9,250,54.9Z" />
+                    <path d="M188.06,54.9c-1.34,0-2.69.05-4,0-1.9-.1-2.65-.86-2.65-2.48s.83-2.4,2.69-2.44c2.53-.05,5.07-.05,7.6,0,1.72,0,2.77,1,2.77,2.46,0,1.66-.85,2.43-2.81,2.49-1.19,0-2.39,0-3.58,0Z" />
+                </g>
+            </svg>
+        </div>
+    );
+}

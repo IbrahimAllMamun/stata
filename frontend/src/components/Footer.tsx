@@ -1,7 +1,7 @@
 // src/components/Footer.tsx
 import { Facebook, Twitter, Instagram, Mail, MapPin, Phone, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Logo from './Logo';
+import LogoLoaderFull from './LogoLoaderFull';
 
 const quickLinks = [
   { label: 'About Us', href: '/about' },
@@ -43,7 +43,7 @@ export default function Footer() {
           {/* Brand column */}
           <div className="md:col-span-4">
             <Link to="/" className="inline-block mb-4">
-              <Logo size={34} scheme="light" />
+              <LogoLoaderFull size={34} scheme="dark" />
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
               The student welfare organization of the Institute of Statistical Research and Training, University of Dhaka.

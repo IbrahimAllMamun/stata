@@ -4,7 +4,7 @@ import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calend
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi } from '../lib/api';
-import Logo from './Logo';
+import LogoLoaderFull from './LogoLoaderFull';
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
@@ -78,8 +78,8 @@ export default function Navigation() {
 
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
-        ? 'bg-[#1F2A44]/95 backdrop-blur shadow-lg shadow-black/20'
-        : 'bg-[#1F2A44]'
+      ? 'bg-[#1F2A44]/95 backdrop-blur shadow-lg shadow-black/20'
+      : 'bg-[#1F2A44]'
       }`}>
       {/* Top accent line */}
       <div className="h-0.5 bg-gradient-to-r from-[#2F5BEA] via-[#F39C12] to-[#2ECC71]" />
@@ -89,7 +89,7 @@ export default function Navigation() {
 
           {/* Logo */}
           <Link to="/" className="flex items-center flex-shrink-0 opacity-95 hover:opacity-100 transition-opacity">
-            <Logo size={scrolled ? 30 : 34} scheme="light" />
+            <LogoLoaderFull size={scrolled ? 30 : 34} scheme="dark" />
           </Link>
 
           {/* Desktop nav links */}
@@ -97,8 +97,8 @@ export default function Navigation() {
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
                 className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive(item.href)
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-white'
                   }`}>
                 {item.name}
                 {/* Active indicator */}
@@ -117,8 +117,8 @@ export default function Navigation() {
                   <button
                     onClick={() => setDropdownOpen(v => !v)}
                     className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${dropdownOpen
-                        ? 'bg-white/15 text-white'
-                        : 'text-[#F39C12] hover:bg-white/10'
+                      ? 'bg-white/15 text-white'
+                      : 'text-[#F39C12] hover:bg-white/10'
                       }`}>
                     <LayoutDashboard className="w-4 h-4" />
                     <span>{admin?.username}</span>
@@ -237,8 +237,8 @@ export default function Navigation() {
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
                 className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive(item.href)
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}>
                 {isActive(item.href) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F39C12] mr-2.5 flex-shrink-0" />
