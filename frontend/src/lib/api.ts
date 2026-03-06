@@ -130,15 +130,32 @@ export interface ContactMessage {
   email: string;
   subject: string;
   message: string;
+  batch?: number | null;
+  designation?: string | null;
   status: 'UNREAD' | 'READ' | 'ARCHIVED';
+  featured: boolean;
+  created_at: string;
+}
+
+export interface Speech {
+  id: string;
+  name: string;
+  designation?: string | null;
+  batch?: number | null;
+  message: string;
   created_at: string;
 }
 
 export const contactApi = {
-  submit: (data: { name: string; email: string; subject: string; message: string }) =>
+  submit: (data: { name: string; email: string; subject: string; message: string; batch?: string; designation?: string }) =>
     request<{ success: boolean; message: string; data: { id: string } }>('/contact', {
       method: 'POST', body: data,
     }),
+};
+
+export const speechApi = {
+  getAll: () =>
+    request<{ success: boolean; data: Speech[] }>('/speeches'),
 };
 
 export const postApi = {
@@ -330,6 +347,9 @@ export const adminApi = {
 
   deleteMessage: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/messages/${id}`, { method: 'DELETE' }),
+
+  toggleFeatured: (id: string) =>
+    request<{ success: boolean; data: ContactMessage }>(`/admin/messages/${id}/feature`, { method: 'PATCH' }),
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';

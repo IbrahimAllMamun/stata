@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Mail, MailOpen, Archive, Trash2, X, RefreshCw,
-  Search, Inbox, Clock, ChevronDown,
+  Search, Inbox, Clock, Star, Hash, Briefcase,
 } from 'lucide-react';
 import { adminApi, ContactMessage } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,16 +18,22 @@ function TimeAgo({ date }: { date: string }) {
   return <span>{d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>;
 }
 
-function MessageModal({ msg, onClose, onAction }: {
+function MessageModal({ msg, onClose, onAction, onToggleFeatured }: {
   msg: ContactMessage;
   onClose: () => void;
   onAction: (id: string, action: 'READ' | 'UNREAD' | 'ARCHIVED' | 'DELETE') => Promise<void>;
+  onToggleFeatured: (id: string) => Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
 
   const handle = async (action: 'READ' | 'UNREAD' | 'ARCHIVED' | 'DELETE') => {
     setLoading(true);
     try { await onAction(msg.id, action); } finally { setLoading(false); onClose(); }
+  };
+
+  const handleFeature = async () => {
+    setLoading(true);
+    try { await onToggleFeatured(msg.id); onClose(); } finally { setLoading(false); }
   };
 
   return (
@@ -41,18 +47,40 @@ function MessageModal({ msg, onClose, onAction }: {
             <p className="text-white font-bold text-base leading-tight truncate">{msg.subject}</p>
             <p className="text-blue-200 text-xs mt-1">{msg.name} · {msg.email}</p>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center flex-shrink-0 transition-colors">
-            <X className="w-4 h-4 text-white" />
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Featured star */}
+            <button onClick={handleFeature} disabled={loading} title={msg.featured ? 'Remove from speeches' : 'Feature as speech'}
+              className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                msg.featured ? 'bg-[#F39C12] text-white' : 'bg-white/20 hover:bg-[#F39C12] text-white'
+              }`}>
+              <Star className="w-3.5 h-3.5" fill={msg.featured ? 'currentColor' : 'none'} />
+            </button>
+            <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
         </div>
 
-        {/* Meta */}
-        <div className="px-6 pt-4 pb-2 flex items-center gap-3 text-xs text-gray-400 border-b border-gray-100">
-          <Clock className="w-3.5 h-3.5" />
-          <TimeAgo date={msg.created_at} />
-          <span className="ml-auto">
+        {/* Sender meta */}
+        <div className="px-6 pt-4 pb-3 border-b border-gray-100 flex flex-wrap gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />
             {new Date(msg.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
           </span>
+          {msg.batch && (
+            <span className="flex items-center gap-1 bg-[#2F5BEA]/10 text-[#2F5BEA] font-semibold px-2 py-0.5 rounded-full">
+              <Hash className="w-3 h-3" /> Batch {msg.batch}
+            </span>
+          )}
+          {msg.designation && (
+            <span className="flex items-center gap-1 bg-gray-100 text-gray-600 font-medium px-2 py-0.5 rounded-full">
+              <Briefcase className="w-3 h-3" /> {msg.designation}
+            </span>
+          )}
+          {msg.featured && (
+            <span className="flex items-center gap-1 bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
+              <Star className="w-3 h-3" fill="currentColor" /> Featured Speech
+            </span>
+          )}
         </div>
 
         {/* Body */}
@@ -144,6 +172,16 @@ export default function Messages() {
       await Promise.all([load(tab), loadCounts()]);
     } catch (err: any) {
       showToast(err.message || 'Action failed', false);
+    }
+  };
+
+  const handleToggleFeatured = async (id: string) => {
+    try {
+      const res = await adminApi.toggleFeatured(id);
+      showToast(res.data.featured ? '⭐ Featured as speech' : 'Removed from speeches');
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, featured: res.data.featured } : m));
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update', false);
     }
   };
 
@@ -270,6 +308,14 @@ export default function Messages() {
                   {/* Quick actions on hover */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                     onClick={e => e.stopPropagation()}>
+                    {/* Feature star */}
+                    <button title={msg.featured ? 'Remove from speeches' : 'Feature as speech'}
+                      onClick={() => handleToggleFeatured(msg.id)}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                        msg.featured ? 'bg-amber-100 text-amber-500' : 'bg-gray-50 hover:bg-amber-50 text-gray-300 hover:text-amber-400'
+                      }`}>
+                      <Star className="w-3.5 h-3.5" fill={msg.featured ? 'currentColor' : 'none'} />
+                    </button>
                     {msg.status !== 'ARCHIVED' && (
                       <button title="Archive"
                         onClick={() => handleAction(msg.id, 'ARCHIVED')}
@@ -292,7 +338,7 @@ export default function Messages() {
 
       {/* Message modal */}
       {selected && (
-        <MessageModal msg={selected} onClose={() => setSelected(null)} onAction={handleAction} />
+        <MessageModal msg={selected} onClose={() => setSelected(null)} onAction={handleAction} onToggleFeatured={handleToggleFeatured} />
       )}
 
       {/* Toast */}

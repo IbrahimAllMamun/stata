@@ -129,15 +129,19 @@ model Event {
 }
 
 model ContactMessage {
-  id         String        @id @default(uuid())
-  name       String
-  email      String
-  subject    String
-  message    String
-  status     MessageStatus @default(UNREAD)
-  created_at DateTime      @default(now())
+  id          String        @id @default(uuid())
+  name        String
+  email       String
+  subject     String
+  message     String
+  batch       Int?
+  designation String?
+  status      MessageStatus @default(UNREAD)
+  featured    Boolean       @default(false)
+  created_at  DateTime      @default(now())
 
   @@index([status])
+  @@index([featured])
   @@index([created_at])
   @@map("contact_messages")
 }

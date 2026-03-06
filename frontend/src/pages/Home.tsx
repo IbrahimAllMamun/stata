@@ -1,8 +1,8 @@
 // src/pages/Home.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Users, Heart, Trophy, ArrowRight, MapPin, Clock, FileText, ChevronRight } from 'lucide-react';
-import { api, Post, Event, imageUrl } from '../lib/api';
+import { Calendar, Users, Heart, Trophy, ArrowRight, MapPin, Clock, FileText, ChevronRight, Quote } from 'lucide-react';
+import { api, Post, Event, imageUrl, speechApi, Speech } from '../lib/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatDate(dateStr: string) {
@@ -130,10 +130,12 @@ function PostCard({ post }: { post: Post }) {
 export default function Home() {
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [speeches, setSpeeches] = useState<Speech[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
+    speechApi.getAll().then(res => setSpeeches(res.data)).catch(() => {});
     api.getEvents('upcoming')
       .then(res => setUpcomingEvents(res.data.slice(0, 3)))
       .catch(console.error)
@@ -183,14 +185,16 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-0">
             {[
-              { icon: Users, label: 'Members', value: '200+' },
-              { icon: Calendar, label: 'Events Held', value: '50+' },
-              { icon: Trophy, label: 'Batches', value: '15+' },
-              { icon: Heart, label: 'Years Active', value: '10+' },
+              { icon: Users,    label: 'Members',      value: '200+' },
+              { icon: Calendar, label: 'Events Held',  value: '50+' },
+              { icon: Trophy,   label: 'Batches',      value: '15+' },
+              { icon: Heart,    label: 'Years Active', value: '10+' },
             ].map(({ icon: Icon, label, value }, i) => (
-              <div key={label} className={`flex items-center gap-3 px-6 py-1 ${i !== 3 ? 'border-r border-white/10' : ''
-                } ${i === 1 ? 'md:border-r-0' : ''
-                }`}>
+              <div key={label} className={`flex items-center gap-3 px-6 py-1 ${
+                i !== 3 ? 'border-r border-white/10' : ''
+              } ${
+                i === 1 ? 'md:border-r-0' : ''
+              }`}>
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
                   <Icon className="w-5 h-5 opacity-90" />
                 </div>
@@ -321,6 +325,60 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* ── Speeches ── */}
+      {speeches.length > 0 && (
+        <section className="bg-[#1F2A44] py-20 px-4 overflow-hidden relative">
+          {/* Decorative blobs */}
+          <div className="absolute top-0 left-0 w-72 h-72 bg-[#2F5BEA]/10 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#F39C12]/5 rounded-full translate-x-1/3 translate-y-1/3 pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto relative">
+            <div className="text-center mb-12">
+              <span className="text-xs font-bold tracking-widest uppercase text-[#F39C12] mb-3 block">From Our Community</span>
+              <h2 className="text-3xl md:text-4xl font-bold text-white">What Our Members Say</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {speeches.map(speech => (
+                <div key={speech.id}
+                  className="relative bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 hover:border-white/20 transition-all group">
+                  {/* Quote icon */}
+                  <div className="w-10 h-10 rounded-xl bg-[#F39C12]/20 flex items-center justify-center mb-4">
+                    <Quote className="w-5 h-5 text-[#F39C12]" />
+                  </div>
+
+                  {/* Message */}
+                  <p className="text-gray-300 text-sm leading-relaxed mb-6 italic">
+                    "{speech.message}"
+                  </p>
+
+                  {/* Author */}
+                  <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+                    <div className="w-9 h-9 rounded-xl bg-[#2F5BEA] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      {speech.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm leading-none">{speech.name}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {speech.designation && (
+                          <span className="text-gray-400 text-xs">{speech.designation}</span>
+                        )}
+                        {speech.designation && speech.batch && (
+                          <span className="text-white/20 text-xs">·</span>
+                        )}
+                        {speech.batch && (
+                          <span className="text-[#F39C12] text-xs font-semibold">Batch {speech.batch}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── CTA ── */}
       <section className="bg-[#1F2A44] py-20 px-4">

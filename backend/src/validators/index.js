@@ -76,10 +76,12 @@ const assignMemberSchema = Joi.object({
 });
 
 const contactSchema = Joi.object({
-  name:    Joi.string().trim().min(2).max(100).required(),
-  email:   Joi.string().email().required(),
-  subject: Joi.string().trim().min(3).max(200).required(),
-  message: Joi.string().trim().min(10).max(5000).required(),
+  name:        Joi.string().trim().min(2).max(100).required(),
+  email:       Joi.string().email().required(),
+  subject:     Joi.string().trim().min(3).max(200).required(),
+  message:     Joi.string().trim().min(10).max(5000).required(),
+  batch:       Joi.number().integer().min(1).max(3000).optional().allow('', null),
+  designation: Joi.string().trim().max(150).optional().allow('', null),
 });
 
 module.exports = {

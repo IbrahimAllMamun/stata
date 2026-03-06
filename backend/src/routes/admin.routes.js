@@ -14,7 +14,7 @@ const { login, getDashboardStats, createModerator } = require('../controllers/ad
 const { createCommittee, assignMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
-const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage } = require('../controllers/contact.controller');
+const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const {
   getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches,
 } = require('../controllers/member.controller');
@@ -63,6 +63,7 @@ router.delete('/events/:id', deleteEvent);
 router.get('/messages', getMessages);
 router.get('/messages/unread-count', getUnreadCount);
 router.patch('/messages/:id/status', updateMessageStatus);
+router.patch('/messages/:id/feature', toggleFeatured);
 router.delete('/messages/:id', deleteMessage);
 
 module.exports = router;

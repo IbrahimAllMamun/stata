@@ -4,7 +4,9 @@ import { Mail, MapPin, Phone, Facebook, Twitter, Instagram, Send, CheckCircle, A
 import { contactApi } from '../lib/api';
 
 export default function Contact() {
-  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+  const [formData, setFormData] = useState({
+    name: '', email: '', subject: '', message: '', batch: '', designation: '',
+  });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -13,19 +15,22 @@ export default function Contact() {
     setStatus('loading');
     setErrorMsg('');
     try {
-      await contactApi.submit(formData);
+      await contactApi.submit({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        ...(formData.batch ? { batch: formData.batch } : {}),
+        ...(formData.designation ? { designation: formData.designation } : {}),
+      });
       setStatus('success');
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({ name: '', email: '', subject: '', message: '', batch: '', designation: '' });
       setTimeout(() => setStatus('idle'), 6000);
     } catch (err: any) {
       setStatus('error');
       setErrorMsg(err.message || 'Failed to send message. Please try again.');
       setTimeout(() => setStatus('idle'), 5000);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const inputCls = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none transition-all bg-white';
@@ -46,6 +51,7 @@ export default function Contact() {
 
       <section className="max-w-7xl mx-auto px-4 py-20">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+
           {/* Form */}
           <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-[#2F5BEA] px-7 py-5">
@@ -65,25 +71,56 @@ export default function Contact() {
                   {errorMsg}
                 </div>
               )}
+
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Name + Email */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Name</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputCls} placeholder="John Doe" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Name <span className="text-red-400">*</span></label>
+                    <input type="text" name="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      required className={inputCls} placeholder="John Doe" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleChange} required className={inputCls} placeholder="john@example.com" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-400">*</span></label>
+                    <input type="email" name="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      required className={inputCls} placeholder="example@isrt.ac.bd" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Subject</label>
-                  <input type="text" name="subject" value={formData.subject} onChange={handleChange} required className={inputCls} placeholder="What is this about?" />
+
+                {/* Batch + Designation (optional) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Batch
+                    </label>
+                    <input type="number" name="batch" value={formData.batch} min={1} max={3000}
+                      onChange={e => setFormData({ ...formData, batch: e.target.value })}
+                      className={inputCls} placeholder="e.g. 26" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Designation
+                    </label>
+                    <input type="text" name="designation" value={formData.designation}
+                      onChange={e => setFormData({ ...formData, designation: e.target.value })}
+                      className={inputCls} placeholder="e.g. Data Scientist" />
+                  </div>
                 </div>
+
+                {/* Subject */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
-                  <textarea name="message" value={formData.message} onChange={handleChange} required rows={5} className={inputCls + ' resize-none'} placeholder="Tell us what's on your mind..." />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Subject <span className="text-red-400">*</span></label>
+                  <input type="text" name="subject" value={formData.subject} onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                    required className={inputCls} placeholder="What is this about?" />
                 </div>
+
+                {/* Message */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Message <span className="text-red-400">*</span></label>
+                  <textarea name="message" value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })}
+                    required rows={5} className={inputCls + ' resize-none'} placeholder="Tell us what's on your mind..." />
+                </div>
+
                 <button type="submit" disabled={status === 'loading'}
                   className="w-full bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-6 py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60">
                   {status === 'loading'
@@ -99,12 +136,17 @@ export default function Contact() {
           <div className="lg:col-span-2 space-y-5">
             {[
               { icon: MapPin, color: 'bg-[#2F5BEA]', title: 'Address', lines: ['Institute of Statistical Research', 'and Training (ISRT)', 'University of Dhaka, Dhaka 1000'] },
-              { icon: Mail,   color: 'bg-[#2ECC71]', title: 'Email',   lines: ['stata@isrt.ac.bd', 'info@stata.org.bd'] },
-              { icon: Phone,  color: 'bg-[#F39C12]', title: 'Phone',   lines: ['+880 123 456 789', '+880 987 654 321'] },
+              { icon: Mail, color: 'bg-[#2ECC71]', title: 'Email', lines: ['stata@isrt.ac.bd', 'info@stata.org.bd'] },
+              { icon: Phone, color: 'bg-[#F39C12]', title: 'Phone', lines: ['+880 123 456 789', '+880 987 654 321'] },
             ].map(({ icon: Icon, color, title, lines }) => (
               <div key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-start gap-4">
-                <div className={`w-11 h-11 ${color} rounded-xl flex items-center justify-center flex-shrink-0`}><Icon className="w-5 h-5 text-white" /></div>
-                <div><h3 className="font-bold text-[#1F2A44] mb-1">{title}</h3>{lines.map((l, i) => <p key={i} className="text-gray-500 text-sm">{l}</p>)}</div>
+                <div className={`w-11 h-11 ${color} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                  <Icon className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#1F2A44] mb-1">{title}</h3>
+                  {lines.map((l, i) => <p key={i} className="text-gray-500 text-sm">{l}</p>)}
+                </div>
               </div>
             ))}
             <div className="bg-[#1F2A44] rounded-2xl p-6">
@@ -112,7 +154,9 @@ export default function Contact() {
               <p className="text-gray-400 text-sm mb-4">Stay connected for the latest updates and events.</p>
               <div className="flex gap-3">
                 {[Facebook, Twitter, Instagram].map((Icon, i) => (
-                  <a key={i} href="#" className="w-10 h-10 bg-white/10 hover:bg-[#F39C12] rounded-xl flex items-center justify-center transition-colors"><Icon className="w-5 h-5 text-white" /></a>
+                  <a key={i} href="#" className="w-10 h-10 bg-white/10 hover:bg-[#F39C12] rounded-xl flex items-center justify-center transition-colors">
+                    <Icon className="w-5 h-5 text-white" />
+                  </a>
                 ))}
               </div>
             </div>
