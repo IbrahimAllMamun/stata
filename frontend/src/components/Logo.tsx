@@ -11,7 +11,6 @@ export default function Logo({
     scheme = 'light',
     className = '',
 }: LogoProps) {
-    const backgroundFill = scheme === 'light' ? '#1F2A44' : '#FFFFFF';
     const textFill = scheme === 'light' ? '#ffffffff' : '#ffffffff';
 
     return (
@@ -22,11 +21,6 @@ export default function Logo({
             xmlns="http://www.w3.org/2000/svg"
             className={className}
         >
-            {/* Background */}
-            <path
-                fill={backgroundFill}
-                d="M40,0H286.17a0,0,0,0,1,0,0V54.73a40,40,0,0,1-40,40H0a0,0,0,0,1,0,0V40A40,40,0,0,1,40,0Z"
-            />
 
             {/* Decorative Elements */}
             <path
