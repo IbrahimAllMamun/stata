@@ -48,9 +48,6 @@ export default function PostView() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[#1F2A44] leading-none">{post.author_name}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-0.5">
-                    <Hash className="w-2.5 h-2.5" /> Batch {post.author_batch}
-                  </p>
                 </div>
               </div>
               <span className="inline-flex items-center bg-[#2F5BEA]/10 text-[#2F5BEA] text-xs font-bold px-2.5 py-1 rounded-full">
