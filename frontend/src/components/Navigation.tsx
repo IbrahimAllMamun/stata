@@ -12,6 +12,7 @@ export default function Navigation() {
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [logoKey, setLogoKey] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
@@ -88,8 +89,9 @@ export default function Navigation() {
         <div className={`flex justify-between items-center transition-all duration-300 ${scrolled ? 'h-14' : 'h-16'}`}>
 
           {/* Logo */}
-          <Link to="/" className="flex items-center flex-shrink-0 opacity-95 hover:opacity-100 transition-opacity">
-            <LogoLoaderFull size={scrolled ? 30 : 34} scheme="dark" />
+          <Link to="/" className="flex items-center flex-shrink-0"
+            onMouseEnter={() => setLogoKey(k => k + 1)}>
+            <LogoLoaderFull key={logoKey} size={scrolled ? 30 : 34} scheme="dark" hoverOnly={logoKey > 0} />
           </Link>
 
           {/* Desktop nav links */}

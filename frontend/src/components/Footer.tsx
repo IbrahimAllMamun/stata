@@ -1,4 +1,5 @@
 // src/components/Footer.tsx
+import { useState } from 'react';
 import { Facebook, Twitter, Instagram, Mail, MapPin, Phone, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LogoLoaderFull from './LogoLoaderFull';
@@ -25,6 +26,7 @@ const socials = [
 ];
 
 export default function Footer() {
+  const [logoKey, setLogoKey] = useState(0);
   return (
     <footer className="relative bg-[#1F2A44] text-white overflow-hidden mt-auto">
       {/* Top gradient accent */}
@@ -42,8 +44,9 @@ export default function Footer() {
 
           {/* Brand column */}
           <div className="md:col-span-4">
-            <Link to="/" className="inline-block mb-4">
-              <LogoLoaderFull size={34} scheme="dark" />
+            <Link to="/" className="inline-block mb-4"
+              onMouseEnter={() => setLogoKey(k => k + 1)}>
+              <LogoLoaderFull key={logoKey} size={34} scheme="dark" hoverOnly={logoKey > 0} />
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
               The student welfare organization of the Institute of Statistical Research and Training, University of Dhaka.

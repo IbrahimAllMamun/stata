@@ -3,12 +3,14 @@ interface LogoLoaderFullProps {
     size?: number;
     scheme?: 'light' | 'dark';
     className?: string;
+    hoverOnly?: boolean; // skips text animation — icon replays, text stays visible
 }
 
 export default function LogoLoaderFull({
     size = 60,
     scheme = 'dark',
     className = '',
+    hoverOnly = false,
 }: LogoLoaderFullProps) {
     const textFill = scheme === 'light' ? '#1F2A44' : '#FFFFFF';
 
@@ -96,6 +98,10 @@ export default function LogoLoaderFull({
         .ll-text {
           animation: ll-text-in 0.55s cubic-bezier(.22,.68,0,1.1) 0.72s both;
         }
+        .ll-text-static {
+          /* no animation — stays fully visible immediately */
+          opacity: 1;
+        }
       `}</style>
 
             <svg
@@ -117,8 +123,8 @@ export default function LogoLoaderFull({
                     d="M88.58,18.68S73,53,88.62,82.48C88.62,82.48,45.11,54.64,88.58,18.68Z" />
                 <circle className="ll-teal-dot" fill="#0DADA9" cx="83.21" cy="51.13" r="7.65" />
 
-                {/* ── Wordmark — slides in after icon settles ── */}
-                <g className="ll-text" fill={textFill}>
+                {/* ── Wordmark — slides in after icon settles, or static on hover replay ── */}
+                <g className={hoverOnly ? 'll-text-static' : 'll-text'} fill={textFill}>
                     <path d="M124,61.43c2.1,0,4.21-.1,6.31,0a5.2,5.2,0,0,0,5.17-3.77,7.73,7.73,0,0,0-.17-5.75A5.07,5.07,0,0,0,130,48.56c-2.14.1-3-.77-3-2.52,0-1.55.85-2.33,2.59-2.42a10.19,10.19,0,0,1,10.78,8.54c1,4.81-.26,9-4.07,12.27a8.63,8.63,0,0,1-5.72,1.95c-4.5.07-9,0-13.5,0-1.1,0-2.23-.11-2.71-1.41-.7-1.95.3-3.45,2.45-3.5,2.39-.06,4.78,0,7.18,0Z" />
                     <path d="M252,31a7,7,0,0,1-.39,1.24q-8,16.29-16,32.54a3.31,3.31,0,0,1-1.36,1.34,2.2,2.2,0,0,1-2.77-.44,2.32,2.32,0,0,1-.24-2.8q8-16.33,16.06-32.69c.76-1.56,1.66-2,3.07-1.69S251.89,29.76,252,31Z" />
                     <path d="M171.8,66.34c-2.59.06-3.58-1.54-2.67-3.44q2.85-6,5.77-11.87,5-10.17,10-20.32c.13-.25.26-.51.4-.76a2.48,2.48,0,0,1,3.48-1.23,2.61,2.61,0,0,1,.72,3.45l-9.3,18.92c-2.23,4.55-4.42,9.12-6.74,13.63A6.13,6.13,0,0,1,171.8,66.34Z" />
