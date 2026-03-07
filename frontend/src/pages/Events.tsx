@@ -4,6 +4,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, MapPin, Clock, ArrowRight } from 'lucide-react';
 import { api, Event, imageUrl } from '../lib/api';
 function formatDate(d: string) { return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
+function stripMarkdown(md: string) {
+  return md
+    .replace(/!\[.*?\]\(.*?\)/g, '')   // images
+    .replace(/\[([^\]]+)\]\(.*?\)/g, '$1') // links
+    .replace(/#{1,6}\s*/g, '')         // headings
+    .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')   // italic
+    .replace(/`{1,3}[^`]*`{1,3}/g, '') // code
+    .replace(/>\s?/g, '')              // blockquotes
+    .replace(/[-*+]\s/g, '')           // list items
+    .replace(/\n+/g, ' ')             // newlines
+    .trim();
+}
 function EventCard({ event, onClick }: { event: Event; onClick: () => void }) {
   const img = imageUrl(event.banner_image);
   const day = new Date(event.event_date).getDate();
@@ -20,7 +33,7 @@ function EventCard({ event, onClick }: { event: Event; onClick: () => void }) {
       </div>
       <div className="p-5 flex flex-col flex-1">
         <h3 className="font-bold text-[#1F2A44] text-lg mb-2 line-clamp-2 group-hover:text-[#2F5BEA] transition-colors">{event.title}</h3>
-        {event.description && <p className="text-gray-500 text-sm line-clamp-2 flex-1 mb-3">{event.description}</p>}
+        {event.description && <p className="text-gray-500 text-sm line-clamp-2 flex-1 mb-3">{stripMarkdown(event.description)}</p>}
         <div className="flex flex-col gap-1 pt-3 border-t border-gray-50 mt-auto">
           <div className="flex items-center gap-1.5 text-xs text-gray-400"><Clock className="w-3.5 h-3.5 flex-shrink-0" />{formatDate(event.event_date)}</div>
           {event.location && <div className="flex items-center gap-1.5 text-xs text-gray-400"><MapPin className="w-3.5 h-3.5 flex-shrink-0" />{event.location}</div>}
