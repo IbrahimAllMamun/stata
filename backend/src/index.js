@@ -9,6 +9,7 @@ const path = require('path');
 const { errorHandler, notFound } = require('./middlewares/error');
 const publicRoutes = require('./routes/public.routes');
 const adminRoutes = require('./routes/admin.routes');
+const asplRoutes = require('./aspl/routes/aspl.routes');
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/aspl', asplRoutes);
 
 // Error handling
 app.use(notFound);

@@ -1,9 +1,9 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine, Trophy } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { adminApi } from '../lib/api';
+import { adminApi, asplApi } from '../lib/api';
 import LogoLoaderFull from './LogoLoaderFull';
 
 export default function Navigation() {
@@ -13,6 +13,7 @@ export default function Navigation() {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoKey, setLogoKey] = useState(0);
+  const [asplVisible, setAsplVisible] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
@@ -33,6 +34,11 @@ export default function Navigation() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Read ASPL visibility setting
+  useEffect(() => {
+    setAsplVisible(asplApi.getSettings().visible);
+  }, [location.pathname]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -170,6 +176,11 @@ export default function Navigation() {
                           <Calendar className="w-4 h-4 text-[#2ECC71]" />
                           Manage Events
                         </Link>
+                        <Link to="/admin/aspl"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                          <Trophy className="w-4 h-4 text-yellow-500" />
+                          ASPL
+                        </Link>
                         <Link to="/admin/messages"
                           className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
                           <span className="flex items-center gap-3">
@@ -207,6 +218,12 @@ export default function Navigation() {
                   className="flex items-center gap-1.5 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
                   <PenLine className="w-3.5 h-3.5" /> Post
                 </Link>
+                {asplVisible && (
+                  <Link to="/aspl"
+                    className="flex items-center gap-1.5 border border-yellow-400/30 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+                    <Trophy className="w-3.5 h-3.5" /> ASPL
+                  </Link>
+                )}
                 <Link to="/register"
                   className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-[#2F5BEA]/30">
                   Register
@@ -284,6 +301,10 @@ export default function Navigation() {
                   className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                   <Calendar className="w-4 h-4 text-[#2ECC71]" /> Manage Events
                 </Link>
+                <Link to="/admin/aspl"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <Trophy className="w-4 h-4 text-yellow-400" /> ASPL
+                </Link>
                 <Link to="/admin/messages"
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                   <span className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Messages</span>
@@ -308,6 +329,12 @@ export default function Navigation() {
                   className="flex items-center justify-center gap-2 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
                   <PenLine className="w-4 h-4" /> Write a Post
                 </Link>
+                {asplVisible && (
+                  <Link to="/aspl"
+                    className="flex items-center justify-center gap-2 border border-yellow-400/30 hover:border-yellow-400 text-yellow-400 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                    <Trophy className="w-4 h-4" /> ASPL
+                  </Link>
+                )}
                 <Link to="/register"
                   className="flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
                   Register

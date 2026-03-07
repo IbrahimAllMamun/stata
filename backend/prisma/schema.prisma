@@ -167,3 +167,42 @@ model GalleryPhoto {
   @@index([created_at])
   @@map("gallery_photos")
 }
+
+// ── ASPL ─────────────────────────────────────────────────────────────────────
+
+model AsplPlayer {
+  sl              Int     @id @unique @map("sl")
+  name            String  @db.VarChar(100)
+  batch           Int
+  playing_position String  @db.VarChar(10)
+  status          Boolean @default(false)
+  randomized      Boolean @default(false)
+
+  team_players AsplTeamPlayer[]
+
+  @@map("aspl_players")
+}
+
+model AsplTeam {
+  id        Int    @id @unique
+  owner_sl  Int
+  team_name String @db.VarChar(255)
+  balance   Int    @default(1000)
+
+  team_players AsplTeamPlayer[]
+
+  @@map("aspl_teams")
+}
+
+model AsplTeamPlayer {
+  id        Int    @id @default(autoincrement())
+  team_id   Int
+  player_sl Int
+  price     Int
+
+  player AsplPlayer @relation(fields: [player_sl], references: [sl], onDelete: Cascade)
+  team   AsplTeam   @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@unique([player_sl, team_id])
+  @@map("aspl_team_players")
+}

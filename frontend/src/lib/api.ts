@@ -400,3 +400,79 @@ export const imageUrl = (path: string | null | undefined): string | null => {
   const normalizedPath = path.replace(/^\/tmp/, '');
   return `${API_BASE}${normalizedPath}`;
 };
+// ── ASPL ─────────────────────────────────────────────────────────────────────
+
+const ASPL_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+async function asplRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = 'GET', body } = options;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${ASPL_BASE}/aspl${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || data.detail || 'Request failed');
+  return data;
+}
+
+export interface AsplPlayer {
+  sl: number;
+  name: string;
+  batch: number;
+  playing_position: string;
+  status: boolean;
+  randomized: boolean;
+}
+
+export interface AsplTeam {
+  id: number;
+  team_name: string;
+  balance: number;
+  owner_sl: number;
+}
+
+export interface AsplTeamPlayer {
+  id: number;
+  team_id: number;
+  player_sl: number;
+  price: number;
+  player: AsplPlayer;
+  team: AsplTeam;
+}
+
+export interface AsplSettings {
+  visible: boolean;
+}
+
+export const asplApi = {
+  // Players
+  getPlayers: () => asplRequest<AsplPlayer[]>('/players'),
+  getPlayerBySL: (sl: number) => asplRequest<AsplPlayer>(`/players/${sl}`),
+  getRandomPlayer: () => asplRequest<AsplPlayer>('/players/random'),
+
+  // Teams
+  getTeams: () => asplRequest<AsplTeam[]>('/teams'),
+  getTeamById: (id: number) => asplRequest<AsplTeam>(`/teams/${id}`),
+
+  // Team-Players
+  getTeamPlayers: () => asplRequest<AsplTeamPlayer[]>('/team-players'),
+  getTeamPlayersByTeam: (id: number) => asplRequest<AsplTeamPlayer[]>(`/team-players/${id}`),
+  createTeamPlayer: (player: number, team: number, price: number) =>
+    asplRequest<AsplTeamPlayer>('/team-players/create', {
+      method: 'POST',
+      body: { player, team, price },
+    }),
+
+  // Settings (visibility toggle) — stored in localStorage for now, backend can be wired later
+  getSettings: (): AsplSettings => {
+    try { return JSON.parse(localStorage.getItem('aspl_settings') || '{"visible":false}'); }
+    catch { return { visible: false }; }
+  },
+  saveSettings: (settings: AsplSettings): void => {
+    localStorage.setItem('aspl_settings', JSON.stringify(settings));
+  },
+};
