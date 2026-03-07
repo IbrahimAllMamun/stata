@@ -11,7 +11,6 @@ interface Props {
 // ─── Inline parser ────────────────────────────────────────────────────────────
 function parseInline(text: string): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  // Patterns: **bold**, *italic*, `code`, ~~strike~~, [text](url)
   const pattern = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`|~~(.+?)~~|\[([^\]]+)\]\(([^)]+)\))/g;
   let last = 0;
   let match: RegExpExecArray | null;
@@ -93,11 +92,12 @@ function parseBlocks(markdown: string): React.ReactNode[] {
       const lang = line.slice(3).trim();
       const codeLines: string[] = [];
       i++;
+      // FIX: guard against unclosed code blocks (infinite loop if no closing ```)
       while (i < lines.length && !lines[i].startsWith('```')) {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      if (i < lines.length) i++; // skip closing ``` (only if it exists)
       nodes.push(
         <div key={i} className="my-4 rounded-xl overflow-hidden border border-gray-200">
           {lang && <div className="bg-gray-800 text-gray-400 text-xs px-4 py-1.5 font-mono">{lang}</div>}
@@ -142,7 +142,7 @@ function parseBlocks(markdown: string): React.ReactNode[] {
       continue;
     }
 
-    // Table (| col | col |)
+    // Table (| col | col |) — requires a separator row on the next line
     if (line.startsWith('|') && i + 1 < lines.length && lines[i + 1].match(/^\|[-| :]+\|/)) {
       const headers = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(h => h.trim());
       i += 2; // skip header + separator
@@ -188,13 +188,18 @@ function parseBlocks(markdown: string): React.ReactNode[] {
     }
 
     if (paraLines.length > 0) {
-      // Join with <br> for hard line breaks within a paragraph
       const content = paraLines.reduce<React.ReactNode[]>((acc, l, idx) => {
         const parsed = parseInline(l);
         if (idx > 0) acc.push(<br key={`br-${idx}`} />);
         return acc.concat(parsed);
       }, []);
       nodes.push(<p key={i} className="my-3 text-gray-700 leading-relaxed">{content}</p>);
+    } else {
+      // FIX: safety fallback — if no block matched and i didn't advance,
+      // render the line as plain text and move on to prevent infinite loop.
+      // This handles lines starting with | without a separator (lone pipe chars, etc.)
+      nodes.push(<p key={i} className="my-3 text-gray-700 leading-relaxed">{parseInline(line)}</p>);
+      i++;
     }
   }
 

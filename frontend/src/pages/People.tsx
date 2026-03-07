@@ -187,7 +187,7 @@ export default function People() {
           <div className="inline-block bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5">
             The STATA Community
           </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight">Our People</h1>
+          <h1 className="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight">Our Family</h1>
           <p className="text-gray-300 text-lg max-w-xl mx-auto">
             Meet the members and leaders who make STATA what it is
           </p>

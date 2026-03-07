@@ -159,13 +159,13 @@ export default function Home() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 py-24 md:py-32 text-center">
           <div className="inline-block bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
-            Student Welfare Organization · ISRT
+            Cohort of ISRT
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight">
             Welcome to <span className="text-[#F39C12]">STATA</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Connecting Minds, Building Bonds, Nourishing Well-being
+            Together Beyond the Classroom
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/events"
@@ -384,7 +384,7 @@ export default function Home() {
           <span className="text-xs font-bold tracking-widest uppercase text-[#F39C12] mb-4 block">Be Part of Something</span>
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join the STATA Family</h2>
           <p className="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
-            Be part of a supportive community that cares about your well-being and growth.
+            Grow and thrive in a community that supports and inspires you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register"
@@ -393,7 +393,7 @@ export default function Home() {
             </Link>
             <Link to="/people"
               className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-3.5 rounded-xl font-semibold transition-colors">
-              Meet Our Members
+              Meet Our Family
             </Link>
           </div>
         </div>

@@ -1,3 +1,46 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Text Selection ──────────────────────────────────────────────────────── */
+
+::selection {
+    background: #2F5BEA;
+    color: #ffffff;
+}
+
+::-moz-selection {
+    background: #2F5BEA;
+    color: #ffffff;
+}
+
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #2F5BEA #1F2A44;
+}
+
+/* Chromium / Safari */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1F2A44;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2F5BEA;
+    border-radius: 9999px;
+    border: 2px solid #1F2A44;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #F39C12;
+}
+
+::-webkit-scrollbar-corner {
+    background: #1F2A44;
+}

@@ -1,6 +1,7 @@
 // src/components/Footer.tsx
 import { useState } from 'react';
-import { Facebook, Twitter, Instagram, Mail, MapPin, Phone, Heart } from 'lucide-react';
+// import { Facebook, Twitter, Instagram, Mail, MapPin, Phone, Heart } from 'lucide-react';
+import { Facebook, Mail, MapPin, Phone, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LogoLoaderFull from './LogoLoaderFull';
 
@@ -20,9 +21,9 @@ const contact = [
 ];
 
 const socials = [
-  { icon: Facebook, href: '#', label: 'Facebook' },
-  { icon: Twitter, href: '#', label: 'Twitter' },
-  { icon: Instagram, href: '#', label: 'Instagram' },
+  { icon: Facebook, href: 'https://www.facebook.com/stataisrt', label: 'Facebook' },
+  // { icon: Twitter, href: '#', label: 'Twitter' },
+  // { icon: Instagram, href: '#', label: 'Instagram' },
 ];
 
 export default function Footer() {
@@ -44,21 +45,23 @@ export default function Footer() {
 
           {/* Brand column */}
           <div className="md:col-span-4">
-            <Link to="/" className="inline-block mb-4"
+            <Link to="/" className="inline-block mb-0"
               onMouseEnter={() => setLogoKey(k => k + 1)}>
               <LogoLoaderFull key={logoKey} size={34} scheme="dark" hoverOnly={logoKey > 0} />
             </Link>
-            <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-              The student welfare organization of the Institute of Statistical Research and Training, University of Dhaka.
+            <p className="mt-1 mb-2 text-xs font-semibold tracking-widest uppercase text-[#F39C12]/80">
+              Together Beyond the Classroom
             </p>
-            <p className="mt-4 text-xs font-semibold tracking-widest uppercase text-[#F39C12]/80">
-              Connecting Minds · Building Bonds · Nourishing Well-being
+            <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
+              The student welfare organization of <br />
+              Institute of Statistical Research and Training <br />
+              University of Dhaka
             </p>
 
             {/* Social icons */}
             <div className="flex items-center gap-2.5 mt-6">
               {socials.map(({ icon: Icon, href, label }) => (
-                <a key={label} href={href} aria-label={label}
+                <a key={label} href={href} aria-label={label} target='_blank'
                   className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA] transition-all">
                   <Icon className="w-4 h-4" />
                 </a>

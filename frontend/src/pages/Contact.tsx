@@ -1,6 +1,6 @@
 // src/pages/Contact.tsx
 import { useState } from 'react';
-import { Mail, MapPin, Phone, Facebook, Twitter, Instagram, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, MapPin, Phone, Facebook, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { contactApi } from '../lib/api';
 
 export default function Contact() {
@@ -32,6 +32,12 @@ export default function Contact() {
       setTimeout(() => setStatus('idle'), 5000);
     }
   };
+
+  const socials = [
+    { icon: Facebook, href: 'https://www.facebook.com/stataisrt', label: 'Facebook' },
+    // { icon: Twitter, href: '#', label: 'Twitter' },
+    // { icon: Instagram, href: '#', label: 'Instagram' },
+  ];
 
   const inputCls = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none transition-all bg-white';
 
@@ -153,8 +159,8 @@ export default function Contact() {
               <h3 className="font-bold text-white mb-2">Follow Us</h3>
               <p className="text-gray-400 text-sm mb-4">Stay connected for the latest updates and events.</p>
               <div className="flex gap-3">
-                {[Facebook, Twitter, Instagram].map((Icon, i) => (
-                  <a key={i} href="#" className="w-10 h-10 bg-white/10 hover:bg-[#F39C12] rounded-xl flex items-center justify-center transition-colors">
+                {socials.map(({ icon: Icon, href, label }) => (
+                  <a key={label} href={href} className="w-10 h-10 bg-white/10 hover:bg-[#F39C12] rounded-xl flex items-center justify-center transition-colors">
                     <Icon className="w-5 h-5 text-white" />
                   </a>
                 ))}

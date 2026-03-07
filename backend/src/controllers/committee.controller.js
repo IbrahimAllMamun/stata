@@ -1,5 +1,6 @@
 // src/controllers/committee.controller.js
 const prisma = require('../config/database');
+const processImage = require('../utils/processImage');
 const fs = require('fs');
 
 const getCommittees = async (req, res, next) => {
@@ -24,7 +25,6 @@ const getCommittees = async (req, res, next) => {
     const formatted = committees.map((c) => {
       const president = c.members.find((m) => m.position === 'PRESIDENT');
       const gs = c.members.find((m) => m.position === 'GENERAL_SECRETARY');
-
       return {
         id: c.id,
         acting_year: c.acting_year,
@@ -39,26 +39,21 @@ const getCommittees = async (req, res, next) => {
     });
 
     res.json({ success: true, data: formatted });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const createCommittee = async (req, res, next) => {
   try {
     const { acting_year } = req.body;
-
     const committee = await prisma.committee.create({
       data: { acting_year: parseInt(acting_year) },
     });
-
     res.status(201).json({ success: true, message: 'Committee created', data: committee });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const assignMember = async (req, res, next) => {
+  let savedPath = null;
   try {
     const { committee_id, member_id, position } = req.body;
 
@@ -66,29 +61,27 @@ const assignMember = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Image is required' });
     }
 
-    const image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+    // Process image before any DB validation so we can clean up on error
+    savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 800, maxHeight: 800 });
+    const image_url = '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/');
 
-    // Check if committee exists
     const committee = await prisma.committee.findUnique({ where: { id: committee_id } });
     if (!committee) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(savedPath);
       return res.status(404).json({ success: false, message: 'Committee not found' });
     }
 
-    // Check if member exists
     const member = await prisma.member.findUnique({ where: { id: member_id } });
     if (!member) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(savedPath);
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
-    // Check uniqueness constraint (one per position per committee)
     const existing = await prisma.committeeMember.findUnique({
       where: { committee_id_position: { committee_id, position } },
     });
-
     if (existing) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(savedPath);
       return res.status(409).json({
         success: false,
         message: `A ${position.replace('_', ' ').toLowerCase()} already exists for this committee year`,
@@ -101,9 +94,7 @@ const assignMember = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: 'Member assigned successfully', data: cm });
   } catch (err) {
-    if (req.file) {
-      try { fs.unlinkSync(req.file.path); } catch {}
-    }
+    if (savedPath) try { fs.unlinkSync(savedPath); } catch { }
     next(err);
   }
 };
@@ -111,28 +102,22 @@ const assignMember = async (req, res, next) => {
 const deleteCommittee = async (req, res, next) => {
   try {
     const { id } = req.params;
-
     const committee = await prisma.committee.findUnique({
       where: { id },
       include: { members: true },
     });
-
     if (!committee) {
       return res.status(404).json({ success: false, message: 'Committee not found' });
     }
 
-    // Remove uploaded images
     for (const m of committee.members) {
       const filePath = m.image_url.replace(/^\//, '');
-      try { fs.unlinkSync(filePath); } catch {}
+      try { fs.unlinkSync(filePath); } catch { }
     }
 
     await prisma.committee.delete({ where: { id } });
-
     res.json({ success: true, message: 'Committee deleted' });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 module.exports = { getCommittees, createCommittee, assignMember, deleteCommittee };

@@ -1,6 +1,7 @@
 // src/controllers/event.controller.js
 const prisma = require('../config/database');
 const { paginate, paginatedResponse, generateSlug } = require('../utils/helpers');
+const processImage = require('../utils/processImage');
 const fs = require('fs');
 
 const getEvents = async (req, res, next) => {
@@ -24,19 +25,14 @@ const getEvents = async (req, res, next) => {
 
     const [events, total] = await Promise.all([
       prisma.event.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
+        where, skip, take: limit, orderBy,
         include: { admin: { select: { id: true, username: true } } },
       }),
       prisma.event.count({ where }),
     ]);
 
     res.json({ success: true, ...paginatedResponse(events, total, page, limit) });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const getEventBySlug = async (req, res, next) => {
@@ -45,30 +41,30 @@ const getEventBySlug = async (req, res, next) => {
       where: { slug: req.params.slug },
       include: { admin: { select: { id: true, username: true } } },
     });
-
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
     res.json({ success: true, data: event });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 const createEvent = async (req, res, next) => {
+  let savedPath = null;
   try {
     const { title, description, event_date, location } = req.body;
-    const banner_image = req.file ? `/${req.file.path.replace(/\\/g, '/')}` : null;
     const eventDate = new Date(event_date);
     const is_upcoming = eventDate >= new Date();
 
-    // Generate unique slug from title
     let slug = generateSlug(title);
     const exists = await prisma.event.findUnique({ where: { slug } });
-    if (exists) slug = generateSlug(title); // regenerate (uuid suffix makes collision near-impossible)
+    if (exists) slug = generateSlug(title);
+
+    if (req.file) {
+      savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1400, maxHeight: 900 });
+    }
+    const banner_image = savedPath ? '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/') : null;
 
     const event = await prisma.event.create({
       data: {
-        title,
-        slug,
+        title, slug,
         description: description || null,
         event_date: eventDate,
         location: location || null,
@@ -80,12 +76,13 @@ const createEvent = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: 'Event created', data: event });
   } catch (err) {
-    if (req.file) try { fs.unlinkSync(req.file.path); } catch { }
+    if (savedPath) try { fs.unlinkSync(savedPath); } catch { }
     next(err);
   }
 };
 
 const updateEvent = async (req, res, next) => {
+  let savedPath = null;
   try {
     const { id } = req.params;
     const { title, description, event_date, location } = req.body;
@@ -104,16 +101,15 @@ const updateEvent = async (req, res, next) => {
     }
 
     if (req.file) {
-      updateData.banner_image = `/${req.file.path.replace(/\\/g, '/')}`;
-      if (event.banner_image) {
-        try { fs.unlinkSync(event.banner_image.replace(/^\//, '')); } catch { }
-      }
+      savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1400, maxHeight: 900 });
+      updateData.banner_image = '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/');
+      if (event.banner_image) try { fs.unlinkSync(event.banner_image.replace(/^\//, '')); } catch { }
     }
 
     const updated = await prisma.event.update({ where: { id }, data: updateData });
     res.json({ success: true, message: 'Event updated', data: updated });
   } catch (err) {
-    if (req.file) try { fs.unlinkSync(req.file.path); } catch { }
+    if (savedPath) try { fs.unlinkSync(savedPath); } catch { }
     next(err);
   }
 };
@@ -122,16 +118,10 @@ const deleteEvent = async (req, res, next) => {
   try {
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
-    if (event.banner_image) {
-      try { fs.unlinkSync(event.banner_image.replace(/^\//, '')); } catch { }
-    }
-
+    if (event.banner_image) try { fs.unlinkSync(event.banner_image.replace(/^\//, '')); } catch { }
     await prisma.event.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Event deleted' });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 module.exports = { getEvents, getEventBySlug, createEvent, updateEvent, deleteEvent };
