@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Camera, Upload, Trash2, CalendarDays, Images, X, AlertCircle, CheckCircle2, Plus } from 'lucide-react';
 import { adminApi, GalleryGroup, imageUrl } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext';
 
 interface Photo {
   id: string;
@@ -24,7 +24,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function ManageGallery() {
-  const { isAdmin } = useAuth();
+  // const { isAdmin } = useAuth();
   const [groups, setGroups] = useState<GalleryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -83,7 +83,7 @@ export default function ManageGallery() {
     try {
       const fd = new FormData();
       fd.append('moment_date', momentDate);
-      previews.forEach((p, i) => {
+      previews.forEach((p) => {
         fd.append('images', p.file);
         if (p.caption.trim()) fd.append('captions', p.caption.trim());
         else fd.append('captions', '');
@@ -120,9 +120,8 @@ export default function ManageGallery() {
 
         {/* Toast */}
         {toast && (
-          <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg text-sm font-medium text-white transition-all ${
-            toast.type === 'success' ? 'bg-[#2ECC71]' : 'bg-red-500'
-          }`}>
+          <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg text-sm font-medium text-white transition-all ${toast.type === 'success' ? 'bg-[#2ECC71]' : 'bg-red-500'
+            }`}>
             {toast.type === 'success'
               ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
