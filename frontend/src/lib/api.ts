@@ -400,3 +400,179 @@ export const imageUrl = (path: string | null | undefined): string | null => {
   const normalizedPath = path.replace(/^\/tmp/, '');
   return `${API_BASE}${normalizedPath}`;
 };
+// ── ASPL ─────────────────────────────────────────────────────────────────────
+
+const ASPL_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+async function asplRequest<T>(path: string, options: RequestOptions & { isFormData?: boolean; formBody?: FormData } = {}): Promise<T> {
+  const { method = 'GET', body, isFormData = false, formBody } = options;
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (!isFormData && body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(`${ASPL_BASE}/aspl${path}`, {
+    method,
+    headers,
+    body: isFormData ? formBody : body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || data.detail || 'Request failed');
+  return data;
+}
+
+export type AsplSport = 'FOOTBALL' | 'CRICKET';
+export type AsplSeasonStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED';
+
+export interface AsplSeason {
+  id: number;
+  name: string;
+  sport: AsplSport;
+  status: AsplSeasonStatus;
+  max_squad_size: number;
+  min_squad_size: number;
+  min_bid_price: number;
+  starting_balance: number;
+  total_players: number;
+  registration_open: boolean;
+  created_at: string;
+  updated_at: string;
+  _count?: { teams: number; players: number; registrations: number };
+  teams?: AsplTeam[];
+}
+
+export interface AsplPlayer {
+  sl: number;
+  season_id: number;
+  name: string;
+  batch: number;
+  playing_position: string;
+  email?: string;
+  phone?: string;
+  photo_url?: string | null;
+  status: boolean;
+  randomized: boolean;
+}
+
+export type AsplRegistrationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AsplRegistration {
+  id: number;
+  season_id: number;
+  email: string;
+  full_name: string;
+  batch: number;
+  playing_position: string;
+  phone?: string;
+  photo_url?: string | null;
+  status: AsplRegistrationStatus;
+  conflict_note?: string | null;
+  admin_note?: string | null;
+  player_sl?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AsplTeam {
+  id: number;
+  season_id: number;
+  owner_name: string;
+  team_name: string;
+  logo_url?: string | null;
+  color: string;
+  balance: number;
+}
+
+export interface AsplTeamPlayer {
+  id: number;
+  team_id: number;
+  player_sl: number;
+  price: number;
+  player: AsplPlayer;
+  team: AsplTeam;
+}
+
+export interface AsplSettings {
+  visible: boolean;
+}
+
+export const FOOTBALL_POSITIONS = ['GK', 'DEF', 'LB', 'RB', 'CDM', 'CM', 'MID', 'LW', 'RW', 'CF', 'FWD'];
+export const CRICKET_POSITIONS  = ['BAT', 'BOWL', 'AR', 'WK'];
+
+export const asplApi = {
+  // Seasons
+  getSeasons: () => asplRequest<AsplSeason[]>('/seasons'),
+  getSeasonById: (id: number) => asplRequest<AsplSeason>(`/seasons/${id}`),
+  getActiveSeason: () => asplRequest<AsplSeason>('/seasons/active'),
+  createSeason: (data: Partial<AsplSeason>) =>
+    asplRequest<AsplSeason>('/seasons', { method: 'POST', body: data }),
+  updateSeason: (id: number, data: Partial<AsplSeason>) =>
+    asplRequest<AsplSeason>(`/seasons/${id}`, { method: 'PATCH', body: data }),
+  deleteSeason: (id: number) =>
+    asplRequest<{ message: string }>(`/seasons/${id}`, { method: 'DELETE' }),
+
+  // Players
+  getPlayers: (seasonId?: number) =>
+    asplRequest<AsplPlayer[]>(seasonId ? `/players?season_id=${seasonId}` : '/players'),
+  getPlayerBySL: (sl: number) => asplRequest<AsplPlayer>(`/players/${sl}`),
+  getRandomPlayer: (seasonId?: number) =>
+    asplRequest<AsplPlayer>(seasonId ? `/players/random?season_id=${seasonId}` : '/players/random'),
+
+  // Teams
+  getTeams: (seasonId?: number) =>
+    asplRequest<AsplTeam[]>(seasonId ? `/teams?season_id=${seasonId}` : '/teams'),
+  getTeamById: (id: number) => asplRequest<AsplTeam>(`/teams/${id}`),
+  createTeam: (formData: FormData) =>
+    asplRequest<AsplTeam>('/teams', { method: 'POST', isFormData: true, formBody: formData }),
+  updateTeam: (id: number, formData: FormData) =>
+    asplRequest<AsplTeam>(`/teams/${id}`, { method: 'PUT', isFormData: true, formBody: formData }),
+  deleteTeam: (id: number) =>
+    asplRequest<{ message: string }>(`/teams/${id}`, { method: 'DELETE' }),
+
+  // Team-Players
+  getTeamPlayers: (seasonId?: number) =>
+    asplRequest<AsplTeamPlayer[]>(seasonId ? `/team-players?season_id=${seasonId}` : '/team-players'),
+  getTeamPlayersByTeam: (id: number) => asplRequest<AsplTeamPlayer[]>(`/team-players/${id}`),
+  createTeamPlayer: (player: number, team: number, price: number) =>
+    asplRequest<AsplTeamPlayer>('/team-players/create', { method: 'POST', body: { player, team, price } }),
+  updateTeamPlayer: (id: number, data: { team_id?: number; price?: number }) =>
+    asplRequest<AsplTeamPlayer>(`/team-players/${id}`, { method: 'PATCH', body: data }),
+  deleteTeamPlayer: (id: number) =>
+    asplRequest<{ message: string }>(`/team-players/${id}`, { method: 'DELETE' }),
+
+  // Registrations
+  register: (formData: FormData) =>
+    asplRequest<{ message: string; registration: AsplRegistration; updated: boolean }>(
+      '/registrations', { method: 'POST', isFormData: true, formBody: formData }
+    ),
+  checkRegistration: (email: string, seasonId: number) =>
+    asplRequest<AsplRegistration>(`/registrations/check?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
+  getRegistrations: (seasonId?: number, status?: string) =>
+    asplRequest<AsplRegistration[]>(
+      `/registrations?${seasonId ? `season_id=${seasonId}` : ''}${status ? `&status=${status}` : ''}`
+    ),
+  approveRegistration: (id: number, admin_note?: string) =>
+    asplRequest<{ message: string }>(`/registrations/${id}/approve`, { method: 'PATCH', body: { admin_note } }),
+  rejectRegistration: (id: number, admin_note?: string) =>
+    asplRequest<{ message: string }>(`/registrations/${id}/reject`, { method: 'PATCH', body: { admin_note } }),
+  deleteRegistration: (id: number) =>
+    asplRequest<{ message: string }>(`/registrations/${id}`, { method: 'DELETE' }),
+
+  // Settings
+  getSettings: (): AsplSettings => {
+    try { return JSON.parse(localStorage.getItem('aspl_settings') || '{"visible":false}'); }
+    catch { return { visible: false }; }
+  },
+  saveSettings: (settings: AsplSettings): void => {
+    localStorage.setItem('aspl_settings', JSON.stringify(settings));
+  },
+
+  // Helpers
+  getPositions: (sport: AsplSport) => sport === 'FOOTBALL' ? FOOTBALL_POSITIONS : CRICKET_POSITIONS,
+  imageUrl: (path: string | null | undefined): string | null => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '');
+    return `${base}${path}`;
+  },
+};
+

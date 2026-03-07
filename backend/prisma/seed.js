@@ -13,25 +13,26 @@ async function main() {
     return;
   }
 
-  // Find the existing admin account
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
   const existing = await prisma.admin.findFirst({ where: { role: 'admin' } });
 
   if (!existing) {
-    console.log('No existing admin found — skipping.');
-    return;
+    await prisma.admin.create({
+      data: {
+        username: newUsername,
+        password: hashedPassword,
+        role: 'admin',
+      },
+    });
+    console.log(`Admin created: ${newUsername}`);
+  } else {
+    await prisma.admin.update({
+      where: { id: existing.id },
+      data: { username: newUsername, password: hashedPassword },
+    });
+    console.log(`Admin updated: ${existing.username} → ${newUsername}`);
   }
-
-  const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-  await prisma.admin.update({
-    where: { id: existing.id },
-    data: {
-      username: newUsername,
-      password: hashedPassword,
-    },
-  });
-
-  console.log(`Admin updated: ${existing.username} → ${newUsername}`);
 }
 
 main()

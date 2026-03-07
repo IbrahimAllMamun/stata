@@ -1,7 +1,7 @@
 // src/pages/admin/Dashboard.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera } from 'lucide-react';
+import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera, Trophy } from 'lucide-react';
 import { adminApi, DashboardStats } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -139,6 +139,18 @@ export default function AdminDashboard() {
               <p className="text-gray-500 text-sm">Assign president & general secretary</p>
             </Link>
           )}
+
+          <Link to="/admin/aspl" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative overflow-hidden">
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'linear-gradient(135deg, rgba(10,22,40,0.03) 0%, rgba(245,200,66,0.05) 100%)' }} />
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform" style={{ background: 'linear-gradient(135deg, #0a1628, #1F2A44)' }}>
+                <Trophy className="w-7 h-7 text-yellow-400" />
+              </div>
+              <Plus className="w-5 h-5 text-gray-300 group-hover:text-yellow-500 transition-colors" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1F2A44] mb-1">ASPL</h2>
+            <p className="text-gray-500 text-sm">Applied Statistics Premier League auction</p>
+          </Link>
         </div>
       </div>
     </div>

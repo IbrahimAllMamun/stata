@@ -22,8 +22,12 @@ import AdminSettings from './pages/admin/Settings';
 import ManageMembers from './pages/admin/ManageMembers';
 import Messages from './pages/admin/Messages';
 import ManageGallery from './pages/admin/ManageGallery';
+import AsplPage from './pages/aspl/AsplPage';
+import AsplAdmin from './pages/admin/aspl/AsplAdmin';
+import AsplSlideshow from './pages/admin/aspl/AsplSlideshow';
+import SeasonDetail from './pages/admin/aspl/SeasonDetail';
+import BidManager from './pages/admin/aspl/BidManager';
 
-// Requires admin OR moderator
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAuth();
   if (loading) return (
@@ -35,7 +39,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Requires admin role only
 function FullAdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isFullAdmin, loading } = useAuth();
   if (loading) return (
@@ -53,6 +56,9 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Full-screen admin slideshow — outside Layout so it has no nav/footer */}
+          <Route path="/admin/aspl/slideshow" element={<AdminRoute><AsplSlideshow /></AdminRoute>} />
+
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="about" element={<About />} />
@@ -67,6 +73,8 @@ function App() {
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
             <Route path="signup" element={<Navigate to="/register" replace />} />
+            {/* Public ASPL page */}
+            <Route path="aspl" element={<AsplPage />} />
             {/* Admin + Moderator */}
             <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="admin/posts" element={<AdminRoute><ManagePosts /></AdminRoute>} />
@@ -76,6 +84,9 @@ function App() {
             <Route path="admin/members" element={<AdminRoute><ManageMembers /></AdminRoute>} />
             <Route path="admin/messages" element={<AdminRoute><Messages /></AdminRoute>} />
             <Route path="admin/gallery" element={<AdminRoute><ManageGallery /></AdminRoute>} />
+            <Route path="admin/aspl" element={<AdminRoute><AsplAdmin /></AdminRoute>} />
+            <Route path="admin/aspl/seasons/:id" element={<AdminRoute><SeasonDetail /></AdminRoute>} />
+            <Route path="admin/aspl/bids" element={<AdminRoute><BidManager /></AdminRoute>} />
             {/* Admin only */}
             <Route path="admin/settings" element={<FullAdminRoute><AdminSettings /></FullAdminRoute>} />
           </Route>
