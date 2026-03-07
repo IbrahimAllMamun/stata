@@ -146,6 +146,20 @@ export interface Speech {
   created_at: string;
 }
 
+export interface GalleryPhoto {
+  id: string;
+  image_url: string;
+  caption?: string | null;
+  moment_date: string;
+  created_at: string;
+  admin?: { id: string; username: string };
+}
+
+export interface GalleryGroup {
+  date: string; // YYYY-MM-DD
+  photos: GalleryPhoto[];
+}
+
 export const contactApi = {
   submit: (data: { name: string; email: string; subject: string; message: string; batch?: string; designation?: string }) =>
     request<{ success: boolean; message: string; data: { id: string } }>('/contact', {
@@ -208,8 +222,16 @@ export const api = {
     return request<{ success: boolean; data: Event[]; pagination: Pagination }>(`/events${qs}`);
   },
 
-  getEventBySlug: (slug: string) =>
-    request<{ success: boolean; data: Event }>(`/events/${slug}`),
+  getGallery: (params?: { from?: string; to?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set('from', params.from);
+    if (params?.to) qs.set('to', params.to);
+    const q = qs.toString();
+    return request<{ success: boolean; data: GalleryGroup[]; total: number }>(`/gallery${q ? '?' + q : ''}`);
+  },
+
+  getGalleryDates: () =>
+    request<{ success: boolean; data: string[] }>('/gallery/dates'),
 };
 
 export const adminApi = {
@@ -350,6 +372,20 @@ export const adminApi = {
 
   toggleFeatured: (id: string) =>
     request<{ success: boolean; data: ContactMessage }>(`/admin/messages/${id}/feature`, { method: 'PATCH' }),
+
+  // Gallery
+  getGallery: () =>
+    request<{ success: boolean; data: GalleryGroup[]; total: number }>('/admin/gallery'),
+
+  uploadGalleryPhotos: (formData: FormData) =>
+    request<{ success: boolean; message: string; data: { count: number } }>('/admin/gallery', {
+      method: 'POST',
+      body: formData,
+      isFormData: true,
+    }),
+
+  deleteGalleryPhoto: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/gallery/${id}`, { method: 'DELETE' }),
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';

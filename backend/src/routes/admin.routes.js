@@ -15,9 +15,8 @@ const { createCommittee, assignMember, deleteCommittee } = require('../controlle
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
-const {
-  getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches,
-} = require('../controllers/member.controller');
+const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches } = require('../controllers/member.controller');
+const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
 
 // Public auth
 router.post('/login', validate(loginSchema), login);
@@ -32,7 +31,7 @@ router.get('/dashboard', getDashboardStats);
 router.get('/members', getMembersByStatus);
 router.get('/members/pending-count', getPendingCount);
 router.get('/members/export-csv', exportCSV);
-router.get('/members/batches', getApprovedBatches);      // ← distinct approved batches
+router.get('/members/batches', getApprovedBatches);
 router.patch('/members/:id/status', updateMemberStatus);
 router.delete('/members/:id', deleteMember);
 
@@ -58,6 +57,11 @@ router.patch('/posts/:id/reject', rejectPost);
 router.post('/events', upload.single('banner_image'), validate(eventSchema), createEvent);
 router.put('/events/:id', upload.single('banner_image'), validate(updateEventSchema), updateEvent);
 router.delete('/events/:id', deleteEvent);
+
+// Gallery — admin and moderator
+router.get('/gallery', getAdminGallery);
+router.post('/gallery', upload.array('images', 10), uploadPhotos);
+router.delete('/gallery/:id', deletePhoto);
 
 // Contact messages — admin and moderator
 router.get('/messages', getMessages);

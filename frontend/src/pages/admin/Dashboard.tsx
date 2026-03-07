@@ -1,10 +1,9 @@
 // src/pages/admin/Dashboard.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck } from 'lucide-react';
+import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera } from 'lucide-react';
 import { adminApi, DashboardStats } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
-import LogoLoaderFull from '../../components/LogoLoaderFull';
 
 export default function AdminDashboard() {
   const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
@@ -52,8 +51,8 @@ export default function AdminDashboard() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <LogoLoaderFull size={52} scheme="light" />
+          <div className="text-center py-12">
+            <div className="inline-block w-8 h-8 border-4 border-[#2F5BEA] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : stats && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
@@ -115,6 +114,17 @@ export default function AdminDashboard() {
             </div>
             <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Manage Events</h2>
             <p className="text-gray-500 text-sm">Create and manage STATA events</p>
+          </Link>
+
+          <Link to="/admin/gallery" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-14 h-14 bg-[#E74C3C] rounded-xl flex items-center justify-center group-hover:bg-[#F39C12] transition-colors">
+                <Camera className="w-7 h-7 text-white" />
+              </div>
+              <Plus className="w-5 h-5 text-gray-300 group-hover:text-[#F39C12] transition-colors" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Manage Gallery</h2>
+            <p className="text-gray-500 text-sm">Upload and organise photo moments</p>
           </Link>
 
           {isFullAdmin && (

@@ -43,8 +43,9 @@ model Admin {
   role       String   @default("admin")
   created_at DateTime @default(now())
 
-  posts  Post[]
-  events Event[]
+  posts          Post[]
+  events         Event[]
+  gallery_photos GalleryPhoto[]
 
   @@map("admins")
 }
@@ -150,4 +151,19 @@ enum MessageStatus {
   UNREAD
   READ
   ARCHIVED
+}
+
+model GalleryPhoto {
+  id          String   @id @default(uuid())
+  image_url   String
+  caption     String?
+  moment_date DateTime
+  created_by  String
+  created_at  DateTime @default(now())
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([moment_date])
+  @@index([created_at])
+  @@map("gallery_photos")
 }
