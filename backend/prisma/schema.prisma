@@ -170,32 +170,104 @@ model GalleryPhoto {
 
 // ── ASPL ─────────────────────────────────────────────────────────────────────
 
-model AsplPlayer {
-  sl              Int     @id @unique @map("sl")
-  name            String  @db.VarChar(100)
-  batch           Int
-  playing_position String  @db.VarChar(10)
-  status          Boolean @default(false)
-  randomized      Boolean @default(false)
+enum AsplSport {
+  FOOTBALL
+  CRICKET
+  @@map("aspl_sport")
+}
 
+enum AsplSeasonStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  @@map("aspl_season_status")
+}
+
+enum AsplRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  @@map("aspl_registration_status")
+}
+
+model AsplSeason {
+  id               Int              @id @default(autoincrement())
+  name             String           @db.VarChar(100)
+  sport            AsplSport
+  status           AsplSeasonStatus @default(DRAFT)
+  max_squad_size   Int              @default(15)
+  min_squad_size   Int              @default(11)
+  min_bid_price    Int              @default(20)
+  starting_balance Int              @default(1000)
+  total_players    Int              @default(0)
+  registration_open Boolean         @default(false)
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+
+  teams   AsplTeam[]
+  players AsplPlayer[]
+  registrations AsplRegistration[]
+
+  @@map("aspl_seasons")
+}
+
+model AsplRegistration {
+  id               Int                    @id @default(autoincrement())
+  season_id        Int
+  email            String                 @db.VarChar(255)
+  full_name        String                 @db.VarChar(100)
+  batch            Int
+  playing_position String                 @db.VarChar(20)
+  phone            String                 @db.VarChar(20)
+  photo_url        String?
+  status           AsplRegistrationStatus @default(PENDING)
+  conflict_note    String?                // set when overwriting existing registration
+  admin_note       String?                // admin rejection/approval note
+  player_sl        Int?                   // set when approved → links to AsplPlayer
+  created_at       DateTime               @default(now())
+  updated_at       DateTime               @updatedAt
+
+  season AsplSeason @relation(fields: [season_id], references: [id], onDelete: Cascade)
+
+  @@unique([email, season_id])
+  @@map("aspl_registrations")
+}
+
+model AsplPlayer {
+  sl               Int     @id @unique @map("sl")
+  season_id        Int
+  name             String  @db.VarChar(100)
+  batch            Int
+  playing_position String  @db.VarChar(20)
+  email            String? @db.VarChar(255)
+  phone            String? @db.VarChar(20)
+  photo_url        String?
+  status           Boolean @default(false)
+  randomized       Boolean @default(false)
+
+  season       AsplSeason       @relation(fields: [season_id], references: [id], onDelete: Cascade)
   team_players AsplTeamPlayer[]
 
   @@map("aspl_players")
 }
 
 model AsplTeam {
-  id        Int    @id @unique
-  owner_sl  Int
-  team_name String @db.VarChar(255)
-  balance   Int    @default(1000)
+  id         Int    @id @default(autoincrement())
+  season_id  Int
+  owner_name String @db.VarChar(100)
+  team_name  String @db.VarChar(255)
+  logo_url   String?
+  color      String @default("#2F5BEA") @db.VarChar(7)
+  balance    Int
 
+  season       AsplSeason       @relation(fields: [season_id], references: [id], onDelete: Cascade)
   team_players AsplTeamPlayer[]
 
   @@map("aspl_teams")
 }
 
 model AsplTeamPlayer {
-  id        Int    @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   team_id   Int
   player_sl Int
   price     Int

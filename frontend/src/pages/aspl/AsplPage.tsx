@@ -1,188 +1,316 @@
 // src/pages/aspl/AsplPage.tsx
 import { useState, useEffect } from 'react';
-import { asplApi, AsplTeam, AsplTeamPlayer } from '../../lib/api';
+import { Trophy, Users, Wallet, ArrowRight, ChevronRight, X, Loader2 } from 'lucide-react';
+import { asplApi, AsplTeam, AsplTeamPlayer, AsplSeason } from '../../lib/api';
+import RegistrationForm from '../../components/aspl/RegistrationForm';
 import './aspl.css';
 
-const posCls = (p: string) => {
-    const u = p?.toUpperCase() || '';
-    if (u === 'GK') return 'pos-GK';
-    if (['LB', 'RB', 'DEF'].includes(u)) return 'pos-DEF';
-    if (['CDM', 'CM', 'MID'].includes(u)) return 'pos-MID';
-    if (['LW', 'RW'].includes(u)) return 'pos-LW';
-    if (['CF', 'FWD'].includes(u)) return 'pos-FWD';
-    return 'pos-MID';
+// ── Position badge colours (light-mode) ───────────────────────────────────────
+const posMeta: Record<string, { bg: string; text: string; border: string }> = {
+  GK: { bg: '#EDE9FE', text: '#7C3AED', border: '#C4B5FD' },
+  DEF: { bg: '#DBEAFE', text: '#1D4ED8', border: '#93C5FD' },
+  LB: { bg: '#DBEAFE', text: '#1D4ED8', border: '#93C5FD' },
+  RB: { bg: '#DBEAFE', text: '#1D4ED8', border: '#93C5FD' },
+  CDM: { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7' },
+  CM: { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7' },
+  MID: { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7' },
+  LW: { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D' },
+  RW: { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D' },
+  CF: { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5' },
+  FWD: { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5' },
+  BAT: { bg: '#DBEAFE', text: '#1D4ED8', border: '#93C5FD' },
+  BOWL: { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5' },
+  AR: { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7' },
+  WK: { bg: '#EDE9FE', text: '#7C3AED', border: '#C4B5FD' },
 };
+function PosBadge({ pos }: { pos: string }) {
+  const m = posMeta[pos?.toUpperCase()] ?? { bg: '#F3F4F6', text: '#374151', border: '#D1D5DB' };
+  return (
+    <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full"
+      style={{ background: m.bg, color: m.text, border: `1px solid ${m.border}` }}>
+      {pos}
+    </span>
+  );
+}
 
+// ── Player Drawer ─────────────────────────────────────────────────────────────
 function PlayerDrawer({ teamId, onClose }: { teamId: number; onClose: () => void }) {
-    const [players, setPlayers] = useState<AsplTeamPlayer[]>([]);
-    const [loading, setLoading] = useState(true);
-    const team = players[0]?.team;
-    const totalSpent = players.reduce((s, r) => s + r.price, 0);
+  const [players, setPlayers] = useState<AsplTeamPlayer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const team = players[0]?.team;
+  const totalSpent = players.reduce((s, r) => s + r.price, 0);
 
-    useEffect(() => {
-        asplApi.getTeamPlayersByTeam(teamId).then(setPlayers).catch(console.error).finally(() => setLoading(false));
-    }, [teamId]);
+  useEffect(() => {
+    asplApi.getTeamPlayersByTeam(teamId).then(setPlayers).catch(console.error).finally(() => setLoading(false));
+  }, [teamId]);
 
-    return (
-        <>
-            <div className="fixed inset-0 z-40" style={{ background: 'rgba(10,22,40,0.7)', backdropFilter: 'blur(6px)' }} onClick={onClose} />
-            <div className="fixed top-0 right-0 bottom-0 w-[420px] z-50 flex flex-col anim-left" style={{ background: 'var(--pitch-mid)', borderLeft: '1px solid var(--border)' }}>
-                <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(245,200,66,0.1)' }}>
-                    <div>
-                        <p className="text-[10px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>SQUAD</p>
-                        <h2 className="text-lg" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>{team?.team_name ?? '—'}</h2>
-                    </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10" style={{ color: 'var(--muted)', fontSize: 18 }}>✕</button>
-                </div>
-                {!loading && (
-                    <div className="flex gap-4 px-6 py-3 shrink-0" style={{ borderBottom: '1px solid rgba(245,200,66,0.08)' }}>
-                        {[['PLAYERS', players.length, 'var(--white)'], ['BALANCE', `$${team?.balance ?? '—'}`, 'var(--accent)'], ['SPENT', `$${totalSpent}`, 'var(--gold)']].map(([label, val, color]) => (
-                            <div key={String(label)}>
-                                <p className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{label}</p>
-                                <p className="text-xl" style={{ color: String(color), fontFamily: 'kanit' }}>{val}</p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                <div className="flex-1 overflow-y-auto px-4 py-3">
-                    {loading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <p className="text-xs animate-pulse" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>LOADING…</p>
-                        </div>
-                    ) : players.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                            <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>No players yet</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-2">
-                            {players.map((tp, i) => (
-                                <div key={tp.player.sl} className="flex items-center gap-3 px-4 py-3 rounded-xl anim-up"
-                                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', animationDelay: `${i * 0.04}s` }}>
-                                    <span className="text-sm w-8 text-center" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{tp.player.sl}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm truncate" style={{ color: 'var(--white)', fontFamily: 'fredoka' }}>{tp.player.name}</p>
-                                        <p className="text-[10px]" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>Batch {tp.player.batch}</p>
-                                    </div>
-                                    <span className={`badge text-[10px] px-2 py-0.5 ${posCls(tp.player.playing_position)}`} style={{ fontFamily: 'kanit' }}>
-                                        {tp.player.playing_position}
-                                    </span>
-                                    <span className="text-sm w-14 text-right" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>${tp.price}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </>
-    );
-}
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed top-0 right-0 bottom-0 w-[400px] z-50 flex flex-col bg-white shadow-2xl"
+        style={{ animation: 'aspl-slideleft 0.3s cubic-bezier(0.22,1,0.36,1) both' }}>
 
-function TeamCard({ team, onClick }: { team: AsplTeam; onClick: () => void }) {
-    const [players, setPlayers] = useState<AsplTeamPlayer[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        asplApi.getTeamPlayersByTeam(team.id).then(setPlayers).catch(console.error).finally(() => setLoading(false));
-    }, [team.id]);
-
-    const count = players.length;
-    const TARGET = 11;
-    const slotsLeft = Math.max(0, TARGET - count - 1);
-    const maxBid = count < TARGET ? Math.max(0, team.balance - slotsLeft * 20) : team.balance;
-    const pct = Math.max(0, Math.min(100, (team.balance / 1000) * 100));
-    const danger = team.balance < 20;
-
-    return (
-        <div onClick={onClick} className="glass rounded-2xl p-5 flex flex-col gap-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] relative overflow-hidden"
-            style={{ border: danger ? '1px solid rgba(229,62,62,0.4)' : '1px solid var(--border)' }}>
-            {danger && <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top, rgba(229,62,62,0.07), transparent 70%)' }} />}
-            <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <img src={`/logo/${team.team_name}.png`} alt={team.team_name} className="w-full h-full object-contain p-1" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                </div>
-                <div className="min-w-0">
-                    <h2 className="text-base truncate" style={{ color: 'var(--white)', fontFamily: 'kanit' }}>{team.team_name}</h2>
-                    {loading ? <p className="text-xs animate-pulse" style={{ color: 'var(--muted)' }}>loading…</p>
-                        : <p className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>{count} players</p>}
-                </div>
-            </div>
-            {!loading && (
-                <div className="grid grid-cols-2 gap-2">
-                    {[['BALANCE', `$${team.balance}`, 'var(--accent)'], ['MAX BID', `$${maxBid}`, danger ? '#fca5a5' : 'var(--gold)']].map(([label, val, color]) => (
-                        <div key={String(label)} className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                            <p className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{label}</p>
-                            <p className="text-lg" style={{ color: String(color), fontFamily: 'kanit' }}>{val}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
-            <div>
-                <div className="progress-track"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-                <div className="flex justify-between mt-3">
-                    <span className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>$0</span>
-                    <span className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>$1000</span>
-                </div>
-            </div>
-            <p className="text-[10px] text-center" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>Click to view squad</p>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <div>
+            <p className="text-xs font-bold tracking-widest uppercase text-[#2F5BEA] mb-0.5">Squad</p>
+            <h2 className="text-xl font-bold text-[#1F2A44]">{team?.team_name ?? '—'}</h2>
+          </div>
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-    );
+
+        {/* Stats */}
+        {!loading && (
+          <div className="grid grid-cols-3 gap-0 border-b border-gray-100">
+            {[
+              { label: 'Players', value: players.length, color: '#1F2A44' },
+              { label: 'Balance', value: `$${team?.balance ?? '—'}`, color: '#2ECC71' },
+              { label: 'Spent', value: `$${totalSpent}`, color: '#F39C12' },
+            ].map(({ label, value, color }, i) => (
+              <div key={label} className={`px-5 py-4 ${i < 2 ? 'border-r border-gray-100' : ''}`}>
+                <p className="text-xs text-gray-400 mb-1">{label}</p>
+                <p className="text-xl font-bold" style={{ color }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Player list */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center h-40 gap-2 text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Loading…</span>
+            </div>
+          ) : players.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-40 gap-2">
+              <Users className="w-8 h-8 text-gray-200" />
+              <p className="text-sm text-gray-400">No players yet</p>
+            </div>
+          ) : (
+            <div className="p-4 flex flex-col gap-2">
+              {players.map((tp, i) => {
+                const photo = asplApi.imageUrl(tp.player?.photo_url);
+                return (
+                  <div key={tp.player.sl}
+                    className="flex items-center gap-3 bg-[#F5F7FA] hover:bg-gray-100 px-4 py-3 rounded-xl transition-colors"
+                    style={{ animation: `aspl-slideup 0.3s ease both`, animationDelay: `${i * 0.04}s` }}>
+                    <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center">
+                      {photo
+                        ? <img src={photo} alt={tp.player.name} className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        : <span className="text-xs font-bold text-gray-400">#{tp.player.sl}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#1F2A44] truncate">{tp.player.name}</p>
+                      <p className="text-xs text-gray-400">Batch {tp.player.batch}</p>
+                    </div>
+                    <PosBadge pos={tp.player.playing_position} />
+                    <span className="text-sm font-bold text-[#F39C12] w-12 text-right">${tp.price}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
+// ── Team Card ─────────────────────────────────────────────────────────────────
+function TeamCard({ team, startingBalance, onClick }: { team: AsplTeam; startingBalance: number; onClick: () => void }) {
+  const [players, setPlayers] = useState<AsplTeamPlayer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    asplApi.getTeamPlayersByTeam(team.id).then(setPlayers).catch(console.error).finally(() => setLoading(false));
+  }, [team.id]);
+
+  const count = players.length;
+  const TARGET = 11;
+  const slotsLeft = Math.max(0, TARGET - count - 1);
+  const maxBid = count < TARGET ? Math.max(0, team.balance - slotsLeft * 20) : team.balance;
+  const pct = Math.max(0, Math.min(100, (team.balance / (startingBalance || 1000)) * 100));
+  const danger = team.balance < 20;
+  const logoUrl = asplApi.imageUrl(team.logo_url);
+
+  return (
+    <div onClick={onClick}
+      className="bg-white rounded-2xl border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group">
+      <div className="h-1.5 w-full" style={{ background: team.color ?? '#2F5BEA' }} />
+      <div className="p-5 flex flex-col gap-4">
+        {/* Logo + name */}
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-[#F5F7FA] flex items-center justify-center border border-gray-100">
+            {logoUrl
+              ? <img src={logoUrl} alt={team.team_name} className="w-full h-full object-contain p-1"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              : <span className="text-2xl font-extrabold" style={{ color: team.color ?? '#2F5BEA' }}>{team.team_name[0]}</span>
+            }
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-[#1F2A44] text-lg truncate group-hover:text-[#2F5BEA] transition-colors">{team.team_name}</h3>
+            {loading
+              ? <p className="text-xs text-gray-300 animate-pulse">loading…</p>
+              : <p className="text-xs text-gray-400">{count} players</p>}
+          </div>
+          {danger && (
+            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-500 border border-red-100 flex-shrink-0">
+              LOW
+            </span>
+          )}
+        </div>
+
+        {/* Balance stats */}
+        {!loading && (
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Balance', value: `$${team.balance}`, color: '#2ECC71' },
+              { label: 'Max Bid', value: `$${maxBid}`, color: danger ? '#EF4444' : '#F39C12' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-[#F5F7FA] rounded-xl px-3 py-2.5">
+                <p className="text-[10px] text-gray-400 font-medium mb-0.5">{label}</p>
+                <p className="text-lg font-bold" style={{ color }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Progress */}
+        <div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${pct}%`, background: danger ? '#EF4444' : `linear-gradient(90deg, #2ECC71, ${team.color ?? '#2F5BEA'})` }} />
+          </div>
+          <div className="flex justify-between mt-1.5">
+            <span className="text-[10px] text-gray-300">$0</span>
+            <span className="text-[10px] text-gray-300">${startingBalance}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 text-xs font-semibold text-[#2F5BEA] group-hover:text-[#F39C12] transition-colors">
+          View squad <ChevronRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AsplPage() {
-    const [teams, setTeams] = useState<AsplTeam[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [expanded, setExpanded] = useState<number | null>(null);
+  const [season, setSeason] = useState<AsplSeason | null>(null);
+  const [teams, setTeams] = useState<AsplTeam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [showRegister, setShowRegister] = useState(false);
 
-    useEffect(() => {
-        asplApi.getTeams().then(setTeams).catch(console.error).finally(() => setLoading(false));
-    }, []);
+  useEffect(() => {
+    asplApi.getActiveSeason()
+      .catch(() => null)
+      .then(s => { setSeason(s); return asplApi.getTeams(s?.id); })
+      .then(setTeams)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-    return (
-        <div className="aspl-root min-h-screen" style={{ background: 'var(--pitch)' }}>
-            {/* Hero */}
-            <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--pitch) 0%, var(--pitch-mid) 100%)', borderBottom: '1px solid var(--border)' }}>
-                <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, rgba(0,229,160,0.06) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(47,91,234,0.08) 0%, transparent 50%)" }} />
-                <div className="relative max-w-7xl mx-auto px-6 py-16 text-center">
-                    <div className="inline-block px-4 py-1.5 rounded-full text-xs tracking-widest mb-5" style={{ background: 'rgba(245,200,66,0.1)', border: '1px solid rgba(245,200,66,0.25)', color: 'var(--gold)', fontFamily: 'kanit' }}>
-                        ISRT · UNIVERSITY OF DHAKA
-                    </div>
-                    <h1 className="text-5xl md:text-7xl tracking-widest mb-3 glow-gold" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>ASPL</h1>
-                    <p className="text-lg tracking-widest mb-2" style={{ color: 'var(--white)', fontFamily: 'fredoka' }}>Applied Statistics Premier League</p>
-                    <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>2024 Season · Team Dashboard</p>
-                    <div className="flex items-center justify-center gap-8 mt-8">
-                        {[['TEAMS', teams.length], ['SEASON', '2024']].map(([label, val]) => (
-                            <div key={String(label)} className="text-center">
-                                <p className="text-3xl" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>{val}</p>
-                                <p className="text-[10px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{label}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+  const seasonName = season?.name ?? 'ASPL';
+  const sportLabel = season ? (season.sport === 'FOOTBALL' ? 'Football' : 'Cricket') : null;
 
-            {/* Teams */}
-            <div className="max-w-7xl mx-auto px-6 py-12">
-                <h2 className="text-xs tracking-widest mb-6" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>ALL TEAMS</h2>
-                {loading ? (
-                    <div className="flex items-center justify-center py-24">
-                        <p className="text-xs animate-pulse tracking-widest" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>LOADING TEAMS…</p>
-                    </div>
-                ) : teams.length === 0 ? (
-                    <div className="text-center py-24">
-                        <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>No teams yet</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {teams.map((team, i) => (
-                            <div key={team.id} className="anim-up" style={{ animationDelay: `${i * 0.06}s` }}>
-                                <TeamCard team={team} onClick={() => setExpanded(expanded === team.id ? null : team.id)} />
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="bg-[#F5F7FA] min-h-screen aspl-root">
 
-            {expanded && <PlayerDrawer teamId={expanded} onClose={() => setExpanded(null)} />}
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="relative bg-[#1F2A44] text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-[#2F5BEA] rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#F39C12] rounded-full translate-x-1/2 translate-y-1/2" />
         </div>
-    );
+        <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28 text-center">
+          <div className="inline-block bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
+            ISRT · University of Dhaka{sportLabel ? ` · ${sportLabel}` : ''}
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold mb-4 leading-tight tracking-tight">
+            <span style={{ color: '#F39C12' }}>{seasonName}</span>
+          </h1>
+          <p className="text-xl text-gray-300 mb-8">Applied Statistics Premier League</p>
+
+          {season?.registration_open && (
+            <div className="mt-4">
+              <button onClick={() => setShowRegister(true)}
+                className="inline-flex items-center gap-2 bg-[#F39C12] hover:bg-[#E67E22] text-white px-8 py-3.5 rounded-xl font-bold tracking-wide transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[#F39C12]/20">
+                Register as Player <ArrowRight className="w-5 h-5" />
+              </button>
+              <p className="text-xs text-gray-500 mt-3">
+                Already registered? Submit again with your email to update
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Teams ────────────────────────────────────────────────────────── */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <span className="text-xs font-bold tracking-widest uppercase text-[#2F5BEA] block mb-2">{seasonName}</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-[#1F2A44]">Teams</h2>
+            <p className="text-gray-500 mt-2">Click a team to view their squad and bids</p>
+          </div>
+          {!loading && teams.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Trophy className="w-4 h-4 text-[#F39C12]" />
+              {teams.length} competing teams
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-14 h-14 bg-gray-200 rounded-2xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded w-1/3" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="h-14 bg-gray-100 rounded-xl" />
+                  <div className="h-14 bg-gray-100 rounded-xl" />
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : teams.length === 0 ? (
+          <div className="text-center py-24 bg-white rounded-2xl border border-gray-100">
+            <Wallet className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-400">No teams yet</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {teams.map((team, i) => (
+              <div key={team.id} style={{ animation: `aspl-slideup 0.4s ease both`, animationDelay: `${i * 0.07}s` }}>
+                <TeamCard
+                  team={team}
+                  startingBalance={season?.starting_balance ?? 1000}
+                  onClick={() => setExpanded(expanded === team.id ? null : team.id)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {expanded && <PlayerDrawer teamId={expanded} onClose={() => setExpanded(null)} />}
+      {showRegister && season?.registration_open && (
+        <RegistrationForm season={season} onClose={() => setShowRegister(false)} />
+      )}
+    </div>
+  );
 }

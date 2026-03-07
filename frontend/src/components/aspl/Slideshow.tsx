@@ -1,6 +1,7 @@
 // src/components/aspl/Slideshow.tsx
 import { useState, useEffect, useRef } from 'react';
-import { asplApi, AsplPlayer, AsplTeam } from '../../lib/api';
+import { Link } from 'react-router-dom';
+import { asplApi, AsplPlayer, AsplTeam, AsplSeason } from '../../lib/api';
 import LogoLoaderFull from '../LogoLoaderFull';
 
 const TICKER_ITEMS = [
@@ -210,7 +211,10 @@ function RandomPopup({ visible, onClose, playerSL, loading: loadingRandom }: {
 // ── Main Slideshow ─────────────────────────────────────────────────────────────
 export default function Slideshow() {
   const [players, setPlayers] = useState<AsplPlayer[]>([]);
+  const [season, setSeason] = useState<AsplSeason | null>(null);
   const [currentSL, setCurrentSL] = useState(1);
+  const [fetchSL, setFetchSL] = useState(1); // debounced — only triggers DB fetch
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [player, setPlayer] = useState<AsplPlayer | null>(null);
   const [animKey, setAnimKey] = useState(0);
   const [isSold, setIsSold] = useState(false);
@@ -223,16 +227,44 @@ export default function Slideshow() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    asplApi.getPlayers().then(ps => {
-      setPlayers(ps);
-      if (ps.length) setCurrentSL(ps[0].sl);
-    }).catch(console.error).finally(() => setLoadingPlayers(false));
+    asplApi.getActiveSeason()
+      .catch(() => null)
+      .then(s => {
+        setSeason(s);
+        return asplApi.getPlayers(s?.id);
+      })
+      .then(ps => {
+        setPlayers(ps);
+        if (ps.length) { setCurrentSL(ps[0].sl); setFetchSL(ps[0].sl); }
+      })
+      .catch(console.error)
+      .finally(() => setLoadingPlayers(false));
   }, []);
+
+  const [dbError, setDbError] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!players.length) return;
-    asplApi.getPlayerBySL(currentSL).then(p => { setPlayer(p); setIsSold(false); setAnimKey(k => k + 1); }).catch(console.error);
-  }, [currentSL, players.length]);
+    if (retryRef.current) clearTimeout(retryRef.current);
+
+    const load = () => {
+      asplApi.getPlayerBySL(fetchSL)
+        .then(p => {
+          setPlayer(p);
+          setIsSold(false);
+          setAnimKey(k => k + 1);
+          setDbError(false);
+        })
+        .catch(() => {
+          setDbError(true);
+          retryRef.current = setTimeout(load, 3000);
+        });
+    };
+    load();
+    return () => { if (retryRef.current) clearTimeout(retryRef.current); };
+  }, [fetchSL, players.length]);
 
   const totalPlayers = players.length || 1;
 
@@ -241,17 +273,37 @@ export default function Slideshow() {
       if (e.ctrlKey && e.altKey && e.code === 'KeyR') {
         e.preventDefault();
         setRandomVisible(true); setLoadingRandom(true);
-        asplApi.getRandomPlayer().then(p => { setRandomSL(p.sl); setCurrentSL(p.sl); }).catch(console.error).finally(() => setLoadingRandom(false));
+        asplApi.getRandomPlayer(season?.id).then(p => {
+          setRandomSL(p.sl);
+          setCurrentSL(p.sl);
+          setFetchSL(p.sl);
+        }).catch(console.error).finally(() => setLoadingRandom(false));
         return;
       }
       if (e.ctrlKey && e.altKey) return;
       if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); setSearchOpen(v => !v); if (!searchOpen) setTimeout(() => inputRef.current?.focus(), 50); return; }
-      if (e.code === 'ArrowLeft') { e.preventDefault(); setCurrentSL(s => s > 1 ? s - 1 : totalPlayers); }
-      if (e.code === 'ArrowRight') { e.preventDefault(); setCurrentSL(s => s < totalPlayers ? s + 1 : 1); }
+      if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        setCurrentSL(s => {
+          const next = s > 1 ? s - 1 : totalPlayers;
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => setFetchSL(next), 150);
+          return next;
+        });
+      }
+      if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        setCurrentSL(s => {
+          const next = s < totalPlayers ? s + 1 : 1;
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => setFetchSL(next), 150);
+          return next;
+        });
+      }
       if (e.code === 'Enter' && searchOpen) {
         e.preventDefault();
         const n = parseInt(inputValue, 10);
-        if (!isNaN(n) && n > 0) { setCurrentSL(n); setInputValue(''); setSearchOpen(false); }
+        if (!isNaN(n) && n >= 1 && n <= totalPlayers) { setCurrentSL(n); setFetchSL(n); setInputValue(''); setSearchOpen(false); }
       }
       if (e.code === 'Escape') setSearchOpen(false);
     };
@@ -261,14 +313,7 @@ export default function Slideshow() {
 
   if (loadingPlayers) return (
     <div className="fixed inset-0 pitch-bg flex items-center justify-center aspl-root">
-      <div className="glass rounded-2xl px-10 py-8 flex flex-col items-center gap-4">
-        <p className="text-xl tracking-widest animate-pulse" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>LOADING AUCTION…</p>
-        <div className="flex gap-1">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full" style={{ background: 'var(--gold)', opacity: 0.8, animation: `aspl-fadein 1.2s ease-in-out ${i * 0.2}s infinite` }} />
-          ))}
-        </div>
-      </div>
+      <LogoLoaderFull size={72} scheme="dark" />
     </div>
   );
 
@@ -290,7 +335,7 @@ export default function Slideshow() {
           </div>
         </div>
         <div className="text-center">
-          <h1 className="text-3xl glow-gold tracking-widest" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>ASPL · 2024</h1>
+          <h1 className="text-3xl glow-gold tracking-widest" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>{season?.name ?? 'ASPL'}</h1>
           <p className="text-xs tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>APPLIED STATISTICS PREMIER LEAGUE</p>
         </div>
         <div className="glass rounded-xl px-4 py-2 flex items-center gap-2">
@@ -327,7 +372,7 @@ export default function Slideshow() {
               )}
             </>
           )}
-          <div className="flex flex-col gap-2 mt-auto">
+          <div className="flex flex-col gap-2 mt-auto ml-10">
             <Hint keys={['←', '→']} label="navigate" />
             <Hint keys={['Ctrl', 'Space']} label="search" />
             <Hint keys={['Ctrl', 'Alt', 'R']} label="random" />
@@ -340,7 +385,10 @@ export default function Slideshow() {
             <div key={animKey + 'img'} className="relative anim-fade">
               <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(245,200,66,0.12) 0%, transparent 70%)', transform: 'scale(1.3)' }} />
               <div className="relative overflow-hidden" style={{ width: 'clamp(220px,28vw,360px)', aspectRatio: '1/1', borderRadius: '50%', border: '4px solid var(--gold)', boxShadow: '0 0 40px rgba(245,200,66,0.3)' }}>
-                <img src={`/images/${player.sl}.jpg`} alt={player.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                {asplApi.imageUrl(player.photo_url)
+                  ? <img src={asplApi.imageUrl(player.photo_url)!} alt={player.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  : null
+                }
                 {(isSold || player.status) && <div className="sold-stamp"><span className="sold-stamp-text">SOLD</span></div>}
               </div>
               <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-full text-xl flex items-center justify-center" style={{ background: 'var(--gold)', color: 'var(--pitch)', fontFamily: 'kanit', boxShadow: '0 0 16px rgba(245,200,66,0.5)' }}>
@@ -357,28 +405,103 @@ export default function Slideshow() {
       </main>
 
       {/* SEARCH MODAL */}
-      {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(10,22,40,0.85)', backdropFilter: 'blur(12px)' }}>
-          <div className="glass rounded-2xl p-6 flex flex-col gap-3 anim-up" style={{ minWidth: 360 }}>
-            <p className="text-xs tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>JUMP TO PLAYER</p>
-            <div className="flex gap-2">
-              <input ref={inputRef} type="number" min={1} max={totalPlayers}
-                className="flex-1 rounded-lg px-4 py-3 text-2xl outline-none"
-                style={{ background: 'var(--pitch-light)', border: '2px solid var(--gold)', color: 'var(--white)', fontFamily: 'kanit' }}
-                placeholder={`1 – ${totalPlayers}`} value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                onKeyDown={e => { if (e.code === 'Enter') { const n = parseInt(inputValue, 10); if (!isNaN(n) && n > 0) { setCurrentSL(n); setInputValue(''); setSearchOpen(false); } } }}
-              />
-              <button onClick={() => { const n = parseInt(inputValue, 10); if (!isNaN(n) && n > 0) { setCurrentSL(n); setInputValue(''); setSearchOpen(false); } }}
-                className="px-5 rounded-lg text-sm tracking-widest transition-opacity hover:opacity-80"
-                style={{ background: 'var(--gold)', color: 'var(--pitch)', fontFamily: 'kanit' }}>
-                GO
-              </button>
+      {searchOpen && (() => {
+        const n = parseInt(inputValue, 10);
+        const isEmpty = inputValue === '';
+        const isValid = !isEmpty && !isNaN(n) && n >= 1 && n <= totalPlayers;
+        const isInvalid = !isEmpty && !isValid;
+        const jump = () => { if (isValid) { setCurrentSL(n); setFetchSL(n); setInputValue(''); setSearchOpen(false); } };
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(10,22,40,0.85)', backdropFilter: 'blur(12px)' }}>
+            <div className="glass rounded-2xl p-6 flex flex-col gap-3 anim-up" style={{ minWidth: 360 }}>
+              <p className="text-xs tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>JUMP TO PLAYER</p>
+              <div className="flex gap-2">
+                <input ref={inputRef} type="number" min={1} max={totalPlayers}
+                  className="flex-1 rounded-lg px-4 py-3 text-2xl outline-none"
+                  style={{
+                    background: 'var(--pitch-light)', fontFamily: 'kanit',
+                    border: `2px solid ${isInvalid ? 'rgba(229,62,62,0.8)' : 'var(--gold)'}`,
+                    color: isInvalid ? '#fca5a5' : 'var(--white)',
+                  }}
+                  placeholder={`1 – ${totalPlayers}`} value={inputValue}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    // block decimals and anything that isn't a plain integer
+                    if (raw === '' || /^\d+$/.test(raw)) setInputValue(raw);
+                  }}
+                  onKeyDown={e => { if (e.code === 'Enter') jump(); }}
+                />
+                <button onClick={jump} disabled={!isValid}
+                  className="px-5 rounded-lg text-sm tracking-widest transition-all"
+                  style={{
+                    background: isValid ? 'var(--gold)' : 'rgba(255,255,255,0.06)',
+                    color: isValid ? 'var(--pitch)' : 'var(--muted)',
+                    cursor: isValid ? 'pointer' : 'not-allowed',
+                    fontFamily: 'kanit',
+                  }}>
+                  GO
+                </button>
+              </div>
+              {isInvalid && (
+                <p className="text-[10px] tracking-wide" style={{ color: '#fca5a5', fontFamily: 'kanit' }}>
+                  ENTER A NUMBER BETWEEN 1 AND {totalPlayers}
+                </p>
+              )}
+              {!isInvalid && <p className="text-xs" style={{ color: 'var(--muted)' }}>Press <kbd className="kbd">Esc</kbd> to close</p>}
             </div>
-            <p className="text-xs" style={{ color: 'var(--muted)' }}>Press <kbd className="kbd">Esc</kbd> to close</p>
           </div>
+        );
+      })()}
+
+      {/* DB connection error banner */}
+      {dbError && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 py-2 text-xs"
+          style={{ background: 'rgba(229,62,62,0.9)', backdropFilter: 'blur(8px)', fontFamily: 'kanit' }}>
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+          <span className="tracking-widest text-white">DATABASE DISCONNECTED — RETRYING…</span>
         </div>
       )}
+
+      {/* FAB — bottom left, sits just above ticker */}
+      <div className="fixed z-50" style={{ bottom: '36px', left: '16px' }}>
+        {/* Links — stack upward from button */}
+        <div className="flex flex-col-reverse items-center gap-2 mb-2">
+          {fabOpen && (
+            <>
+              <Link to="/aspl" title="Public Dashboard"
+                className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg"
+                style={{ background: 'rgba(245,200,66,0.18)', border: '1px solid rgba(245,200,66,0.4)', color: 'var(--gold)', backdropFilter: 'blur(12px)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+              </Link>
+              <Link to="/admin/aspl/bids" title="Edit Bids"
+                className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg"
+                style={{ background: 'rgba(0,229,160,0.14)', border: '1px solid rgba(0,229,160,0.35)', color: 'var(--accent)', backdropFilter: 'blur(12px)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+              </Link>
+              <Link to="/admin/aspl" title="ASPL Admin"
+                className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg"
+                style={{ background: 'rgba(47,91,234,0.18)', border: '1px solid rgba(47,91,234,0.4)', color: '#7ba7f7', backdropFilter: 'blur(12px)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 1 0-16 0" /></svg>
+              </Link>
+            </>
+          )}
+        </div>
+        {/* FAB trigger — never moves */}
+        <button onClick={() => setFabOpen(o => !o)}
+          className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-xl"
+          style={{
+            background: fabOpen ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.07)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: 'rgba(255,255,255,0.65)',
+            backdropFilter: 'blur(12px)',
+            transition: 'background 0.2s ease',
+          }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
 
       {/* TICKER */}
       <div className="fixed bottom-0 left-0 right-0 z-50 h-7 flex items-center overflow-hidden" style={{ background: 'linear-gradient(90deg, var(--pitch-mid), rgba(13,31,60,0.98))' }}>
