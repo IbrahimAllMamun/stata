@@ -217,6 +217,9 @@ export const api = {
   getPostBySlug: (slug: string) =>
     request<{ success: boolean; data: Post }>(`/posts/${slug}`),
 
+  getEventBySlug: (slug: string) =>
+    request<{ success: boolean; data: Event }>(`/events/${slug}`),
+
   getEvents: (type?: 'upcoming' | 'past') => {
     const qs = type ? `?type=${type}` : '';
     return request<{ success: boolean; data: Event[]; pagination: Pagination }>(`/events${qs}`);
