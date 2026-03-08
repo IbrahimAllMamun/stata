@@ -298,11 +298,6 @@ export default function AsplPage() {
               <p className="text-3xl font-extrabold" style={{ color: '#F39C12' }}>{season?.total_players ?? 0}</p>
               <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mt-1">Players</p>
             </div>
-            <div className="w-px h-10 bg-white/10" />
-            <div className="text-center">
-              <p className="text-3xl font-extrabold" style={{ color: '#2ECC71' }}>${season?.starting_balance ?? '—'}</p>
-              <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mt-1">Budget</p>
-            </div>
           </div>
 
           {season?.registration_open && (
