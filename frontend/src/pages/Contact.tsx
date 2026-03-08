@@ -84,7 +84,7 @@ export default function Contact() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Name <span className="text-red-400">*</span></label>
                     <input type="text" name="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      required className={inputCls} placeholder="John Doe" />
+                      required className={inputCls} placeholder="Your Name" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-400">*</span></label>
@@ -141,9 +141,9 @@ export default function Contact() {
           {/* Sidebar */}
           <div className="lg:col-span-2 space-y-5">
             {[
-              { icon: MapPin, color: 'bg-[#2F5BEA]', title: 'Address', lines: ['Institute of Statistical Research', 'and Training (ISRT)', 'University of Dhaka, Dhaka 1000'] },
-              { icon: Mail, color: 'bg-[#2ECC71]', title: 'Email', lines: ['stata@isrt.ac.bd', 'info@stata.org.bd'] },
-              { icon: Phone, color: 'bg-[#F39C12]', title: 'Phone', lines: ['+880 123 456 789', '+880 987 654 321'] },
+              { icon: MapPin, color: 'bg-[#2F5BEA]', title: 'Address', lines: ['Institute of Statistical Research and Training', 'University of Dhaka', 'Dhaka 1000'] },
+              { icon: Mail, color: 'bg-[#2ECC71]', title: 'Email', lines: ['info@stataisrt.org'] },
+              { icon: Phone, color: 'bg-[#F39C12]', title: 'Phone', lines: ['+880 123 456 789'] },
             ].map(({ icon: Icon, color, title, lines }) => (
               <div key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-start gap-4">
                 <div className={`w-11 h-11 ${color} rounded-xl flex items-center justify-center flex-shrink-0`}>

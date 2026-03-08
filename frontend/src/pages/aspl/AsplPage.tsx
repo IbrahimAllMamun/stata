@@ -1,9 +1,20 @@
 // src/pages/aspl/AsplPage.tsx
 import { useState, useEffect } from 'react';
-import { Trophy, Users, Wallet, ArrowRight, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Trophy, Users, ArrowRight, X, Loader2, Download } from 'lucide-react';
 import { asplApi, AsplTeam, AsplTeamPlayer, AsplSeason } from '../../lib/api';
 import RegistrationForm from '../../components/aspl/RegistrationForm';
 import './aspl.css';
+
+const posCls = (p: string) => {
+  const u = p?.toUpperCase() || '';
+  if (u === 'GK') return 'pos-GK';
+  if (['LB', 'RB', 'DEF'].includes(u)) return 'pos-DEF';
+  if (['CDM', 'CM', 'MID'].includes(u)) return 'pos-MID';
+  if (['LW', 'RW'].includes(u)) return 'pos-LW';
+  if (['CF', 'FWD'].includes(u)) return 'pos-FWD';
+  return 'pos-MID';
+};
 
 // ── Position badge colours (light-mode) ───────────────────────────────────────
 const posMeta: Record<string, { bg: string; text: string; border: string }> = {
@@ -44,72 +55,114 @@ function PlayerDrawer({ teamId, onClose }: { teamId: number; onClose: () => void
     asplApi.getTeamPlayersByTeam(teamId).then(setPlayers).catch(console.error).finally(() => setLoading(false));
   }, [teamId]);
 
+  const exportCSV = () => {
+    if (!players.length || !team) return;
+    const headers = ['#', 'Name', 'Batch', 'Position', 'Email', 'Phone', 'Price', 'Team'];
+    const rows = players.map(tp => [
+      tp.player.sl,
+      tp.player.name,
+      tp.player.batch,
+      tp.player.playing_position,
+      tp.player.email ?? '',
+      tp.player.phone ?? '',
+      tp.price,
+      team.team_name,
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${team.team_name.replace(/\s+/g, '_')}_squad.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed top-0 right-0 bottom-0 w-[400px] z-50 flex flex-col bg-white shadow-2xl"
-        style={{ animation: 'aspl-slideleft 0.3s cubic-bezier(0.22,1,0.36,1) both' }}>
+      <div className="fixed inset-0 z-40" style={{ background: 'rgba(10,22,40,0.7)', backdropFilter: 'blur(6px)' }} onClick={onClose} />
+      <div className="fixed top-0 right-0 bottom-0 w-[420px] z-50 flex flex-col"
+        style={{ background: 'var(--pitch-mid)', borderLeft: '1px solid var(--border)', animation: 'aspl-slideleft 0.3s cubic-bezier(0.22,1,0.36,1) both' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(245,200,66,0.1)' }}>
           <div>
-            <p className="text-xs font-bold tracking-widest uppercase text-[#2F5BEA] mb-0.5">Squad</p>
-            <h2 className="text-xl font-bold text-[#1F2A44]">{team?.team_name ?? '—'}</h2>
+            <p className="text-[10px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>SQUAD</p>
+            <h2 className="text-lg" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>{team?.team_name ?? '—'}</h2>
           </div>
-          <button onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {!loading && players.length > 0 && (
+              <button onClick={exportCSV} title="Export squad CSV"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{ color: 'var(--accent)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,229,160,0.1)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+              style={{ color: 'var(--muted)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
         {!loading && (
-          <div className="grid grid-cols-3 gap-0 border-b border-gray-100">
+          <div className="flex gap-4 px-6 py-3 shrink-0" style={{ borderBottom: '1px solid rgba(245,200,66,0.08)' }}>
             {[
-              { label: 'Players', value: players.length, color: '#1F2A44' },
-              { label: 'Balance', value: `$${team?.balance ?? '—'}`, color: '#2ECC71' },
-              { label: 'Spent', value: `$${totalSpent}`, color: '#F39C12' },
-            ].map(({ label, value, color }, i) => (
-              <div key={label} className={`px-5 py-4 ${i < 2 ? 'border-r border-gray-100' : ''}`}>
-                <p className="text-xs text-gray-400 mb-1">{label}</p>
-                <p className="text-xl font-bold" style={{ color }}>{value}</p>
+              ['PLAYERS', players.length, 'var(--white)'],
+              ['BALANCE', `$${team?.balance ?? '—'}`, 'var(--accent)'],
+              ['SPENT', `$${totalSpent}`, 'var(--gold)'],
+            ].map(([label, val, color]) => (
+              <div key={String(label)}>
+                <p className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{label}</p>
+                <p className="text-xl" style={{ color: String(color), fontFamily: 'kanit' }}>{val}</p>
               </div>
             ))}
           </div>
         )}
 
         {/* Player list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-4 py-3">
           {loading ? (
-            <div className="flex items-center justify-center h-40 gap-2 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Loading…</span>
+            <div className="flex items-center justify-center h-full gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--muted)' }} />
+              <p className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>LOADING…</p>
             </div>
           ) : players.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-2">
-              <Users className="w-8 h-8 text-gray-200" />
-              <p className="text-sm text-gray-400">No players yet</p>
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <Users className="w-8 h-8" style={{ color: 'var(--muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>No players yet</p>
             </div>
           ) : (
-            <div className="p-4 flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               {players.map((tp, i) => {
                 const photo = asplApi.imageUrl(tp.player?.photo_url);
                 return (
                   <div key={tp.player.sl}
-                    className="flex items-center gap-3 bg-[#F5F7FA] hover:bg-gray-100 px-4 py-3 rounded-xl transition-colors"
-                    style={{ animation: `aspl-slideup 0.3s ease both`, animationDelay: `${i * 0.04}s` }}>
-                    <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center">
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', animation: `aspl-slideup 0.3s ease both`, animationDelay: `${i * 0.04}s` }}>
+                    <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+                      style={{ background: 'rgba(255,255,255,0.06)' }}>
                       {photo
                         ? <img src={photo} alt={tp.player.name} className="w-full h-full object-cover"
                           onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                        : <span className="text-xs font-bold text-gray-400">#{tp.player.sl}</span>}
+                        : <span className="text-xs font-bold" style={{ color: 'var(--muted)' }}>#{tp.player.sl}</span>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#1F2A44] truncate">{tp.player.name}</p>
-                      <p className="text-xs text-gray-400">Batch {tp.player.batch}</p>
+                      <p className="text-sm truncate" style={{ color: 'var(--white)', fontFamily: 'fredoka' }}>{tp.player.name}</p>
+                      <p className="text-[10px]" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>Batch {tp.player.batch}</p>
                     </div>
-                    <PosBadge pos={tp.player.playing_position} />
-                    <span className="text-sm font-bold text-[#F39C12] w-12 text-right">${tp.price}</span>
+                    <span className={`badge text-[10px] px-2 py-0.5 ${posCls(tp.player.playing_position)}`} style={{ fontFamily: 'kanit' }}>
+                      {tp.player.playing_position}
+                    </span>
+                    <span className="text-sm w-14 text-right" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>${tp.price}</span>
                   </div>
                 );
               })}
@@ -140,62 +193,59 @@ function TeamCard({ team, startingBalance, onClick }: { team: AsplTeam; starting
 
   return (
     <div onClick={onClick}
-      className="bg-white rounded-2xl border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group">
-      <div className="h-1.5 w-full" style={{ background: team.color ?? '#2F5BEA' }} />
-      <div className="p-5 flex flex-col gap-4">
-        {/* Logo + name */}
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-[#F5F7FA] flex items-center justify-center border border-gray-100">
-            {logoUrl
-              ? <img src={logoUrl} alt={team.team_name} className="w-full h-full object-contain p-1"
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              : <span className="text-2xl font-extrabold" style={{ color: team.color ?? '#2F5BEA' }}>{team.team_name[0]}</span>
-            }
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-[#1F2A44] text-lg truncate group-hover:text-[#2F5BEA] transition-colors">{team.team_name}</h3>
-            {loading
-              ? <p className="text-xs text-gray-300 animate-pulse">loading…</p>
-              : <p className="text-xs text-gray-400">{count} players</p>}
-          </div>
-          {danger && (
-            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-500 border border-red-100 flex-shrink-0">
-              LOW
-            </span>
-          )}
-        </div>
+      className="glass rounded-2xl p-5 flex flex-col gap-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] relative overflow-hidden"
+      style={{ border: danger ? '1px solid rgba(229,62,62,0.4)' : '1px solid var(--border)' }}>
+      {danger && <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top, rgba(229,62,62,0.07), transparent 70%)' }} />}
 
-        {/* Balance stats */}
-        {!loading && (
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Balance', value: `$${team.balance}`, color: '#2ECC71' },
-              { label: 'Max Bid', value: `$${maxBid}`, color: danger ? '#EF4444' : '#F39C12' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="bg-[#F5F7FA] rounded-xl px-3 py-2.5">
-                <p className="text-[10px] text-gray-400 font-medium mb-0.5">{label}</p>
-                <p className="text-lg font-bold" style={{ color }}>{value}</p>
-              </div>
-            ))}
-          </div>
+      {/* Logo + name */}
+      <div className="flex items-center gap-3">
+        <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+          style={{ background: 'rgba(255,255,255,0.04)', border: `2px solid ${team.color || 'rgba(255,255,255,0.08)'}33` }}>
+          {logoUrl
+            ? <img src={logoUrl} alt={team.team_name} className="w-full h-full object-contain p-1"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            : <span className="text-xl font-bold" style={{ color: team.color || 'var(--gold)' }}>{team.team_name[0]}</span>
+          }
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base truncate" style={{ color: 'var(--white)', fontFamily: 'kanit' }}>{team.team_name}</h2>
+          {loading
+            ? <p className="text-xs animate-pulse" style={{ color: 'var(--muted)' }}>loading…</p>
+            : <p className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>{count} players</p>}
+        </div>
+        {danger && (
+          <span className="text-[10px] tracking-widest px-2 py-1 rounded flex-shrink-0"
+            style={{ background: 'rgba(229,62,62,0.15)', color: '#fca5a5', border: '1px solid rgba(229,62,62,0.4)', fontFamily: 'kanit' }}>
+            LOW
+          </span>
         )}
+      </div>
 
-        {/* Progress */}
-        <div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, background: danger ? '#EF4444' : `linear-gradient(90deg, #2ECC71, ${team.color ?? '#2F5BEA'})` }} />
-          </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-[10px] text-gray-300">$0</span>
-            <span className="text-[10px] text-gray-300">${startingBalance}</span>
-          </div>
+      {/* Balance stats */}
+      {!loading && (
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ['BALANCE', `$${team.balance}`, 'var(--accent)'],
+            ['MAX BID', `$${maxBid}`, danger ? '#fca5a5' : 'var(--gold)'],
+          ].map(([label, val, color]) => (
+            <div key={String(label)} className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{label}</p>
+              <p className="text-lg" style={{ color: String(color), fontFamily: 'kanit' }}>{val}</p>
+            </div>
+          ))}
         </div>
+      )}
 
-        <div className="flex items-center gap-1 text-xs font-semibold text-[#2F5BEA] group-hover:text-[#F39C12] transition-colors">
-          View squad <ChevronRight className="w-3.5 h-3.5" />
+      {/* Progress */}
+      <div>
+        <div className="progress-track"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
+        <div className="flex justify-between mt-3">
+          <span className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>$0</span>
+          <span className="text-[9px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>${startingBalance}</span>
         </div>
       </div>
+
+      <p className="text-[10px] text-center" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>Click to view squad</p>
     </div>
   );
 }
@@ -238,6 +288,23 @@ export default function AsplPage() {
           </h1>
           <p className="text-xl text-gray-300 mb-8">Applied Statistics Premier League</p>
 
+          <div className="flex items-center justify-center gap-10 mt-8 mb-8">
+            <div className="text-center">
+              <p className="text-3xl font-extrabold text-white">{teams.length}</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mt-1">Teams</p>
+            </div>
+            <div className="w-px h-10 bg-white/10" />
+            <div className="text-center">
+              <p className="text-3xl font-extrabold" style={{ color: '#F39C12' }}>{season?.total_players ?? 0}</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mt-1">Players</p>
+            </div>
+            <div className="w-px h-10 bg-white/10" />
+            <div className="text-center">
+              <p className="text-3xl font-extrabold" style={{ color: '#2ECC71' }}>${season?.starting_balance ?? '—'}</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mt-1">Budget</p>
+            </div>
+          </div>
+
           {season?.registration_open && (
             <div className="mt-4">
               <button onClick={() => setShowRegister(true)}
@@ -249,62 +316,69 @@ export default function AsplPage() {
               </p>
             </div>
           )}
+          <div className="mt-6">
+            <Link to="/aspl/players"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
+              <Users className="w-4 h-4" /> View all registered players →
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ── Teams ────────────────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <span className="text-xs font-bold tracking-widest uppercase text-[#2F5BEA] block mb-2">{seasonName}</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1F2A44]">Teams</h2>
-            <p className="text-gray-500 mt-2">Click a team to view their squad and bids</p>
+      <section className="pitch-bg py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <span className="text-xs font-bold tracking-widest uppercase block mb-2" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{seasonName}</span>
+              <h2 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--white)', fontFamily: 'kanit' }}>Teams</h2>
+              <p className="mt-2 text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>Click a team to view their squad and bids</p>
+            </div>
+            {!loading && teams.length > 0 && (
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--muted)' }}>
+                <Trophy className="w-4 h-4" style={{ color: 'var(--gold)' }} />
+                {teams.length} competing teams
+              </div>
+            )}
           </div>
-          {!loading && teams.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Trophy className="w-4 h-4 text-[#F39C12]" />
-              {teams.length} competing teams
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="glass rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-14 h-14 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 rounded" style={{ background: 'rgba(255,255,255,0.08)', width: '70%' }} />
+                      <div className="h-3 rounded" style={{ background: 'rgba(255,255,255,0.04)', width: '40%' }} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="h-14 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    <div className="h-14 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                  </div>
+                  <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+              ))}
+            </div>
+          ) : teams.length === 0 ? (
+            <div className="glass rounded-2xl text-center py-24">
+              <Trophy className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>No teams yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {teams.map((team, i) => (
+                <div key={team.id} style={{ animation: `aspl-slideup 0.4s ease both`, animationDelay: `${i * 0.07}s` }}>
+                  <TeamCard
+                    team={team}
+                    startingBalance={season?.starting_balance ?? 1000}
+                    onClick={() => setExpanded(expanded === team.id ? null : team.id)}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-14 h-14 bg-gray-200 rounded-2xl" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-3/4" />
-                    <div className="h-3 bg-gray-100 rounded w-1/3" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="h-14 bg-gray-100 rounded-xl" />
-                  <div className="h-14 bg-gray-100 rounded-xl" />
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full" />
-              </div>
-            ))}
-          </div>
-        ) : teams.length === 0 ? (
-          <div className="text-center py-24 bg-white rounded-2xl border border-gray-100">
-            <Wallet className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400">No teams yet</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {teams.map((team, i) => (
-              <div key={team.id} style={{ animation: `aspl-slideup 0.4s ease both`, animationDelay: `${i * 0.07}s` }}>
-                <TeamCard
-                  team={team}
-                  startingBalance={season?.starting_balance ?? 1000}
-                  onClick={() => setExpanded(expanded === team.id ? null : team.id)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       {expanded && <PlayerDrawer teamId={expanded} onClose={() => setExpanded(null)} />}
