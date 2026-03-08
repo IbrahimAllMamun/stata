@@ -16,7 +16,7 @@ const quickLinks = [
 
 const contact = [
   { icon: MapPin, text: 'ISRT, University of Dhaka' },
-  { icon: Mail, text: 'stata@isrt.ac.bd' },
+  { icon: Mail, text: 'info@stataisrt.org' },
   { icon: Phone, text: '+880 123 456 789' },
 ];
 

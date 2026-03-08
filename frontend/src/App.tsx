@@ -23,6 +23,7 @@ import ManageMembers from './pages/admin/ManageMembers';
 import Messages from './pages/admin/Messages';
 import ManageGallery from './pages/admin/ManageGallery';
 import AsplPage from './pages/aspl/AsplPage';
+import PlayersPage from './pages/aspl/PlayersPage';
 import AsplAdmin from './pages/admin/aspl/AsplAdmin';
 import AsplSlideshow from './pages/admin/aspl/AsplSlideshow';
 import SeasonDetail from './pages/admin/aspl/SeasonDetail';
@@ -75,6 +76,7 @@ function App() {
             <Route path="signup" element={<Navigate to="/register" replace />} />
             {/* Public ASPL page */}
             <Route path="aspl" element={<AsplPage />} />
+            <Route path="aspl/players" element={<PlayersPage />} />
             {/* Admin + Moderator */}
             <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="admin/posts" element={<AdminRoute><ManagePosts /></AdminRoute>} />
