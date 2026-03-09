@@ -199,6 +199,18 @@ model GalleryPhoto {
   @@map("gallery_photos")
 }
 
+// ── Visitor Analytics ─────────────────────────────────────────────────────────
+
+model VisitorLog {
+  id         Int      @id @default(autoincrement())
+  ip         String   @db.VarChar(45)
+  visited_at DateTime @default(now()) @db.Timestamptz()
+
+  @@index([ip])
+  @@index([visited_at])
+  @@map("visitor_logs")
+}
+
 // ── ASPL ─────────────────────────────────────────────────────────────────────
 
 enum AsplSport {

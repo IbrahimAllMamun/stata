@@ -60,3 +60,12 @@ router.get('/gallery', getGallery);
 router.get('/gallery/dates', getGalleryDates);
 
 module.exports = router;
+
+// Visitor analytics
+const { trackVisitor, getVisitorStats } = require('../controllers/visitor.controller');
+const trackLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 5,
+  standardHeaders: true, legacyHeaders: false,
+});
+router.post('/track', trackLimiter, trackVisitor);
+router.get('/visitors/stats', getVisitorStats);

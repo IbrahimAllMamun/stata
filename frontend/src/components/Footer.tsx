@@ -1,7 +1,8 @@
 // src/components/Footer.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 // import { Facebook, Twitter, Instagram, Mail, MapPin, Phone, Heart } from 'lucide-react';
-import { Facebook, Mail, MapPin, Phone, Heart } from 'lucide-react';
+import { Facebook, Mail, MapPin, Phone, Heart, Eye, Users } from 'lucide-react';
+import { visitorApi } from '../lib/api';
 import { Link } from 'react-router-dom';
 import LogoLoaderFull from './LogoLoaderFull';
 
@@ -28,6 +29,15 @@ const socials = [
 
 export default function Footer() {
   const [logoKey, setLogoKey] = useState(0);
+  const [stats, setStats] = useState<{ today: number; lifetime: number } | null>(null);
+
+  useEffect(() => {
+    visitorApi.track();
+    visitorApi.getStats()
+      .then(setStats)
+      .catch(() => {});
+  }, []);
+
   return (
     <footer className="relative bg-[#1F2A44] text-white overflow-hidden mt-auto">
       {/* Top gradient accent */}
@@ -37,6 +47,27 @@ export default function Footer() {
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-[#2F5BEA] rounded-full opacity-5" />
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#F39C12] rounded-full opacity-5" />
+      </div>
+
+      {/* Visitor counter bar */}
+      <div className="relative border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-center gap-6">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Eye className="w-3.5 h-3.5 text-[#2F5BEA]/70" />
+            <span>Today</span>
+            <span className="font-bold text-gray-300 tabular-nums">
+              {stats ? stats.today.toLocaleString() : '—'}
+            </span>
+          </div>
+          <div className="w-px h-3.5 bg-white/10" />
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Users className="w-3.5 h-3.5 text-[#F39C12]/70" />
+            <span>All-time</span>
+            <span className="font-bold text-gray-300 tabular-nums">
+              {stats ? stats.lifetime.toLocaleString() : '—'}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-8">

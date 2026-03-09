@@ -160,6 +160,12 @@ export interface GalleryGroup {
   photos: GalleryPhoto[];
 }
 
+
+export const visitorApi = {
+  track: () => fetch(`${BASE_URL}/track`, { method: 'POST' }).catch(() => {}),
+  getStats: (): Promise<{ today: number; lifetime: number }> =>
+    fetch(`${BASE_URL}/visitors/stats`).then(r => r.json()),
+};
 export const contactApi = {
   submit: (data: { name: string; email: string; subject: string; message: string; batch?: string; designation?: string }) =>
     request<{ success: boolean; message: string; data: { id: string } }>('/contact', {
