@@ -245,15 +245,12 @@ model AsplSeason {
 model AsplRegistration {
   id               Int                    @id @default(autoincrement())
   season_id        Int
-  email            String                 @db.VarChar(255)
-  full_name        String                 @db.VarChar(100)
-  batch            Int
+  email            String                 @db.VarChar(255)  // must match a Member.email
   playing_position String                 @db.VarChar(20)
-  phone            String                 @db.VarChar(20)
   photo_url        String?
   status           AsplRegistrationStatus @default(PENDING)
-  conflict_note    String?                // set when overwriting existing registration
-  admin_note       String?                // admin rejection/approval note
+  conflict_note    String?
+  admin_note       String?
   player_sl        Int?                   // set when approved → links to AsplPlayer
   created_at       DateTime               @default(now())
   updated_at       DateTime               @updatedAt
@@ -267,13 +264,10 @@ model AsplRegistration {
 model AsplPlayer {
   sl               Int     @id @unique @map("sl")
   season_id        Int
-  name             String  @db.VarChar(100)
-  batch            Int
+  member_email     String  @db.VarChar(255)  // join key → Member.email
   playing_position String  @db.VarChar(20)
-  email            String? @db.VarChar(255)
-  phone            String? @db.VarChar(20)
   photo_url        String?
-  status           Boolean @default(false)
+  status           Boolean @default(false)   // false=available, true=sold
   randomized       Boolean @default(false)
 
   season       AsplSeason       @relation(fields: [season_id], references: [id], onDelete: Cascade)

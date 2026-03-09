@@ -480,14 +480,17 @@ export interface AsplSeason {
 export interface AsplPlayer {
   sl: number;
   season_id: number;
-  name: string;
-  batch: number;
+  member_email: string;
   playing_position: string;
-  email?: string;
-  phone?: string;
   photo_url?: string | null;
-  status: boolean;
+  status: boolean;      // false = available, true = sold
   randomized: boolean;
+  // enriched from Member at query time:
+  name: string;
+  batch: number | null;
+  phone?: string | null;
+  job_title?: string | null;
+  organisation?: string | null;
 }
 
 export type AsplRegistrationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -496,10 +499,7 @@ export interface AsplRegistration {
   id: number;
   season_id: number;
   email: string;
-  full_name: string;
-  batch: number;
   playing_position: string;
-  phone?: string;
   photo_url?: string | null;
   status: AsplRegistrationStatus;
   conflict_note?: string | null;
@@ -507,6 +507,14 @@ export interface AsplRegistration {
   player_sl?: number | null;
   created_at: string;
   updated_at: string;
+  // enriched from Member when returned by lookup / getRegistrations:
+  member?: {
+    full_name: string;
+    batch: number;
+    phone_number: string;
+    job_title?: string | null;
+    organisation?: string | null;
+  } | null;
 }
 
 export interface AsplTeam {
@@ -578,13 +586,18 @@ export const asplApi = {
 
   // Registrations
   register: (formData: FormData) =>
-    asplRequest<{ message: string; registration: AsplRegistration; updated: boolean }>(
+    asplRequest<{ message: string; registration: AsplRegistration; member: { full_name: string; batch: number }; updated: boolean }>(
       '/registrations', { method: 'POST', isFormData: true, formBody: formData }
+    ),
+  updatePlayerDetails: (formData: FormData) =>
+    asplRequest<{ message: string; registration: AsplRegistration }>(
+      '/registrations/update-player', { method: 'POST', isFormData: true, formBody: formData }
     ),
   checkRegistration: (email: string, seasonId: number) =>
     asplRequest<AsplRegistration>(`/registrations/check?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
   lookupRegistration: (email: string, seasonId: number) =>
-    asplRequest<AsplRegistration>(`/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
+    asplRequest<AsplRegistration & { member: { full_name: string; batch: number; phone_number: string; job_title?: string | null; organisation?: string | null } | null }>(
+      `/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
   getRegistrations: (seasonId?: number, status?: string) =>
     asplRequest<AsplRegistration[]>(
       `/registrations?${seasonId ? `season_id=${seasonId}` : ''}${status ? `&status=${status}` : ''}`

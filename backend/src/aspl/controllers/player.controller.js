@@ -1,7 +1,29 @@
 // src/aspl/controllers/player.controller.js
 const prisma = require('../../config/database');
 
-// GET /api/aspl/players?season_id=X
+// Join Member data onto player records so callers get name/batch/phone
+async function enrichPlayers(players) {
+  if (!players.length) return [];
+  const emails  = [...new Set(players.map(p => p.member_email))];
+  const members = await prisma.member.findMany({
+    where:  { email: { in: emails } },
+    select: { email: true, full_name: true, batch: true, phone_number: true, job_title: true, organisation: true },
+  });
+  const map = Object.fromEntries(members.map(m => [m.email, m]));
+  return players.map(p => {
+    const m = map[p.member_email];
+    return {
+      ...p,
+      name:         m?.full_name    ?? p.member_email,
+      batch:        m?.batch        ?? null,
+      phone:        m?.phone_number ?? null,
+      job_title:    m?.job_title    ?? null,
+      organisation: m?.organisation ?? null,
+    };
+  });
+}
+
+// GET /api/aspl/players?season_id=X  or  /players/:sl
 const getPlayers = async (req, res) => {
   const { sl } = req.params;
   const { season_id } = req.query;
@@ -9,13 +31,13 @@ const getPlayers = async (req, res) => {
     if (sl) {
       const player = await prisma.asplPlayer.findUnique({ where: { sl: parseInt(sl) } });
       if (!player) return res.status(404).json({ detail: 'Player not found.' });
-      return res.json(player);
+      return res.json((await enrichPlayers([player]))[0]);
     }
     const players = await prisma.asplPlayer.findMany({
-      where: season_id ? { season_id: parseInt(season_id) } : undefined,
+      where:   season_id ? { season_id: parseInt(season_id) } : undefined,
       orderBy: { sl: 'asc' },
     });
-    return res.json(players);
+    return res.json(await enrichPlayers(players));
   } catch (err) {
     console.error('getPlayers error:', err);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -26,7 +48,7 @@ const getPlayers = async (req, res) => {
 const getRandomPlayer = async (req, res) => {
   const { season_id } = req.query;
   const where = {
-    status: false,
+    status:    false,
     randomized: false,
     ...(season_id && { season_id: parseInt(season_id) }),
   };
@@ -37,13 +59,13 @@ const getRandomPlayer = async (req, res) => {
       if (!available.length) {
         await prisma.asplPlayer.updateMany({
           where: season_id ? { season_id: parseInt(season_id) } : {},
-          data: { randomized: false },
+          data:  { randomized: false },
         });
         continue;
       }
-      const randomPlayer = available[Math.floor(Math.random() * available.length)];
-      await prisma.asplPlayer.update({ where: { sl: randomPlayer.sl }, data: { randomized: true } });
-      return res.json(randomPlayer);
+      const pick = available[Math.floor(Math.random() * available.length)];
+      await prisma.asplPlayer.update({ where: { sl: pick.sl }, data: { randomized: true } });
+      return res.json((await enrichPlayers([pick]))[0]);
     }
   } catch (err) {
     console.error('getRandomPlayer error:', err);

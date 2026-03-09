@@ -34,7 +34,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [result, setResult] = useState<{ message: string; registration: AsplRegistration; updated: boolean } | null>(null);
+  const [result, setResult] = useState<{ message: string; registration: AsplRegistration; member: { full_name: string; batch: number }; updated: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const positions = asplApi.getPositions(season.sport);
@@ -70,12 +70,9 @@ export default function RegistrationForm({ season, onClose }: Props) {
     setFormError(''); setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('season_id', String(season.id));
-      fd.append('email', member!.email);
-      fd.append('full_name', member!.full_name);
-      fd.append('batch', String(member!.batch));
+      fd.append('season_id',        String(season.id));
+      fd.append('email',            member!.email);
       fd.append('playing_position', position);
-      fd.append('phone', member!.phone_number);
       if (photo) fd.append('photo', photo);
       const res = await asplApi.register(fd);
       setResult(res);
@@ -315,11 +312,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
             <div className="rounded-xl px-4 py-3 mb-6 text-left space-y-2"
               style={{ background: 'rgba(255,255,255,0.04)' }}>
               {[
-                ['Name', result.registration.full_name],
-                ['Email', result.registration.email],
-                ['Batch', String(result.registration.batch)],
+                ['Name',     result.member.full_name],
+                ['Email',    result.registration.email],
+                ['Batch',    String(result.member.batch)],
                 ['Position', result.registration.playing_position],
-                ['Status', result.registration.status],
+                ['Status',   result.registration.status],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between text-xs">
                   <span className="text-white/40 tracking-wide" style={{ fontFamily: 'kanit' }}>{k}</span>

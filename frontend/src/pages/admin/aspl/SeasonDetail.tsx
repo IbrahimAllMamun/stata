@@ -496,12 +496,12 @@ export default function SeasonDetail() {
                           onClick={() => setRegExpanded(isExpanded ? null : reg.id)}>
                           <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
                             {photoUrl
-                              ? <img src={photoUrl} alt={reg.full_name} className="w-full h-full object-cover" />
-                              : <span className="text-sm font-bold text-gray-400">{reg.full_name[0]}</span>}
+                              ? <img src={photoUrl} alt={reg.member?.full_name ?? reg.email} className="w-full h-full object-cover" />
+                              : <span className="text-sm font-bold text-gray-400">{(reg.member?.full_name ?? reg.email)[0].toUpperCase()}</span>}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-semibold text-[#1F2A44] text-sm">{reg.full_name}</p>
+                              <p className="font-semibold text-[#1F2A44] text-sm">{reg.member?.full_name ?? reg.email}</p>
                               {isConflict && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                 reg.status === 'PENDING'  ? 'bg-amber-50 text-amber-600' :
@@ -509,7 +509,7 @@ export default function SeasonDetail() {
                                 'bg-red-50 text-red-500'}`}>{reg.status}</span>
                             </div>
                             <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                              <span>Batch {reg.batch}</span>
+                              <span>Batch {reg.member?.batch ?? '—'}</span>
                               <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{reg.playing_position}</span>
                               <span className="truncate">{reg.email}</span>
                             </div>
@@ -545,8 +545,8 @@ export default function SeasonDetail() {
                             )}
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-500">
                               <span className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-gray-300" />{reg.email}</span>
-                              <span className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-gray-300" />{reg.phone ?? '—'}</span>
-                              <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-gray-300" />Batch {reg.batch}</span>
+                              <span className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-gray-300" />{reg.member?.phone_number ?? '—'}</span>
+                              <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-gray-300" />Batch {reg.member?.batch ?? '—'}</span>
                               <span className="flex items-center gap-1.5"><Users className="w-3 h-3 text-gray-300" />{reg.playing_position}</span>
                             </div>
                             <p className="text-[10px] text-gray-400">
