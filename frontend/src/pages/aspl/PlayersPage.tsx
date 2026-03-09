@@ -11,7 +11,7 @@ function downloadCSV(players: AsplPlayer[], seasonName: string) {
         p.name,
         p.batch,
         p.playing_position,
-        p.email ?? '',
+        p.member_email ?? '',
         p.phone ?? '',
     ]);
     const csv = [headers, ...rows]
@@ -91,15 +91,15 @@ export default function PlayersPage() {
         let list = players.filter(p => {
             const matchSearch = !search ||
                 p.name.toLowerCase().includes(search.toLowerCase()) ||
-                (p.email ?? '').toLowerCase().includes(search.toLowerCase());
+                (p.member_email ?? '').toLowerCase().includes(search.toLowerCase());
             const matchBatch = batchFilter === 'ALL' || String(p.batch) === batchFilter;
             const matchPos = posFilter === 'ALL' || p.playing_position === posFilter;
             return matchSearch && matchBatch && matchPos;
         });
 
         list = [...list].sort((a, b) => {
-            let av: string | number = a[sortKey];
-            let bv: string | number = b[sortKey];
+            let av: string | number = a[sortKey] ?? '';
+            let bv: string | number = b[sortKey] ?? '';
             if (typeof av === 'string') av = av.toLowerCase();
             if (typeof bv === 'string') bv = bv.toLowerCase();
             if (av < bv) return sortDir === 'asc' ? -1 : 1;

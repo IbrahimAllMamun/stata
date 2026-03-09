@@ -64,7 +64,7 @@ function PlayerDrawer({ teamId, onClose }: { teamId: number; onClose: () => void
       tp.player.name,
       tp.player.batch,
       tp.player.playing_position,
-      tp.player.email ?? '',
+      tp.player.member_email ?? '',
       tp.player.phone ?? '',
       tp.price,
       team.team_name,
