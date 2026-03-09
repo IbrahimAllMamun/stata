@@ -23,6 +23,18 @@ const registerSchema = Joi.object({
     .messages({ 'any.required': 'notify_events selection is required' }),
 });
 
+const updateMemberSchema = Joi.object({
+  email: Joi.string().email().lowercase().required(),
+  batch: Joi.number().integer().min(1).max(999).optional(),
+  full_name: Joi.string().trim().min(2).max(100).optional(),
+  phone_number: Joi.string().trim().min(7).max(20).optional(),
+  alternative_phone: Joi.string().trim().min(7).max(20).optional().allow('', null),
+  job_title: Joi.string().trim().max(100).optional().allow('', null),
+  organisation: Joi.string().trim().max(200).optional().allow('', null),
+  organisation_address: Joi.string().trim().max(300).optional().allow('', null),
+  notify_events: Joi.boolean().truthy('true').falsy('false').optional(),
+});
+
 const loginSchema = Joi.object({
   username: Joi.string().required(),
   password: Joi.string().required(),
@@ -45,9 +57,9 @@ const updatePostSchema = Joi.object({
 });
 
 const submitPostSchema = Joi.object({
-  title:        Joi.string().trim().min(3).max(200).required(),
-  content:      Joi.string().min(10).required(),
-  author_name:  Joi.string().trim().min(2).max(100).required(),
+  title: Joi.string().trim().min(3).max(200).required(),
+  content: Joi.string().min(10).required(),
+  author_name: Joi.string().trim().min(2).max(100).required(),
   author_batch: Joi.number().integer().min(1).max(3000).required(),
 });
 
@@ -76,16 +88,16 @@ const assignMemberSchema = Joi.object({
 });
 
 const contactSchema = Joi.object({
-  name:        Joi.string().trim().min(2).max(100).required(),
-  email:       Joi.string().email().required(),
-  subject:     Joi.string().trim().min(3).max(200).required(),
-  message:     Joi.string().trim().min(10).max(5000).required(),
-  batch:       Joi.number().integer().min(1).max(3000).optional().allow('', null),
+  name: Joi.string().trim().min(2).max(100).required(),
+  email: Joi.string().email().required(),
+  subject: Joi.string().trim().min(3).max(200).required(),
+  message: Joi.string().trim().min(10).max(5000).required(),
+  batch: Joi.number().integer().min(1).max(3000).optional().allow('', null),
   designation: Joi.string().trim().max(150).optional().allow('', null),
 });
 
 module.exports = {
-  registerSchema, loginSchema,
+  registerSchema, updateMemberSchema, loginSchema,
   postSchema, updatePostSchema, submitPostSchema,
   eventSchema, updateEventSchema,
   committeeSchema, assignMemberSchema,

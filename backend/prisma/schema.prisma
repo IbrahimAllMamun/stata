@@ -23,11 +23,42 @@ model Member {
   created_at           DateTime         @default(now())
 
   committee_members    CommitteeMember[]
+  update_requests      MemberUpdateRequest[]
 
   @@index([batch])
   @@index([email])
   @@index([status])
   @@map("members")
+}
+
+model MemberUpdateRequest {
+  id                   String                    @id @default(uuid())
+  member_id            String
+  // Proposed new values (null = no change for that field)
+  batch                Int?
+  full_name            String?
+  phone_number         String?
+  alternative_phone    String?
+  job_title            String?
+  organisation         String?
+  organisation_address String?
+  notify_events        Boolean?
+  status               MemberUpdateStatus        @default(PENDING)
+  admin_note           String?
+  created_at           DateTime                  @default(now())
+  reviewed_at          DateTime?
+
+  member  Member  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@index([member_id])
+  @@index([status])
+  @@map("member_update_requests")
+}
+
+enum MemberUpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum MemberStatus {

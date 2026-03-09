@@ -116,7 +116,25 @@ const checkRegistration = async (req, res) => {
   }
 };
 
-// ── Admin: GET /api/aspl/registrations?season_id=&status= ────────────────────
+// ── Public: GET /api/aspl/registrations/lookup?email=&season_id= ─────────────
+// Returns full registration data including phone for pre-filling update form
+const lookupRegistration = async (req, res) => {
+  const { email, season_id } = req.query;
+  if (!email || !season_id) return res.status(400).json({ error: 'email and season_id required.' });
+
+  try {
+    const reg = await prisma.asplRegistration.findUnique({
+      where: { email_season_id: { email: email.toLowerCase().trim(), season_id: parseInt(season_id) } },
+    });
+    if (!reg) return res.status(404).json({ error: 'No registration found for that email.' });
+    return res.json(reg); // full data including phone
+  } catch (err) {
+    console.error('lookupRegistration error:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+
 const getRegistrations = async (req, res) => {
   const { season_id, status } = req.query;
   try {
@@ -261,6 +279,7 @@ function sanitize(reg) {
 module.exports = {
   register,
   checkRegistration,
+  lookupRegistration,
   getRegistrations,
   approveRegistration,
   rejectRegistration,

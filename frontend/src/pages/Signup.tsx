@@ -255,6 +255,13 @@ export default function Register() {
               : 'Complete Registration'
             }
           </button>
+
+          <p className="text-center text-sm text-gray-400">
+            Already a member?{' '}
+            <a href="/update-profile" className="text-[#2F5BEA] font-medium hover:underline">
+              Update your profile
+            </a>
+          </p>
         </form>
       </div>
     </div>

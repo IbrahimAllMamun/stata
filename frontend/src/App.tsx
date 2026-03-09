@@ -13,6 +13,7 @@ import PostView from './pages/PostView';
 import SubmitPost from './pages/SubmitPost';
 import Login from './pages/Login';
 import Register from './pages/Signup';
+import UpdateProfile from './pages/UpdateProfile';
 import People from './pages/People';
 import AdminDashboard from './pages/admin/Dashboard';
 import ManagePosts from './pages/admin/ManagePosts';
@@ -73,6 +74,7 @@ function App() {
             <Route path="people" element={<People />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="update-profile" element={<UpdateProfile />} />
             <Route path="signup" element={<Navigate to="/register" replace />} />
             {/* Public ASPL page */}
             <Route path="aspl" element={<AsplPage />} />

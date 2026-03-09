@@ -196,6 +196,25 @@ export const api = {
       body: data,
     }),
 
+  lookupMember: (email: string) =>
+    request<{ success: boolean; data: Member & { status: string } }>(`/lookup-member?email=${encodeURIComponent(email)}`),
+
+  updateMember: (data: {
+    email: string;
+    batch?: number;
+    full_name?: string;
+    phone_number?: string;
+    notify_events?: boolean;
+    alternative_phone?: string;
+    job_title?: string;
+    organisation?: string;
+    organisation_address?: string;
+  }) =>
+    request<{ success: boolean; message: string; data: { id: string; full_name: string; status: string } }>('/update-member', {
+      method: 'PUT',
+      body: data,
+    }),
+
   getMembers: (params?: { batch?: number; page?: number; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.batch) qs.set('batch', String(params.batch));
@@ -331,6 +350,24 @@ export const adminApi = {
 
   getPendingCount: () =>
     request<{ success: boolean; data: { count: number } }>('/admin/members/pending-count'),
+
+  getMemberUpdateRequests: (status = 'PENDING') =>
+    request<{ success: boolean; data: any[] }>(`/admin/member-updates?status=${status}`),
+
+  getPendingUpdateCount: () =>
+    request<{ success: boolean; data: { count: number } }>('/admin/member-updates/count'),
+
+  approveMemberUpdate: (id: string, admin_note?: string) =>
+    request<{ success: boolean; message: string }>(`/admin/member-updates/${id}/approve`, {
+      method: 'POST',
+      body: { admin_note },
+    }),
+
+  rejectMemberUpdate: (id: string, admin_note?: string) =>
+    request<{ success: boolean; message: string }>(`/admin/member-updates/${id}/reject`, {
+      method: 'POST',
+      body: { admin_note },
+    }),
 
   createModerator: (username: string, password: string) =>
     request<{ success: boolean; data: { id: string; username: string; role: string } }>('/admin/moderators', {
@@ -496,7 +533,7 @@ export interface AsplSettings {
 }
 
 export const FOOTBALL_POSITIONS = ['GK', 'DEF', 'LB', 'RB', 'CDM', 'CM', 'MID', 'LW', 'RW', 'CF', 'FWD'];
-export const CRICKET_POSITIONS  = ['BAT', 'BOWL', 'AR', 'WK'];
+export const CRICKET_POSITIONS = ['BAT', 'BOWL', 'AR', 'WK'];
 
 export const asplApi = {
   // Seasons
@@ -546,6 +583,8 @@ export const asplApi = {
     ),
   checkRegistration: (email: string, seasonId: number) =>
     asplRequest<AsplRegistration>(`/registrations/check?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
+  lookupRegistration: (email: string, seasonId: number) =>
+    asplRequest<AsplRegistration>(`/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
   getRegistrations: (seasonId?: number, status?: string) =>
     asplRequest<AsplRegistration[]>(
       `/registrations?${seasonId ? `season_id=${seasonId}` : ''}${status ? `&status=${status}` : ''}`
@@ -575,4 +614,3 @@ export const asplApi = {
     return `${base}${path}`;
   },
 };
-

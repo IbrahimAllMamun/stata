@@ -4,9 +4,9 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const validate = require('../middlewares/validate');
 const upload = require('../config/upload');
-const { registerSchema, contactSchema, submitPostSchema } = require('../validators');
+const { registerSchema, contactSchema, submitPostSchema, updateMemberSchema } = require('../validators');
 
-const { register, getMembers, exportCSV, getApprovedBatches } = require('../controllers/member.controller');
+const { register, getMembers, exportCSV, getApprovedBatches, lookupMember, updateMember } = require('../controllers/member.controller');
 const { getCommittees } = require('../controllers/committee.controller');
 const { getPosts, getPostBySlug, submitPost } = require('../controllers/post.controller');
 const { getEvents, getEventBySlug } = require('../controllers/event.controller');
@@ -36,6 +36,8 @@ router.post('/register', registerLimiter, validate(registerSchema), register);
 router.get('/members', getMembers);
 router.get('/members/export', exportCSV);
 router.get('/members/batches', getApprovedBatches);
+router.get('/lookup-member', lookupMember);
+router.put('/update-member', validate(updateMemberSchema), updateMember);
 
 // Posts (public)
 router.get('/posts', getPosts);

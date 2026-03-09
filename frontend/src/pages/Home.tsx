@@ -159,13 +159,13 @@ export default function Home() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 py-24 md:py-32 text-center">
           <div className="inline-block bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
-            Cohort of ISRT
+            Together Beyond the Classroom
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight">
             Welcome to <span className="text-[#F39C12]">STATA</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Together Beyond the Classroom
+            Cohort of ISRT
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/events"

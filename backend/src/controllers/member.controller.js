@@ -151,7 +151,178 @@ const getApprovedBatches = async (req, res, next) => {
   }
 };
 
-// ─── Admin ────────────────────────────────────────────────────────────────────
+// ─── Public: GET /lookup-member?email= ───────────────────────────────────────
+// Returns member data (excluding sensitive status info) for pre-filling the update form
+const lookupMember = async (req, res, next) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+    const member = await prisma.member.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      select: {
+        id: true, batch: true, full_name: true, email: true,
+        phone_number: true, alternative_phone: true,
+        job_title: true, organisation: true,
+        organisation_address: true, notify_events: true, status: true,
+      },
+    });
+
+    if (!member) return res.status(404).json({ success: false, message: 'No member found with that email.' });
+
+    res.json({ success: true, data: member });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Public: PUT /update-member ───────────────────────────────────────────────
+// Creates a pending update request — does NOT touch the member directly.
+// An admin must approve before changes go live.
+const updateMember = async (req, res, next) => {
+  try {
+    const {
+      email, batch, full_name, phone_number,
+      alternative_phone, job_title, organisation,
+      organisation_address, notify_events,
+    } = req.body;
+
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+    const member = await prisma.member.findUnique({ where: { email: email.toLowerCase().trim() } });
+    if (!member) return res.status(404).json({ success: false, message: 'No member found with that email.' });
+
+    if (member.status === 'ARCHIVED') {
+      return res.status(403).json({ success: false, message: 'This account has been archived and cannot be updated.' });
+    }
+
+    // Cancel any existing pending update for this member (superseded)
+    await prisma.memberUpdateRequest.updateMany({
+      where: { member_id: member.id, status: 'PENDING' },
+      data: { status: 'REJECTED', admin_note: 'Superseded by a newer update request.' },
+    });
+
+    // Create pending request — only store fields that are actually provided
+    const request = await prisma.memberUpdateRequest.create({
+      data: {
+        member_id: member.id,
+        batch: batch !== undefined ? parseInt(batch) : null,
+        full_name: full_name !== undefined ? full_name.trim() : null,
+        phone_number: phone_number !== undefined ? phone_number.trim() : null,
+        alternative_phone: alternative_phone?.trim() || null,
+        job_title: job_title?.trim() || null,
+        organisation: organisation?.trim() || null,
+        organisation_address: organisation_address?.trim() || null,
+        notify_events: notify_events !== undefined ? notify_events : null,
+        status: 'PENDING',
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Your update request has been submitted and is pending admin approval. Changes will be applied once reviewed.',
+      data: { request_id: request.id },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: GET /admin/member-updates ────────────────────────────────────────
+const getMemberUpdateRequests = async (req, res, next) => {
+  try {
+    const { status = 'PENDING' } = req.query;
+    const requests = await prisma.memberUpdateRequest.findMany({
+      where: { status },
+      orderBy: { created_at: 'asc' },
+      include: {
+        member: {
+          select: {
+            id: true, full_name: true, email: true, batch: true,
+            phone_number: true, alternative_phone: true,
+            job_title: true, organisation: true,
+            organisation_address: true, notify_events: true, status: true,
+          },
+        },
+      },
+    });
+    res.json({ success: true, data: requests });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: POST /admin/member-updates/:id/approve ───────────────────────────
+const approveMemberUpdate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { admin_note } = req.body;
+
+    const request = await prisma.memberUpdateRequest.findUnique({
+      where: { id }, include: { member: true },
+    });
+    if (!request) return res.status(404).json({ success: false, message: 'Update request not found.' });
+    if (request.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: 'This request has already been reviewed.' });
+    }
+
+    // Build update payload from only non-null fields
+    const updateData = {};
+    if (request.batch !== null) updateData.batch = request.batch;
+    if (request.full_name !== null) updateData.full_name = request.full_name;
+    if (request.phone_number !== null) updateData.phone_number = request.phone_number;
+    if (request.alternative_phone !== null) updateData.alternative_phone = request.alternative_phone;
+    if (request.job_title !== null) updateData.job_title = request.job_title;
+    if (request.organisation !== null) updateData.organisation = request.organisation;
+    if (request.organisation_address !== null) updateData.organisation_address = request.organisation_address;
+    if (request.notify_events !== null) updateData.notify_events = request.notify_events;
+
+    await prisma.$transaction([
+      prisma.member.update({ where: { id: request.member_id }, data: updateData }),
+      prisma.memberUpdateRequest.update({
+        where: { id },
+        data: { status: 'APPROVED', admin_note: admin_note ?? null, reviewed_at: new Date() },
+      }),
+    ]);
+
+    res.json({ success: true, message: 'Update approved and applied to member profile.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: POST /admin/member-updates/:id/reject ────────────────────────────
+const rejectMemberUpdate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { admin_note } = req.body;
+
+    const request = await prisma.memberUpdateRequest.findUnique({ where: { id } });
+    if (!request) return res.status(404).json({ success: false, message: 'Update request not found.' });
+    if (request.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: 'This request has already been reviewed.' });
+    }
+
+    await prisma.memberUpdateRequest.update({
+      where: { id },
+      data: { status: 'REJECTED', admin_note: admin_note ?? null, reviewed_at: new Date() },
+    });
+
+    res.json({ success: true, message: 'Update request rejected.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: GET /admin/member-updates/count ──────────────────────────────────
+const getPendingUpdateCount = async (req, res, next) => {
+  try {
+    const count = await prisma.memberUpdateRequest.count({ where: { status: 'PENDING' } });
+    res.json({ success: true, data: { count } });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // Get members by status (pending / approved / archived)
 const getMembersByStatus = async (req, res, next) => {
@@ -229,5 +400,7 @@ const deleteMember = async (req, res, next) => {
 
 module.exports = {
   register, getMembers, exportCSV, getApprovedBatches,
+  lookupMember, updateMember,
+  getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount,
   getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember,
 };

@@ -15,7 +15,7 @@ const { createCommittee, assignMember, deleteCommittee } = require('../controlle
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
-const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches } = require('../controllers/member.controller');
+const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount } = require('../controllers/member.controller');
 const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
 
 // Public auth
@@ -34,6 +34,12 @@ router.get('/members/export-csv', exportCSV);
 router.get('/members/batches', getApprovedBatches);
 router.patch('/members/:id/status', updateMemberStatus);
 router.delete('/members/:id', deleteMember);
+
+// Member update requests — admin and moderator
+router.get('/member-updates', getMemberUpdateRequests);
+router.get('/member-updates/count', getPendingUpdateCount);
+router.post('/member-updates/:id/approve', approveMemberUpdate);
+router.post('/member-updates/:id/reject', rejectMemberUpdate);
 
 // Moderator management — admin only
 router.post('/moderators', requireRole('admin'), createModerator);
