@@ -15,9 +15,10 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-  const existing = await prisma.admin.findFirst({ where: { role: 'admin' } });
+  // Check if ANY record exists in admin table
+  const adminCount = await prisma.admin.count();
 
-  if (!existing) {
+  if (adminCount === 0) {
     await prisma.admin.create({
       data: {
         username: newUsername,
@@ -27,11 +28,24 @@ async function main() {
     });
     console.log(`Admin created: ${newUsername}`);
   } else {
-    await prisma.admin.update({
-      where: { id: existing.id },
-      data: { username: newUsername, password: hashedPassword },
-    });
-    console.log(`Admin updated: ${existing.username} → ${newUsername}`);
+    const existing = await prisma.admin.findFirst({ where: { role: 'admin' } });
+    if (existing) {
+      await prisma.admin.update({
+        where: { id: existing.id },
+        data: { username: newUsername, password: hashedPassword },
+      });
+      console.log(`Admin updated: ${existing.username} → ${newUsername}`);
+    } else {
+      // Records exist but none with role 'admin' — create one
+      await prisma.admin.create({
+        data: {
+          username: newUsername,
+          password: hashedPassword,
+          role: 'admin',
+        },
+      });
+      console.log(`Admin created (no admin role found): ${newUsername}`);
+    }
   }
 }
 
