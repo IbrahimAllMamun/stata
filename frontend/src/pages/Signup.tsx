@@ -223,7 +223,7 @@ export default function Register() {
                 value={checkEmail}
                 onChange={e => { setCheckEmail(e.target.value); setCheckErr(''); }}
                 onKeyDown={e => e.key === 'Enter' && handleEmailCheck()}
-                placeholder="your@email.com"
+                placeholder="example@isrt.ac.bd"
                 autoFocus
                 className={inputCls(!!checkErr)}
               />

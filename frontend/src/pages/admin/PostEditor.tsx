@@ -116,7 +116,7 @@ export default function PostEditor() {
                 </label>
                 <input type="number" value={formData.author_batch} min={1} max={3000} required
                   onChange={e => setFormData({ ...formData, author_batch: e.target.value })}
-                  placeholder="e.g. 15" className={inputCls} />
+                  placeholder="e.g. 26" className={inputCls} />
               </div>
             </div>
 

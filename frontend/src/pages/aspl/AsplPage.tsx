@@ -307,7 +307,7 @@ export default function AsplPage() {
                 Register as Player <ArrowRight className="w-5 h-5" />
               </button>
               <p className="text-xs text-gray-500 mt-3">
-                Already registered? Re-submit to update your position or photo.
+                Already registered? Re-submit to update your information.
               </p>
             </div>
           )}

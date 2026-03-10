@@ -174,7 +174,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
               <input type="email" value={email}
                 onChange={e => { setEmail(e.target.value); setLookupErr(''); }}
                 onKeyDown={e => e.key === 'Enter' && handleLookup()}
-                placeholder="you@example.com" className={INPUT} autoFocus />
+                placeholder="example@isrt.ac.bd" className={INPUT} autoFocus />
             </div>
 
             <button onClick={handleLookup} disabled={looking}
