@@ -7,7 +7,7 @@ const { getPlayers, getRandomPlayer } = require('../controllers/player.controlle
 const { getTeams, getTeamById, getTeamsBySeason, createTeam, updateTeam, deleteTeam } = require('../controllers/team.controller');
 const { getTeamPlayers, createTeamPlayer, updateTeamPlayer, deleteTeamPlayer } = require('../controllers/teamPlayer.controller');
 const { getSeasons, getSeasonById, getActiveSeason, createSeason, updateSeason, deleteSeason } = require('../controllers/season.controller');
-const { register, updatePlayerDetails, checkRegistration, lookupRegistration, getRegistrations, approveRegistration, rejectRegistration, deleteRegistration } = require('../controllers/registration.controller');
+const { register, updatePlayerDetails, checkRegistration, lookupRegistration, getRegistrations, approveRegistration, rejectRegistration, deleteRegistration, getPendingRegistrationCount } = require('../controllers/registration.controller');
 
 const router = express.Router();
 
@@ -20,10 +20,11 @@ router.patch('/seasons/:id', authenticate, updateSeason);
 router.delete('/seasons/:id', authenticate, deleteSeason);
 
 // ── Registrations (public submit, admin manage) ───────────────────────────────
-router.post('/registrations',               upload.single('photo'), register);
+router.post('/registrations', upload.single('photo'), register);
 router.post('/registrations/update-player', upload.single('photo'), updatePlayerDetails);
-router.get('/registrations/lookup',         lookupRegistration);
+router.get('/registrations/lookup', lookupRegistration);
 router.get('/registrations/check', checkRegistration);
+router.get('/registrations/pending-count', authenticate, getPendingRegistrationCount);
 router.get('/registrations', authenticate, getRegistrations);
 router.patch('/registrations/:id/approve', authenticate, approveRegistration);
 router.patch('/registrations/:id/reject', authenticate, rejectRegistration);

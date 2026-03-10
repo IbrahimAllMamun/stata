@@ -1,11 +1,11 @@
 // src/aspl/controllers/registration.controller.js
 const prisma = require('../../config/database');
-const processImage = require('../../utils/processImage');
+const { processImage, toUrlPath } = require('../../utils/processImage');
 
 async function uploadPhoto(file) {
   if (!file) return null;
   const fp = await processImage(file.buffer, file.mimetype, { maxWidth: 600, maxHeight: 600, quality: 85 });
-  return fp.replace(process.env.UPLOAD_PATH || '/tmp/uploads', '/uploads');
+  return toUrlPath(fp);
 }
 
 // ── helper: bulk-enrich registrations with member data ───────────────────────
@@ -33,16 +33,14 @@ const register = async (req, res) => {
     const season = await prisma.asplSeason.findUnique({ where: { id: parseInt(season_id) } });
     if (!season) return res.status(404).json({ error: 'Season not found.' });
     if (season.status === 'COMPLETED') return res.status(400).json({ error: 'This season is completed. Registration is closed.' });
-    if (!season.registration_open)    return res.status(400).json({ error: 'Registration is currently closed for this season.' });
+    if (!season.registration_open) return res.status(400).json({ error: 'Registration is currently closed for this season.' });
 
-    // Must be an approved STATA member
+    // PENDING members are allowed — both registrations go under review together
     const member = await prisma.member.findUnique({ where: { email: emailLower } });
     if (!member)
       return res.status(404).json({ error: 'No STATA member found with that email. Please register as a STATA member first.' });
     if (member.status === 'ARCHIVED')
       return res.status(403).json({ error: 'Your STATA account is archived. Please contact an admin.' });
-    if (member.status === 'PENDING')
-      return res.status(403).json({ error: 'Your STATA membership is still pending approval. Please wait before registering for ASPL.' });
 
     const photo_url = await uploadPhoto(req.file);
 
@@ -60,33 +58,33 @@ const register = async (req, res) => {
         data: {
           playing_position: playing_position.toUpperCase().trim(),
           ...(photo_url && { photo_url }),
-          status:       conflict_note ? 'PENDING' : existing.status === 'REJECTED' ? 'PENDING' : existing.status,
+          status: conflict_note ? 'PENDING' : existing.status === 'REJECTED' ? 'PENDING' : existing.status,
           conflict_note,
-          admin_note:   conflict_note ? null : existing.admin_note,
+          admin_note: conflict_note ? null : existing.admin_note,
         },
       });
       return res.json({
-        message:      conflict_note ? 'Your registration has been updated and sent for re-approval.' : 'Your registration has been updated.',
+        message: conflict_note ? 'Your registration has been updated and sent for re-approval.' : 'Your registration has been updated.',
         registration: updated,
-        member:       { full_name: member.full_name, batch: member.batch },
-        updated:      true,
+        member: { full_name: member.full_name, batch: member.batch },
+        updated: true,
       });
     }
 
     const created = await prisma.asplRegistration.create({
       data: {
-        season_id:        parseInt(season_id),
-        email:            emailLower,
+        season_id: parseInt(season_id),
+        email: emailLower,
         playing_position: playing_position.toUpperCase().trim(),
         photo_url,
         status: 'PENDING',
       },
     });
     return res.status(201).json({
-      message:      'Registration submitted successfully. You will be notified once approved.',
+      message: 'Registration submitted successfully. You will be notified once approved.',
       registration: created,
-      member:       { full_name: member.full_name, batch: member.batch },
-      updated:      false,
+      member: { full_name: member.full_name, batch: member.batch },
+      updated: false,
     });
   } catch (err) {
     console.error('register error:', err);
@@ -106,25 +104,25 @@ const updatePlayerDetails = async (req, res) => {
     });
     if (!existing) return res.status(404).json({ error: 'No registration found for that email in this season.' });
 
-    const photo_url  = await uploadPhoto(req.file);
+    const photo_url = await uploadPhoto(req.file);
     const updateData = {};
     if (playing_position) updateData.playing_position = playing_position.toUpperCase().trim();
-    if (photo_url)        updateData.photo_url        = photo_url;
+    if (photo_url) updateData.photo_url = photo_url;
     if (!Object.keys(updateData).length)
       return res.status(400).json({ error: 'Nothing to update. Provide a new position or photo.' });
 
     if (existing.status === 'APPROVED') {
       updateData.conflict_note = `Update request: previously approved as player #${existing.player_sl ?? 'N/A'}. Position/photo changed — requires re-approval.`;
-      updateData.status        = 'PENDING';
-      updateData.admin_note    = null;
+      updateData.status = 'PENDING';
+      updateData.admin_note = null;
     }
 
     const updated = await prisma.asplRegistration.update({
       where: { email_season_id: { email: emailLower, season_id: parseInt(season_id) } },
-      data:  updateData,
+      data: updateData,
     });
     return res.json({
-      message:      existing.status === 'APPROVED' ? 'Update submitted for re-approval.' : 'Your registration has been updated.',
+      message: existing.status === 'APPROVED' ? 'Update submitted for re-approval.' : 'Your registration has been updated.',
       registration: updated,
     });
   } catch (err) {
@@ -161,7 +159,7 @@ const lookupRegistration = async (req, res) => {
         where: { email_season_id: { email: emailLower, season_id: parseInt(season_id) } },
       }),
       prisma.member.findUnique({
-        where:  { email: emailLower },
+        where: { email: emailLower },
         select: { full_name: true, batch: true, phone_number: true, job_title: true, organisation: true },
       }),
     ]);
@@ -180,7 +178,7 @@ const getRegistrations = async (req, res) => {
     const regs = await prisma.asplRegistration.findMany({
       where: {
         ...(season_id && { season_id: parseInt(season_id) }),
-        ...(status    && { status }),
+        ...(status && { status }),
       },
       orderBy: [{ conflict_note: 'desc' }, { created_at: 'asc' }],
     });
@@ -202,44 +200,56 @@ const approveRegistration = async (req, res) => {
     const member = await prisma.member.findUnique({ where: { email: reg.email } });
     if (!member) return res.status(404).json({ error: 'Associated STATA member not found.' });
 
+    // sl is a global PK across all seasons — must find global max, not per-season max
     const lastPlayer = await prisma.asplPlayer.findFirst({
-      where: { season_id: reg.season_id }, orderBy: { sl: 'desc' },
+      orderBy: { sl: 'desc' },
     });
     const nextSL = (lastPlayer?.sl ?? 0) + 1;
 
     await prisma.$transaction(async (tx) => {
-      if (reg.player_sl) {
-        // Re-approval: update only the mutable fields
+      // Check if a player row already exists for this member in this season
+      // (covers the case where player_sl is null on a re-registration after being sold)
+      const existingPlayer = await tx.asplPlayer.findFirst({
+        where: { member_email: reg.email, season_id: reg.season_id },
+      });
+
+      if (existingPlayer) {
+        // Always update in-place — never create a duplicate
         await tx.asplPlayer.update({
-          where: { sl: reg.player_sl },
-          data:  { playing_position: reg.playing_position, photo_url: reg.photo_url },
+          where: { sl: existingPlayer.sl },
+          data: { playing_position: reg.playing_position, photo_url: reg.photo_url },
         });
+        await tx.asplRegistration.update({
+          where: { id },
+          data: { status: 'APPROVED', player_sl: existingPlayer.sl, conflict_note: null, admin_note: admin_note ?? null },
+        });
+        // total_players unchanged — player already counted
       } else {
         await tx.asplPlayer.create({
           data: {
-            sl:               nextSL,
-            season_id:        reg.season_id,
-            member_email:     reg.email,
+            sl: nextSL,
+            season_id: reg.season_id,
+            member_email: reg.email,
             playing_position: reg.playing_position,
-            photo_url:        reg.photo_url,
-            status:           false,
-            randomized:       false,
+            photo_url: reg.photo_url,
+            status: false,
+            randomized: false,
           },
         });
+        await tx.asplRegistration.update({
+          where: { id },
+          data: { status: 'APPROVED', player_sl: nextSL, conflict_note: null, admin_note: admin_note ?? null },
+        });
+        await tx.asplSeason.update({
+          where: { id: reg.season_id },
+          data: { total_players: { increment: 1 } },
+        });
       }
-      await tx.asplRegistration.update({
-        where: { id },
-        data:  { status: 'APPROVED', player_sl: reg.player_sl ?? nextSL, conflict_note: null, admin_note: admin_note ?? null },
-      });
-      await tx.asplSeason.update({
-        where: { id: reg.season_id },
-        data:  { total_players: { increment: reg.player_sl ? 0 : 1 } },
-      });
     });
     return res.json({ message: 'Registration approved.' });
   } catch (err) {
     console.error('approveRegistration error:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+    return res.status(500).json({ error: 'Internal server error.', detail: err.message });
   }
 };
 
@@ -250,7 +260,7 @@ const rejectRegistration = async (req, res) => {
   try {
     await prisma.asplRegistration.update({
       where: { id },
-      data:  { status: 'REJECTED', admin_note: admin_note ?? null, conflict_note: null },
+      data: { status: 'REJECTED', admin_note: admin_note ?? null, conflict_note: null },
     });
     return res.json({ message: 'Registration rejected.' });
   } catch (err) {
@@ -271,8 +281,21 @@ const deleteRegistration = async (req, res) => {
   }
 };
 
+
+// ── Admin: GET /api/aspl/registrations/pending-count ─────────────────────────
+const getPendingRegistrationCount = async (req, res) => {
+  try {
+    const count = await prisma.asplRegistration.count({ where: { status: 'PENDING' } });
+    return res.json({ success: true, data: { count } });
+  } catch (err) {
+    console.error('getPendingRegistrationCount error:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 module.exports = {
   register, updatePlayerDetails,
   checkRegistration, lookupRegistration,
   getRegistrations, approveRegistration, rejectRegistration, deleteRegistration,
+  getPendingRegistrationCount,
 };

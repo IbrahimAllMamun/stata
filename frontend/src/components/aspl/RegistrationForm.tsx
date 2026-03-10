@@ -1,6 +1,6 @@
 // src/components/aspl/RegistrationForm.tsx
 import { useState, useRef } from 'react';
-import { X, Upload, CheckCircle2, ChevronDown, User, Search, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash } from 'lucide-react';
+import { X, Upload, CheckCircle2, ChevronDown, User, Search, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
 import { api, asplApi, AsplSeason, AsplRegistration } from '../../lib/api';
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = 'email' | 'found' | 'not-found' | 'success';
+type Step = 'email' | 'form' | 'not-found' | 'success';
 
 const INPUT = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30 transition-all';
 const LABEL = 'block text-[11px] tracking-widest text-white/40 mb-1.5 uppercase';
@@ -28,7 +28,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
   const [lookupErr, setLookupErr] = useState('');
   const [member, setMember] = useState<FoundMember | null>(null);
 
-  // Photo + position (step 'found')
+  // Whether this member already has a registration this season
+  const [existingReg, setExistingReg] = useState<AsplRegistration | null>(null);
+
+  // Photo + position
   const [position, setPosition] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -38,8 +41,20 @@ export default function RegistrationForm({ season, onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const positions = asplApi.getPositions(season.sport);
+  const isUpdate = !!existingReg;
 
-  // ── Step 1: look up email ─────────────────────────────────────────────────
+  const resetToEmail = () => {
+    setStep('email');
+    setMember(null);
+    setExistingReg(null);
+    setPosition('');
+    setPhoto(null);
+    setPhotoPreview(null);
+    setFormError('');
+    setLookupErr('');
+  };
+
+  // ── Step 1: look up email ──────────────────────────────────────────────────
   const handleLookup = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed) { setLookupErr('Please enter your email address.'); return; }
@@ -49,14 +64,31 @@ export default function RegistrationForm({ season, onClose }: Props) {
       const res = await api.lookupMember(trimmed);
       const m = res.data as FoundMember;
       if (m.status === 'ARCHIVED') {
-        setLookupErr('Your account has been archived. Please contact an admin for assistance.');
+        setLookupErr('Your account has been archived. Please contact an admin.');
         return;
       }
       setMember(m);
-      setStep('found');
+
+      // Check if already registered for this season
+      let existing: AsplRegistration | null = null;
+      try {
+        existing = await asplApi.lookupRegistration(trimmed, season.id) as any;
+        // Pre-fill position from existing registration
+        if (existing?.playing_position) setPosition(existing.playing_position);
+        // Pre-fill photo preview if they have one
+        if (existing?.photo_url) {
+          const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '');
+          setPhotoPreview(base + existing.photo_url);
+        }
+      } catch {
+        // No existing registration — that's fine
+        existing = null;
+      }
+      setExistingReg(existing);
+      setStep('form');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
+      const msg = (err instanceof Error ? err.message : '').toLowerCase();
+      if (msg.includes('404') || msg.includes('not found') || msg.includes('no member') || msg.includes('member not found')) {
         setStep('not-found');
       } else {
         setLookupErr(msg || 'Something went wrong. Please try again.');
@@ -64,21 +96,29 @@ export default function RegistrationForm({ season, onClose }: Props) {
     } finally { setLooking(false); }
   };
 
-  // ── Step 2: submit registration using member data ─────────────────────────
+  // ── Step 2: submit ─────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!position) { setFormError('Please select your playing position.'); return; }
     setFormError(''); setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('season_id',        String(season.id));
-      fd.append('email',            member!.email);
+      fd.append('season_id', String(season.id));
+      fd.append('email', member!.email);
       fd.append('playing_position', position);
       if (photo) fd.append('photo', photo);
-      const res = await asplApi.register(fd);
-      setResult(res);
+
+      let res;
+      if (isUpdate) {
+        // Use update endpoint — only sends position/photo changes
+        res = await asplApi.updatePlayerDetails(fd);
+        setResult({ ...res, member: { full_name: member!.full_name, batch: member!.batch }, updated: true });
+      } else {
+        res = await asplApi.register(fd);
+        setResult({ ...res, updated: false });
+      }
       setStep('success');
     } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      setFormError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
     } finally { setSubmitting(false); }
   };
 
@@ -101,10 +141,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
               {season.name} · {season.sport}
             </p>
             <h2 className="text-lg font-bold text-white" style={{ fontFamily: 'fredoka' }}>
-              {step === 'email' ? 'Register as Player' :
-                step === 'found' ? 'Confirm & Register' :
+              {step === 'email' ? 'Player Registration' :
+                step === 'form' ? (isUpdate ? 'Update Registration' : 'Confirm & Register') :
                   step === 'not-found' ? 'Member Not Found' :
-                    'Registration Received'}
+                    isUpdate ? 'Registration Updated' : 'Registration Received'}
             </h2>
           </div>
           <button onClick={onClose}
@@ -119,7 +159,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
           <div className="px-6 py-6 space-y-5">
             <div className="rounded-xl px-4 py-3 text-xs leading-relaxed"
               style={{ background: 'rgba(47,91,234,0.12)', border: '1px solid rgba(47,91,234,0.2)', color: 'rgba(200,215,255,0.7)' }}>
-              ASPL registration is open to STATA members only. Enter your registered STATA email to get started.
+              Enter your STATA email to register or update your existing registration.
             </div>
 
             {lookupErr && (
@@ -153,11 +193,20 @@ export default function RegistrationForm({ season, onClose }: Props) {
           </div>
         )}
 
-        {/* ── Step 2: Member found — show info + collect photo & position ─── */}
-        {step === 'found' && member && (
+        {/* ── Step 2: Form (register or update) ───────────────────────────── */}
+        {step === 'form' && member && (
           <div className="px-6 py-5 space-y-4">
 
-            {/* Member info card (read-only) */}
+            {/* Existing registration banner */}
+            {isUpdate && (
+              <div className="rounded-xl px-4 py-3 text-xs leading-relaxed flex items-start gap-2"
+                style={{ background: 'rgba(47,91,234,0.12)', border: '1px solid rgba(47,91,234,0.2)', color: 'rgba(200,215,255,0.8)' }}>
+                <RefreshCw className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                You already have a registration for this season. Your position and photo are pre-filled — update them below.
+              </div>
+            )}
+
+            {/* Member info card */}
             <div className="rounded-xl overflow-hidden"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="px-4 py-2.5 flex items-center gap-2"
@@ -180,12 +229,12 @@ export default function RegistrationForm({ season, onClose }: Props) {
                 {member.job_title && <InfoRow icon={<Briefcase className="w-3.5 h-3.5" />} label="Title" value={member.job_title} />}
                 {member.organisation && <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Org" value={member.organisation} />}
               </div>
-              <div className="px-4 py-2"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <p className="text-[10px] text-white/25">
                   Wrong account?{' '}
-                  <button onClick={() => { setStep('email'); setMember(null); setPosition(''); setPhoto(null); setPhotoPreview(null); setFormError(''); }}
-                    className="underline text-white/40 hover:text-white/60">Use a different email</button>
+                  <button onClick={resetToEmail} className="underline text-white/40 hover:text-white/60">
+                    Use a different email
+                  </button>
                 </p>
               </div>
             </div>
@@ -199,7 +248,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
 
             {/* Photo upload */}
             <div>
-              <label className={LABEL}>Profile Photo <span className="text-white/20 normal-case">· optional, shown during auction</span></label>
+              <label className={LABEL}>
+                Profile Photo <span className="text-white/20 normal-case">· shown during auction</span>
+                {isUpdate && photoPreview && <span className="text-[var(--accent)]/60 normal-case"> · current photo loaded</span>}
+              </label>
               <div className="flex items-center gap-4">
                 <div onClick={() => fileRef.current?.click()}
                   className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer flex-shrink-0 relative group"
@@ -210,11 +262,17 @@ export default function RegistrationForm({ season, onClose }: Props) {
                   <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
                     style={{ background: 'rgba(0,0,0,0.6)' }}>
                     <Upload className="w-5 h-5 text-white mb-1" />
-                    <span className="text-[10px] text-white/80">Upload</span>
+                    <span className="text-[10px] text-white/80">{photo ? 'Change' : 'Upload'}</span>
                   </div>
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-                <p className="text-xs text-white/30 leading-relaxed">JPG, PNG, or WebP<br />Square crop works best</p>
+                <p className="text-xs text-white/30 leading-relaxed">
+                  JPG, PNG, or WebP<br />
+                  Square crop works best
+                  {isUpdate && !photo && existingReg?.photo_url && (
+                    <><br /><span className="text-white/20">Leave empty to keep current photo</span></>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -239,13 +297,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
               className="w-full py-3.5 rounded-xl text-sm font-bold tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               style={{ background: 'var(--accent)', color: 'var(--pitch)', fontFamily: 'kanit' }}>
               {submitting
-                ? <><div className="w-4 h-4 border-2 border-[var(--pitch)]/40 border-t-[var(--pitch)] rounded-full animate-spin" /> SUBMITTING…</>
-                : 'REGISTER NOW'}
+                ? <><div className="w-4 h-4 border-2 border-[var(--pitch)]/40 border-t-[var(--pitch)] rounded-full animate-spin" /> {isUpdate ? 'UPDATING…' : 'SUBMITTING…'}</>
+                : isUpdate
+                  ? <><RefreshCw className="w-4 h-4" /> UPDATE REGISTRATION</>
+                  : 'REGISTER NOW'}
             </button>
-
-            <p className="text-[10px] text-center text-white/25 pb-2">
-              Already registered? Submit with the same email to update your position or photo.
-            </p>
           </div>
         )}
 
@@ -259,33 +315,28 @@ export default function RegistrationForm({ season, onClose }: Props) {
             <h3 className="text-base font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>
               Not a STATA Member
             </h3>
-            <p className="text-sm text-white/50 mb-2 leading-relaxed">
-              No STATA membership was found for
-            </p>
+            <p className="text-sm text-white/50 mb-2 leading-relaxed">No STATA membership found for</p>
             <p className="text-sm font-semibold mb-6 px-4 py-2 rounded-xl inline-block"
               style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--accent)' }}>
               {email}
             </p>
             <p className="text-sm text-white/50 mb-6 leading-relaxed">
-              ASPL registration is only open to registered STATA members. Please join STATA first, then come back to register for {season.name}.
+              ASPL registration is only open to registered STATA members.
             </p>
-
             <div className="space-y-3">
               <a href="/register" target="_blank" rel="noopener noreferrer"
                 className="w-full py-3.5 rounded-xl text-sm font-bold tracking-wider flex items-center justify-center gap-2 transition-all hover:opacity-90"
                 style={{ background: 'var(--accent)', color: 'var(--pitch)', fontFamily: 'kanit' }}>
-                <UserPlus className="w-4 h-4" /> JOIN STATA NOW
-                <ArrowRight className="w-4 h-4" />
+                <UserPlus className="w-4 h-4" /> JOIN STATA NOW <ArrowRight className="w-4 h-4" />
               </a>
-              <button onClick={() => { setStep('email'); setLookupErr(''); }}
+              <button onClick={resetToEmail}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-colors"
                 style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
                 Try a different email
               </button>
             </div>
-
             <p className="text-[10px] text-white/25 mt-4">
-              Already registered as a STATA member? Your membership may still be pending approval. Try again once approved.
+              Already registered? Your membership may still be pending approval.
             </p>
           </div>
         )}
@@ -312,11 +363,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
             <div className="rounded-xl px-4 py-3 mb-6 text-left space-y-2"
               style={{ background: 'rgba(255,255,255,0.04)' }}>
               {[
-                ['Name',     result.member.full_name],
-                ['Email',    result.registration.email],
-                ['Batch',    String(result.member.batch)],
+                ['Name', result.member.full_name],
+                ['Email', result.registration.email],
+                ['Batch', String(result.member.batch)],
                 ['Position', result.registration.playing_position],
-                ['Status',   result.registration.status],
+                ['Status', result.registration.status],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between text-xs">
                   <span className="text-white/40 tracking-wide" style={{ fontFamily: 'kanit' }}>{k}</span>

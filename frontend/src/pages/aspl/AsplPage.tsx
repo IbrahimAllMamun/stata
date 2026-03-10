@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { Trophy, Users, ArrowRight, X, Loader2, Download } from 'lucide-react';
 import { asplApi, AsplTeam, AsplTeamPlayer, AsplSeason } from '../../lib/api';
 import RegistrationForm from '../../components/aspl/RegistrationForm';
-import UpdateRegistrationForm from '../../components/aspl/UpdateRegistrationForm';
 import './aspl.css';
 
 const posCls = (p: string) => {
@@ -258,7 +257,6 @@ export default function AsplPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [showRegister, setShowRegister] = useState(false);
-  const [showUpdate, setShowUpdate] = useState(false);
 
   useEffect(() => {
     asplApi.getActiveSeason()
@@ -313,15 +311,7 @@ export default function AsplPage() {
               </p>
             </div>
           )}
-          {season && (
-            <div className="mt-4">
-              <button onClick={() => setShowUpdate(true)}
-                className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all hover:scale-105 active:scale-95"
-                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)' }}>
-                Update existing registration
-              </button>
-            </div>
-          )}
+
           <div className="mt-6">
             <Link to="/aspl/players"
               className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
@@ -391,9 +381,7 @@ export default function AsplPage() {
       {showRegister && season?.registration_open && (
         <RegistrationForm season={season} onClose={() => setShowRegister(false)} />
       )}
-      {showUpdate && season && (
-        <UpdateRegistrationForm season={season} onClose={() => setShowUpdate(false)} />
-      )}
+
     </div>
   );
 }

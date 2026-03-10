@@ -162,7 +162,7 @@ export interface GalleryGroup {
 
 
 export const visitorApi = {
-  track: () => fetch(`${BASE_URL}/track`, { method: 'POST' }).catch(() => {}),
+  track: () => fetch(`${BASE_URL}/track`, { method: 'POST' }).catch(() => { }),
   getStats: (): Promise<{ today: number; lifetime: number }> =>
     fetch(`${BASE_URL}/visitors/stats`).then(r => r.json()),
 };
@@ -601,6 +601,8 @@ export const asplApi = {
     ),
   checkRegistration: (email: string, seasonId: number) =>
     asplRequest<AsplRegistration>(`/registrations/check?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
+  getPendingRegistrationCount: () =>
+    asplRequest<{ success: boolean; data: { count: number } }>('/registrations/pending-count'),
   lookupRegistration: (email: string, seasonId: number) =>
     asplRequest<AsplRegistration & { member: { full_name: string; batch: number; phone_number: string; job_title?: string | null; organisation?: string | null } | null }>(
       `/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`),

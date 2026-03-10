@@ -1,7 +1,7 @@
 // src/controllers/post.controller.js
 const prisma = require('../config/database');
 const { generateSlug, paginate, paginatedResponse } = require('../utils/helpers');
-const processImage = require('../utils/processImage');
+const { processImage, toUrlPath, toFilePath } = require('../utils/processImage');
 const fs = require('fs');
 
 // ─── Public ───────────────────────────────────────────────────────────────────
@@ -40,7 +40,6 @@ const getPostBySlug = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// Public submission — goes to PENDING
 const submitPost = async (req, res, next) => {
   let savedPath = null;
   try {
@@ -50,7 +49,7 @@ const submitPost = async (req, res, next) => {
     if (req.file) {
       savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1200, maxHeight: 1200 });
     }
-    const cover_image = savedPath ? '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/') : null;
+    const cover_image = savedPath ? toUrlPath(savedPath) : null;
 
     const post = await prisma.post.create({
       data: {
@@ -128,7 +127,7 @@ const createPost = async (req, res, next) => {
     if (req.file) {
       savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1200, maxHeight: 1200 });
     }
-    const cover_image = savedPath ? '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/') : null;
+    const cover_image = savedPath ? toUrlPath(savedPath) : null;
 
     const post = await prisma.post.create({
       data: {
@@ -164,9 +163,8 @@ const updatePost = async (req, res, next) => {
 
     if (req.file) {
       savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1200, maxHeight: 1200 });
-      updateData.cover_image = '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/');
-      // Delete old image
-      if (post.cover_image) try { fs.unlinkSync(post.cover_image.replace(/^\//, '')); } catch { }
+      updateData.cover_image = toUrlPath(savedPath);
+      if (post.cover_image) try { fs.unlinkSync(toFilePath(post.cover_image)); } catch { }
     }
 
     const updated = await prisma.post.update({ where: { id }, data: updateData });
@@ -181,7 +179,7 @@ const deletePost = async (req, res, next) => {
   try {
     const post = await prisma.post.findUnique({ where: { id: req.params.id } });
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
-    if (post.cover_image) try { fs.unlinkSync(post.cover_image.replace(/^\//, '')); } catch { }
+    if (post.cover_image) try { fs.unlinkSync(toFilePath(post.cover_image)); } catch { }
     await prisma.post.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Post deleted' });
   } catch (err) { next(err); }

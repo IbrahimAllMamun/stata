@@ -1,6 +1,6 @@
 // src/aspl/controllers/team.controller.js
 const prisma = require('../../config/database');
-const processImage = require('../../utils/processImage');
+const { processImage, toUrlPath } = require('../../utils/processImage');
 
 // GET /api/aspl/seasons/:seasonId/teams
 const getTeamsBySeason = async (req, res) => {
@@ -58,7 +58,7 @@ const createTeam = async (req, res) => {
     let logo_url = null;
     if (req.file) {
       const filePath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 400, maxHeight: 400, quality: 90 });
-      logo_url = filePath.replace(process.env.UPLOAD_PATH || '/tmp/uploads', '/uploads');
+      logo_url = toUrlPath(filePath);
     }
 
     const team = await prisma.asplTeam.create({
@@ -85,7 +85,7 @@ const updateTeam = async (req, res) => {
     let logo_url;
     if (req.file) {
       const filePath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 400, maxHeight: 400, quality: 90 });
-      logo_url = filePath.replace(process.env.UPLOAD_PATH || '/tmp/uploads', '/uploads');
+      logo_url = toUrlPath(filePath);
     }
 
     const team = await prisma.asplTeam.update({

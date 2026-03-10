@@ -1,7 +1,7 @@
 // src/controllers/event.controller.js
 const prisma = require('../config/database');
 const { paginate, paginatedResponse, generateSlug } = require('../utils/helpers');
-const processImage = require('../utils/processImage');
+const { processImage, toUrlPath, toFilePath } = require('../utils/processImage');
 const fs = require('fs');
 
 const getEvents = async (req, res, next) => {
@@ -60,7 +60,7 @@ const createEvent = async (req, res, next) => {
     if (req.file) {
       savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1400, maxHeight: 900 });
     }
-    const banner_image = savedPath ? '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/') : null;
+    const banner_image = savedPath ? toUrlPath(savedPath) : null;
 
     const event = await prisma.event.create({
       data: {
@@ -102,8 +102,8 @@ const updateEvent = async (req, res, next) => {
 
     if (req.file) {
       savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 1400, maxHeight: 900 });
-      updateData.banner_image = '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/');
-      if (event.banner_image) try { fs.unlinkSync(event.banner_image.replace(/^\//, '')); } catch { }
+      updateData.banner_image = toUrlPath(savedPath);
+      if (event.banner_image) try { fs.unlinkSync(toFilePath(event.banner_image)); } catch { }
     }
 
     const updated = await prisma.event.update({ where: { id }, data: updateData });
@@ -118,7 +118,7 @@ const deleteEvent = async (req, res, next) => {
   try {
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-    if (event.banner_image) try { fs.unlinkSync(event.banner_image.replace(/^\//, '')); } catch { }
+    if (event.banner_image) try { fs.unlinkSync(toFilePath(event.banner_image)); } catch { }
     await prisma.event.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Event deleted' });
   } catch (err) { next(err); }

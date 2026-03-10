@@ -1,18 +1,13 @@
 // src/pages/aspl/PlayersPage.tsx
 import { useState, useEffect, useMemo } from 'react';
-import { Download, Search, ChevronUp, ChevronDown, SlidersHorizontal, Users } from 'lucide-react';
+import { Download, Search, ChevronUp, ChevronDown, SlidersHorizontal, Users, X, User, Hash, Phone, Briefcase, Building2, Mail, ShieldCheck, ShieldOff } from 'lucide-react';
 import { asplApi, AsplPlayer, AsplSeason } from '../../lib/api';
 import './aspl.css';
 
 function downloadCSV(players: AsplPlayer[], seasonName: string) {
     const headers = ['#', 'Name', 'Batch', 'Position', 'Email', 'Phone'];
     const rows = players.map(p => [
-        p.sl,
-        p.name,
-        p.batch,
-        p.playing_position,
-        p.member_email ?? '',
-        p.phone ?? '',
+        p.sl, p.name, p.batch, p.playing_position, p.member_email ?? '', p.phone ?? '',
     ]);
     const csv = [headers, ...rows]
         .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
@@ -64,10 +59,97 @@ function SortIcon({ col, sortKey, dir }: { col: SortKey; sortKey: SortKey; dir: 
         : <ChevronDown className="w-3 h-3 text-[#2F5BEA]" />;
 }
 
+// ── Player Detail Popup ───────────────────────────────────────────────────────
+function PlayerPopup({ player, onClose }: { player: AsplPlayer; onClose: () => void }) {
+    const photo = asplApi.imageUrl(player.photo_url);
+    const pos = posMeta[player.playing_position?.toUpperCase()] ?? { bg: '#F3F4F6', text: '#374151', border: '#D1D5DB' };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)' }}
+            onClick={onClose}
+        >
+            <div
+                className="relative w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+                style={{ background: '#1F2A44', border: '1px solid rgba(255,255,255,0.08)' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Accent bar using position colour */}
+                <div className="h-1" style={{ background: pos.text }} />
+
+                {/* Close */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-xl flex items-center justify-center transition-colors z-10"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}
+                >
+                    <X className="w-4 h-4 text-white/60" />
+                </button>
+
+                {/* Photo + name hero */}
+                <div className="flex items-center gap-4 px-6 pt-6 pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '2px solid rgba(255,255,255,0.1)' }}>
+                        {photo
+                            ? <img src={photo} alt={player.name} className="w-full h-full object-cover" />
+                            : <User className="w-8 h-8 text-white/20" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-lg font-bold text-white truncate" style={{ fontFamily: 'fredoka' }}>
+                            {player.name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <PosBadge pos={player.playing_position} />
+                            {player.status
+                                ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
+                                    <ShieldOff className="w-2.5 h-2.5" /> SOLD
+                                </span>
+                                : <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">
+                                    <ShieldCheck className="w-2.5 h-2.5" /> AVAILABLE
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                {/* Details grid */}
+                <div className="px-6 py-5 space-y-3">
+                    <DetailRow icon={<Hash className="w-3.5 h-3.5" />} label="Player #" value={String(player.sl)} />
+                    <DetailRow icon={<Hash className="w-3.5 h-3.5" />} label="Batch" value={player.batch != null ? `Batch ${player.batch}` : '—'} />
+                    <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={player.member_email} />
+                    {player.phone && (
+                        <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={player.phone} />
+                    )}
+                    {player.job_title && (
+                        <DetailRow icon={<Briefcase className="w-3.5 h-3.5" />} label="Title" value={player.job_title} />
+                    )}
+                    {player.organisation && (
+                        <DetailRow icon={<Building2 className="w-3.5 h-3.5" />} label="Org" value={player.organisation} />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <span className="text-white/30 flex-shrink-0">{icon}</span>
+            <span className="text-[10px] text-white/30 uppercase tracking-widest w-14 flex-shrink-0"
+                style={{ fontFamily: 'kanit' }}>{label}</span>
+            <span className="text-sm text-white/75 font-medium truncate" style={{ fontFamily: 'fredoka' }}>{value}</span>
+        </div>
+    );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PlayersPage() {
     const [season, setSeason] = useState<AsplSeason | null>(null);
     const [players, setPlayers] = useState<AsplPlayer[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState<AsplPlayer | null>(null);
 
     const [search, setSearch] = useState('');
     const [batchFilter, setBatch] = useState<string>('ALL');
@@ -84,6 +166,13 @@ export default function PlayersPage() {
             .finally(() => setLoading(false));
     }, []);
 
+    // Close popup on Escape
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, []);
+
     const batches = useMemo(() => [...new Set(players.map(p => String(p.batch)))].sort(), [players]);
     const positions = useMemo(() => [...new Set(players.map(p => p.playing_position))].sort(), [players]);
 
@@ -96,7 +185,6 @@ export default function PlayersPage() {
             const matchPos = posFilter === 'ALL' || p.playing_position === posFilter;
             return matchSearch && matchBatch && matchPos;
         });
-
         list = [...list].sort((a, b) => {
             let av: string | number = a[sortKey] ?? '';
             let bv: string | number = b[sortKey] ?? '';
@@ -104,7 +192,6 @@ export default function PlayersPage() {
             if (typeof bv === 'string') bv = bv.toLowerCase();
             if (av < bv) return sortDir === 'asc' ? -1 : 1;
             if (av > bv) return sortDir === 'asc' ? 1 : -1;
-            // secondary sort: name asc
             return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
         });
         return list;
@@ -126,6 +213,9 @@ export default function PlayersPage() {
 
     return (
         <div className="bg-[#F5F7FA] min-h-screen aspl-root">
+
+            {/* Popup */}
+            {selected && <PlayerPopup player={selected} onClose={() => setSelected(null)} />}
 
             {/* Header */}
             <div className="bg-[#1F2A44] text-white">
@@ -155,37 +245,28 @@ export default function PlayersPage() {
                 {/* Filters bar */}
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5 flex flex-wrap items-center gap-3">
                     <SlidersHorizontal className="w-4 h-4 text-gray-400 flex-shrink-0" />
-
-                    {/* Search */}
                     <div className="relative flex-1 min-w-[180px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
                         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search name or email…"
                             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#2F5BEA] bg-[#F5F7FA]" />
                     </div>
-
-                    {/* Batch filter */}
                     <select value={batchFilter} onChange={e => setBatch(e.target.value)}
                         className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-[#F5F7FA] text-[#1F2A44] focus:outline-none focus:border-[#2F5BEA]">
                         <option value="ALL">All Batches</option>
                         {batches.map(b => <option key={b} value={b}>Batch {b}</option>)}
                     </select>
-
-                    {/* Position filter */}
                     <select value={posFilter} onChange={e => setPos(e.target.value)}
                         className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-[#F5F7FA] text-[#1F2A44] focus:outline-none focus:border-[#2F5BEA]">
                         <option value="ALL">All Positions</option>
                         {positions.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
-
-                    {/* Reset */}
                     {(search || batchFilter !== 'ALL' || posFilter !== 'ALL') && (
                         <button onClick={() => { setSearch(''); setBatch('ALL'); setPos('ALL'); }}
                             className="text-xs text-gray-400 hover:text-red-500 transition-colors font-semibold">
                             Clear filters
                         </button>
                     )}
-
                     <span className="ml-auto text-xs text-gray-400 font-medium">
                         {filtered.length} of {players.length} players
                     </span>
@@ -207,7 +288,9 @@ export default function PlayersPage() {
                     ) : filtered.length === 0 ? (
                         <div className="py-20 text-center">
                             <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                            <p className="text-gray-400 text-sm">{players.length === 0 ? 'No players registered yet' : 'No players match filters'}</p>
+                            <p className="text-gray-400 text-sm">
+                                {players.length === 0 ? 'No players registered yet' : 'No players match filters'}
+                            </p>
                         </div>
                     ) : (
                         <table className="w-full">
@@ -221,11 +304,25 @@ export default function PlayersPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filtered.map((p, i) => (
-                                    <tr key={p.sl} className="hover:bg-[#F5F7FA] transition-colors">
+                                {filtered.map(p => (
+                                    <tr
+                                        key={p.sl}
+                                        className="hover:bg-[#F5F7FA] transition-colors cursor-pointer group"
+                                        onClick={() => setSelected(p)}
+                                    >
                                         <td className="py-3 px-4 text-sm text-gray-400 font-mono w-12">{p.sl}</td>
                                         <td className="py-3 px-4">
-                                            <span className="text-sm font-semibold text-[#1F2A44]">{p.name}</span>
+                                            <div className="flex items-center gap-2.5">
+                                                {/* Mini avatar */}
+                                                <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-100">
+                                                    {asplApi.imageUrl(p.photo_url)
+                                                        ? <img src={asplApi.imageUrl(p.photo_url)!} alt={p.name} className="w-full h-full object-cover" />
+                                                        : <span className="text-[10px] font-bold text-gray-400">{p.name.charAt(0)}</span>}
+                                                </div>
+                                                <span className="text-sm font-semibold text-[#1F2A44] group-hover:text-[#2F5BEA] transition-colors">
+                                                    {p.name}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="py-3 px-4">
                                             <span className="text-sm font-bold text-[#2F5BEA]">{p.batch}</span>

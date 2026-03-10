@@ -1,6 +1,6 @@
 // src/controllers/committee.controller.js
 const prisma = require('../config/database');
-const processImage = require('../utils/processImage');
+const { processImage, toUrlPath, toFilePath } = require('../utils/processImage');
 const fs = require('fs');
 
 const getCommittees = async (req, res, next) => {
@@ -61,9 +61,8 @@ const assignMember = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Image is required' });
     }
 
-    // Process image before any DB validation so we can clean up on error
     savedPath = await processImage(req.file.buffer, req.file.mimetype, { maxWidth: 800, maxHeight: 800 });
-    const image_url = '/' + savedPath.replace(/^\//, '').replace(/\\/g, '/');
+    const image_url = toUrlPath(savedPath);
 
     const committee = await prisma.committee.findUnique({ where: { id: committee_id } });
     if (!committee) {
@@ -111,8 +110,7 @@ const deleteCommittee = async (req, res, next) => {
     }
 
     for (const m of committee.members) {
-      const filePath = m.image_url.replace(/^\//, '');
-      try { fs.unlinkSync(filePath); } catch { }
+      try { fs.unlinkSync(toFilePath(m.image_url)); } catch { }
     }
 
     await prisma.committee.delete({ where: { id } });
