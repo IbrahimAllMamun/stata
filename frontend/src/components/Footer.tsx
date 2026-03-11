@@ -35,7 +35,7 @@ export default function Footer() {
     visitorApi.track();
     visitorApi.getStats()
       .then(setStats)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   return (
@@ -56,7 +56,7 @@ export default function Footer() {
             <Eye className="w-3.5 h-3.5 text-[#2F5BEA]/70" />
             <span>Today</span>
             <span className="font-bold text-gray-300 tabular-nums">
-              {stats ? stats.today.toLocaleString() : '—'}
+              {stats ? stats.today.toLocaleString() : '-'}
             </span>
           </div>
           <div className="w-px h-3.5 bg-white/10" />
@@ -64,7 +64,7 @@ export default function Footer() {
             <Users className="w-3.5 h-3.5 text-[#F39C12]/70" />
             <span>All-time</span>
             <span className="font-bold text-gray-300 tabular-nums">
-              {stats ? stats.lifetime.toLocaleString() : '—'}
+              {stats ? stats.lifetime.toLocaleString() : '-'}
             </span>
           </div>
         </div>

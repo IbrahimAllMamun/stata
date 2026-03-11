@@ -167,7 +167,7 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
           {/* Summary */}
           <div className="bg-[#F5F7FA] rounded-xl p-4 text-xs text-gray-500 space-y-1">
             <p className="font-semibold text-[#1F2A44] text-sm mb-2">Summary</p>
-            <p>Season will be created as <span className="font-semibold text-gray-700">Draft</span> — activate it when ready</p>
+            <p>Season will be created as <span className="font-semibold text-gray-700">Draft</span> - activate it when ready</p>
             <p>Each team gets <span className="font-semibold text-gray-700">${balance}</span> to bid, min bid of <span className="font-semibold text-gray-700">${minBid}</span></p>
             <p>Teams must field {minSquad}–{maxSquad} players</p>
             <p>Positions available: {selectedSport.positions.join(', ')}</p>

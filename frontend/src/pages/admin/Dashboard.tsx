@@ -77,7 +77,7 @@ export default function AdminDashboard() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Member Approvals — with pending badge */}
+          {/* Member Approvals - with pending badge */}
           <Link to="/admin/members" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative">
             {stats && stats.pending_members > 0 && (
               <span className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">

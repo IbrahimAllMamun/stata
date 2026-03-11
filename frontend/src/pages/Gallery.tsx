@@ -25,11 +25,6 @@ function formatDateShort(dateStr: string) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function formatMonthYear(dateStr: string) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-}
-
 export default function Gallery() {
   const [groups, setGroups] = useState<GalleryGroup[]>([]);
   const [allDates, setAllDates] = useState<string[]>([]);
@@ -51,7 +46,7 @@ export default function Gallery() {
 
   useEffect(() => {
     fetchGallery();
-    api.getGalleryDates().then(res => setAllDates(res.data)).catch(() => {});
+    api.getGalleryDates().then(res => setAllDates(res.data)).catch(() => { });
   }, []);
 
   // Close filter dropdown on outside click
@@ -177,11 +172,10 @@ export default function Gallery() {
             <div className="relative" ref={filterRef}>
               <button
                 onClick={() => setFilterOpen(o => !o)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                  activeFilter
-                    ? 'bg-[#2F5BEA] text-white border-[#2F5BEA]'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#2F5BEA]'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${activeFilter
+                  ? 'bg-[#2F5BEA] text-white border-[#2F5BEA]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#2F5BEA]'
+                  }`}
               >
                 <Filter className="w-3.5 h-3.5" />
                 {activeFilter ? 'Filtered' : 'Filter by date'}

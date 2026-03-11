@@ -313,8 +313,8 @@ export default function EmailCampaigns() {
             onClick={checkSmtp}
             disabled={smtpChecking}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all shadow-sm ${smtpStatus === 'ok' ? 'bg-green-50 border-green-200 text-green-700' :
-                smtpStatus === 'error' ? 'bg-red-50 border-red-200 text-red-600' :
-                  'bg-white border-gray-200 text-gray-600 hover:border-[#2F5BEA] hover:text-[#2F5BEA]'
+              smtpStatus === 'error' ? 'bg-red-50 border-red-200 text-red-600' :
+                'bg-white border-gray-200 text-gray-600 hover:border-[#2F5BEA] hover:text-[#2F5BEA]'
               }`}
           >
             {smtpChecking
@@ -375,7 +375,7 @@ export default function EmailCampaigns() {
                       </span>
                       {preview.sample.length > 0 && (
                         <span className="text-gray-400 ml-1">
-                          — e.g. {preview.sample.slice(0, 3).map(s => s.name).join(', ')}
+                          - e.g. {preview.sample.slice(0, 3).map(s => s.name).join(', ')}
                           {preview.count > 3 ? ` +${preview.count - 3} more` : ''}
                         </span>
                       )}
@@ -391,7 +391,7 @@ export default function EmailCampaigns() {
                   type="text"
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
-                  placeholder="e.g. STATA Annual Reunion 2026 — Save the Date!"
+                  placeholder="e.g. STATA Annual Reunion 2026 - Save the Date!"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none"
                 />
                 <p className="mt-1 text-xs text-gray-400">Keep under 60 characters for best mobile display</p>

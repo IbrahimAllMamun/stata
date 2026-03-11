@@ -116,7 +116,7 @@ function PlayerPopup({ player, onClose }: { player: AsplPlayer; onClose: () => v
                 {/* Details grid */}
                 <div className="px-6 py-5 space-y-3">
                     <DetailRow icon={<Hash className="w-3.5 h-3.5" />} label="Player #" value={String(player.sl)} />
-                    <DetailRow icon={<Hash className="w-3.5 h-3.5" />} label="Batch" value={player.batch != null ? `Batch ${player.batch}` : '—'} />
+                    <DetailRow icon={<Hash className="w-3.5 h-3.5" />} label="Batch" value={player.batch != null ? `Batch ${player.batch}` : '-'} />
                     <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={player.member_email} />
                     {player.phone && (
                         <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={player.phone} />

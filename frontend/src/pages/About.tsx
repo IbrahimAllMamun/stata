@@ -25,7 +25,7 @@ export default function About() {
           <div className="bg-gradient-to-br from-[#2F5BEA] to-[#1F2A44] rounded-2xl p-8 text-white shadow-xl">
             <div className="text-5xl mb-4 opacity-20 font-serif leading-none">"</div>
             <blockquote className="text-xl font-medium leading-relaxed mb-5">Connecting Minds, Building Bonds, Nourishing Well-being.</blockquote>
-            <p className="text-blue-200 text-sm">This is more than just our motto — it is our commitment to every student at ISRT.</p>
+            <p className="text-blue-200 text-sm">This is more than just our motto - it is our commitment to every student at ISRT.</p>
           </div>
         </div>
       </section>

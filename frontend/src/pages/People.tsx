@@ -1,6 +1,6 @@
 // src/pages/People.tsx
 import { useEffect, useState } from 'react';
-import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase } from 'lucide-react';
+import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase, Droplets } from 'lucide-react';
 import { api, Member, Committee, imageUrl } from '../lib/api';
 
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -16,7 +16,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 }
 
 function MemberAvatar({ member, size = 'sm' }: { member: Member; size?: 'sm' | 'lg' }) {
-  const photoSrc = imageUrl((member as any).photo_url);
+  const photoSrc = imageUrl(member.photo_url);
   const sizeClasses = size === 'lg'
     ? 'w-20 h-20 rounded-2xl text-3xl border-4 border-white shadow-md'
     : 'w-9 h-9 rounded-full text-xs';
@@ -43,7 +43,7 @@ function MemberAvatar({ member, size = 'sm' }: { member: Member; size?: 'sm' | '
 }
 
 function MemberModal({ member, onClose }: { member: Member; onClose: () => void }) {
-  const photoSrc = imageUrl((member as any).photo_url);
+  const photoSrc = imageUrl(member.photo_url);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
@@ -81,6 +81,7 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={member.email} />
           <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} />
           {member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />}
+          {member.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={member.blood_group} />}
           {member.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={member.job_title} />}
           {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
           {member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
@@ -169,6 +170,7 @@ export default function People() {
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [loadingCommittees, setLoadingCommittees] = useState(true);
   const [batchFilter, setBatchFilter] = useState("");
+  const [bloodGroupFilter, setBloodGroupFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "committees">("members");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -197,10 +199,11 @@ export default function People() {
   const filtered = members
     .filter(m => {
       const matchBatch = batchFilter ? m.batch === parseInt(batchFilter) : true;
+      const matchBloodGroup = bloodGroupFilter ? m.blood_group === bloodGroupFilter : true;
       const matchSearch = searchQuery
         ? m.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || m.email.toLowerCase().includes(searchQuery.toLowerCase())
         : true;
-      return matchBatch && matchSearch;
+      return matchBatch && matchBloodGroup && matchSearch;
     })
     .sort((a, b) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name));
 
@@ -261,6 +264,21 @@ export default function People() {
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
+              <div className="relative">
+                <select value={bloodGroupFilter} onChange={e => setBloodGroupFilter(e.target.value)}
+                  className="appearance-none pl-4 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm min-w-[150px]">
+                  <option value="">All Blood Groups</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
             </div>
 
             {loadingMembers ? (
@@ -295,7 +313,7 @@ export default function People() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {filtered.map((member, idx) => {
-                        const photoSrc = imageUrl((member as any).photo_url);
+                        const photoSrc = imageUrl(member.photo_url);
                         const bgColor = member.is_president_or_secretary
                           ? 'bg-amber-500'
                           : member.is_committee_member

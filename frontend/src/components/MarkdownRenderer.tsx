@@ -1,5 +1,5 @@
 // src/components/MarkdownRenderer.tsx
-// Lightweight markdown renderer — no external dependencies
+// Lightweight markdown renderer - no external dependencies
 
 import { useMemo } from 'react';
 
@@ -142,7 +142,7 @@ function parseBlocks(markdown: string): React.ReactNode[] {
       continue;
     }
 
-    // Table (| col | col |) — requires a separator row on the next line
+    // Table (| col | col |) - requires a separator row on the next line
     if (line.startsWith('|') && i + 1 < lines.length && lines[i + 1].match(/^\|[-| :]+\|/)) {
       const headers = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(h => h.trim());
       i += 2; // skip header + separator
@@ -170,7 +170,7 @@ function parseBlocks(markdown: string): React.ReactNode[] {
       continue;
     }
 
-    // Paragraph — collect consecutive non-empty, non-special lines
+    // Paragraph - collect consecutive non-empty, non-special lines
     const paraLines: string[] = [];
     while (
       i < lines.length &&
@@ -195,7 +195,7 @@ function parseBlocks(markdown: string): React.ReactNode[] {
       }, []);
       nodes.push(<p key={i} className="my-3 text-gray-700 leading-relaxed">{content}</p>);
     } else {
-      // FIX: safety fallback — if no block matched and i didn't advance,
+      // FIX: safety fallback - if no block matched and i didn't advance,
       // render the line as plain text and move on to prevent infinite loop.
       // This handles lines starting with | without a separator (lone pipe chars, etc.)
       nodes.push(<p key={i} className="my-3 text-gray-700 leading-relaxed">{parseInline(line)}</p>);

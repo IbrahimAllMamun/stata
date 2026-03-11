@@ -14,14 +14,14 @@ const INPUT = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 tex
 const LABEL = 'block text-[11px] tracking-widest text-white/40 mb-1.5 uppercase';
 
 interface RegWithMember extends AsplRegistration {
-  member: { full_name: string; batch: number; phone_number: string; job_title?: string | null; organisation?: string | null } | null;
+  member: { full_name: string; batch: number; phone_number: string; job_title?: string | null; organisation?: string | null; photo_url?: string | null } | null;
 }
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
-    PENDING:  { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24',        label: 'Pending Review' },
-    APPROVED: { bg: 'rgba(0,229,160,0.15)',  text: 'var(--accent)',  label: 'Approved' },
-    REJECTED: { bg: 'rgba(239,68,68,0.15)',  text: '#fca5a5',        label: 'Rejected' },
+    PENDING: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', label: 'Pending Review' },
+    APPROVED: { bg: 'rgba(0,229,160,0.15)', text: 'var(--accent)', label: 'Approved' },
+    REJECTED: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5', label: 'Rejected' },
   };
   const s = map[status] ?? map.PENDING;
   return (
@@ -43,21 +43,21 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 }
 
 export default function UpdateRegistrationForm({ season, onClose }: Props) {
-  const [step, setStep]             = useState<Step>('lookup');
+  const [step, setStep] = useState<Step>('lookup');
   const [lookupEmail, setLookupEmail] = useState('');
-  const [looking, setLooking]       = useState(false);
+  const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState('');
-  const [existing, setExisting]     = useState<RegWithMember | null>(null);
+  const [existing, setExisting] = useState<RegWithMember | null>(null);
 
   // Only these two fields can be changed
-  const [position, setPosition]     = useState('');
-  const [photo, setPhoto]           = useState<File | null>(null);
+  const [position, setPosition] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError]   = useState('');
-  const [result, setResult]         = useState<{ message: string; registration: AsplRegistration } | null>(null);
+  const [formError, setFormError] = useState('');
+  const [result, setResult] = useState<{ message: string; registration: AsplRegistration } | null>(null);
 
-  const fileRef  = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const positions = asplApi.getPositions(season.sport);
 
   const handleLookup = async () => {
@@ -69,7 +69,7 @@ export default function UpdateRegistrationForm({ season, onClose }: Props) {
       const reg = await asplApi.lookupRegistration(email, season.id) as RegWithMember;
       setExisting(reg);
       setPosition(reg.playing_position);
-      if (reg.photo_url) setPhotoPreview(asplApi.imageUrl(reg.photo_url));
+      if (reg.member?.photo_url) setPhotoPreview(asplApi.imageUrl(reg.member.photo_url));
       setStep('edit');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'No registration found.';
@@ -91,8 +91,8 @@ export default function UpdateRegistrationForm({ season, onClose }: Props) {
     setFormError(''); setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('season_id',        String(season.id));
-      fd.append('email',            existing!.email);
+      fd.append('season_id', String(season.id));
+      fd.append('email', existing!.email);
       fd.append('playing_position', position);
       if (photo) fd.append('photo', photo);
       const res = await asplApi.updatePlayerDetails(fd);
@@ -103,7 +103,7 @@ export default function UpdateRegistrationForm({ season, onClose }: Props) {
     } finally { setSubmitting(false); }
   };
 
-  const photoUrl = photoPreview ?? (existing?.photo_url ? asplApi.imageUrl(existing.photo_url) : null);
+  const photoUrl = photoPreview ?? (existing?.member?.photo_url ? asplApi.imageUrl(existing.member.photo_url) : null);
   const m = existing?.member;
 
   return (
@@ -215,12 +215,12 @@ export default function UpdateRegistrationForm({ season, onClose }: Props) {
                   </span>
                 </div>
                 <div className="px-4 py-3 space-y-2">
-                  <InfoRow icon={<User className="w-3.5 h-3.5" />}    label="Name"  value={m.full_name} />
-                  <InfoRow icon={<Mail className="w-3.5 h-3.5" />}    label="Email" value={existing.email} />
-                  <InfoRow icon={<Hash className="w-3.5 h-3.5" />}    label="Batch" value={`Batch ${m.batch}`} />
-                  <InfoRow icon={<Phone className="w-3.5 h-3.5" />}   label="Phone" value={m.phone_number} />
-                  {m.job_title    && <InfoRow icon={<Briefcase className="w-3.5 h-3.5" />}  label="Title" value={m.job_title} />}
-                  {m.organisation && <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Org"   value={m.organisation} />}
+                  <InfoRow icon={<User className="w-3.5 h-3.5" />} label="Name" value={m.full_name} />
+                  <InfoRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={existing.email} />
+                  <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Batch" value={`Batch ${m.batch}`} />
+                  <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={m.phone_number} />
+                  {m.job_title && <InfoRow icon={<Briefcase className="w-3.5 h-3.5" />} label="Title" value={m.job_title} />}
+                  {m.organisation && <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Org" value={m.organisation} />}
                 </div>
                 <div className="px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                   <p className="text-[10px] text-white/20">To change this info, update your STATA member profile at <span className="underline text-white/35">/update-profile</span></p>
@@ -292,7 +292,7 @@ export default function UpdateRegistrationForm({ season, onClose }: Props) {
               style={{ background: 'rgba(245,200,66,0.15)' }}>
               {result.registration.status === 'APPROVED'
                 ? <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--accent)' }} />
-                : <RefreshCw    className="w-7 h-7" style={{ color: 'var(--gold)' }} />}
+                : <RefreshCw className="w-7 h-7" style={{ color: 'var(--gold)' }} />}
             </div>
             <h3 className="text-base font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>Registration Updated!</h3>
             <p className="text-sm text-white/50 mb-6 leading-relaxed">{result.message}</p>
@@ -307,11 +307,11 @@ export default function UpdateRegistrationForm({ season, onClose }: Props) {
             <div className="rounded-xl px-4 py-3 mb-6 text-left space-y-2"
               style={{ background: 'rgba(255,255,255,0.04)' }}>
               {[
-                ['Name',     existing?.member?.full_name ?? '—'],
-                ['Email',    result.registration.email],
-                ['Batch',    String(existing?.member?.batch ?? '—')],
+                ['Name', existing?.member?.full_name ?? '—'],
+                ['Email', result.registration.email],
+                ['Batch', String(existing?.member?.batch ?? '—')],
                 ['Position', result.registration.playing_position],
-                ['Status',   result.registration.status],
+                ['Status', result.registration.status],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between text-xs">
                   <span className="text-white/40 tracking-wide" style={{ fontFamily: 'kanit' }}>{k}</span>

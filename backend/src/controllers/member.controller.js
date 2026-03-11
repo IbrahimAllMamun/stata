@@ -16,7 +16,7 @@ const register = async (req, res, next) => {
     const {
       batch, full_name, email, phone_number,
       alternative_phone, job_title, organisation,
-      organisation_address, notify_events,
+      organisation_address, notify_events, blood_group,
     } = req.body;
 
     const photo_url = await uploadPhoto(req.file);
@@ -38,6 +38,7 @@ const register = async (req, res, next) => {
         organisation_address: organisation_address || null,
         notify_events,
         photo_url: photo_url || null,
+        blood_group: blood_group || null,
         status: 'PENDING',
       },
     });
@@ -55,11 +56,12 @@ const register = async (req, res, next) => {
 // Only return APPROVED members to the public
 const getMembers = async (req, res, next) => {
   try {
-    const { batch } = req.query;
+    const { batch, blood_group } = req.query;
     const { page, limit, skip } = paginate(req.query);
 
     const where = { status: 'APPROVED' };
     if (batch) where.batch = parseInt(batch);
+    if (blood_group) where.blood_group = blood_group;
 
     const [members, total] = await Promise.all([
       prisma.member.findMany({
@@ -81,7 +83,7 @@ const getMembers = async (req, res, next) => {
         email: m.email, phone_number: m.phone_number,
         alternative_phone: m.alternative_phone, job_title: m.job_title,
         organisation: m.organisation, organisation_address: m.organisation_address,
-        notify_events: m.notify_events, photo_url: m.photo_url ?? null, created_at: m.created_at,
+        notify_events: m.notify_events, photo_url: m.photo_url ?? null, blood_group: m.blood_group ?? null, created_at: m.created_at,
         is_committee_member: positions.length > 0,
         is_president_or_secretary:
           positions.includes('PRESIDENT') || positions.includes('GENERAL_SECRETARY'),
@@ -113,13 +115,13 @@ const exportCSV = async (req, res, next) => {
     const headers = [
       'batch', 'full_name', 'email', 'phone_number',
       'alternative_phone', 'job_title', 'organisation',
-      'organisation_address', 'notify_events', 'created_at',
+      'organisation_address', 'notify_events', 'blood_group', 'created_at',
     ];
 
     const displayHeaders = [
       'Batch', 'Full Name', 'Email', 'Phone Number',
       'Alternative Phone', 'Job Title', 'Organisation',
-      'Organisation Address', 'Notify Events', 'Registered At',
+      'Organisation Address', 'Notify Events', 'Blood Group', 'Registered At',
     ];
 
     const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
@@ -174,7 +176,7 @@ const lookupMember = async (req, res, next) => {
         id: true, batch: true, full_name: true, email: true,
         phone_number: true, alternative_phone: true,
         job_title: true, organisation: true,
-        organisation_address: true, notify_events: true, photo_url: true, status: true,
+        organisation_address: true, notify_events: true, photo_url: true, blood_group: true, status: true,
       },
     });
 
@@ -222,7 +224,7 @@ const updateMember = async (req, res, next) => {
     const {
       email, batch, full_name, phone_number,
       alternative_phone, job_title, organisation,
-      organisation_address, notify_events,
+      organisation_address, notify_events, blood_group,
     } = req.body;
 
     if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
@@ -252,6 +254,7 @@ const updateMember = async (req, res, next) => {
         organisation: organisation?.trim() || null,
         organisation_address: organisation_address?.trim() || null,
         notify_events: notify_events !== undefined ? notify_events : null,
+        blood_group: blood_group !== undefined ? (blood_group || null) : null,
         status: 'PENDING',
       },
     });
@@ -279,7 +282,7 @@ const getMemberUpdateRequests = async (req, res, next) => {
             id: true, full_name: true, email: true, batch: true,
             phone_number: true, alternative_phone: true,
             job_title: true, organisation: true,
-            organisation_address: true, notify_events: true, photo_url: true, status: true,
+            organisation_address: true, notify_events: true, photo_url: true, blood_group: true, status: true,
           },
         },
       },
@@ -314,6 +317,7 @@ const approveMemberUpdate = async (req, res, next) => {
     if (request.organisation !== null) updateData.organisation = request.organisation;
     if (request.organisation_address !== null) updateData.organisation_address = request.organisation_address;
     if (request.notify_events !== null) updateData.notify_events = request.notify_events;
+    if (request.blood_group !== null) updateData.blood_group = request.blood_group;
 
     await prisma.$transaction([
       prisma.member.update({ where: { id: request.member_id }, data: updateData }),
@@ -457,9 +461,24 @@ const debugPhotoStatus = async (req, res, next) => {
   }
 };
 
+
+// ─── Admin: POST /admin/members/:id/photo ────────────────────────────────────
+const adminUpdateMemberPhoto = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No photo provided.' });
+    const { id } = req.params;
+    const member = await prisma.member.findUnique({ where: { id } });
+    if (!member) return res.status(404).json({ success: false, message: 'Member not found.' });
+    const photo_url = await uploadPhoto(req.file);
+    if (!photo_url) return res.status(500).json({ success: false, message: 'Photo upload failed.' });
+    await prisma.member.update({ where: { id }, data: { photo_url } });
+    res.json({ success: true, message: 'Photo updated.', data: { photo_url } });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   register, getMembers, exportCSV, getApprovedBatches,
-  lookupMember, updateMember, updateMemberPhoto,
+  lookupMember, updateMember, updateMemberPhoto, adminUpdateMemberPhoto,
   getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount,
   getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, debugPhotoStatus,
 };

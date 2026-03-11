@@ -21,7 +21,7 @@ function useDebounced<T>(value: T, delay = 150): T {
   return dv;
 }
 
-// Error boundary — catches renderer crashes without killing the whole editor
+// Error boundary - catches renderer crashes without killing the whole editor
 class PreviewBoundary extends Component<{ children: ReactNode }, { err: boolean }> {
   constructor(props: { children: ReactNode }) { super(props); this.state = { err: false }; }
   static getDerivedStateFromError() { return { err: true }; }

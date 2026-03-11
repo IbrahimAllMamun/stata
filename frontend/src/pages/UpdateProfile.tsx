@@ -1,13 +1,14 @@
 // src/pages/UpdateProfile.tsx
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Briefcase, Bell, CheckCircle, Home, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
-import { api, Member } from '../lib/api';
+import { Search, User, Briefcase, Bell, CheckCircle, Home, ArrowLeft, AlertCircle, RefreshCw, Camera, X } from 'lucide-react';
+import { api, imageUrl, Member } from '../lib/api';
 
 type Step = 'lookup' | 'edit' | 'success';
 
 interface FullMember extends Member {
   status: string;
+  photo_url?: string | null;
 }
 
 interface FormState {
@@ -19,6 +20,7 @@ interface FormState {
   organisation: string;
   organisation_address: string;
   notify_events: '' | 'true' | 'false';
+  blood_group: string;
 }
 
 const inputCls = (err: boolean) =>
@@ -32,28 +34,35 @@ const radioCls = (selected: boolean) =>
     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`;
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING:  { bg: 'bg-amber-50',  text: 'text-amber-700',  label: 'Pending Approval' },
-  APPROVED: { bg: 'bg-green-50',  text: 'text-green-700',  label: 'Approved Member'  },
-  ARCHIVED: { bg: 'bg-gray-100',  text: 'text-gray-500',   label: 'Archived'         },
+  PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Pending Approval' },
+  APPROVED: { bg: 'bg-green-50', text: 'text-green-700', label: 'Approved Member' },
+  ARCHIVED: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Archived' },
 };
 
 export default function UpdateProfile() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('lookup');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Lookup step
+  // Lookup
   const [lookupEmail, setLookupEmail] = useState('');
-  const [looking, setLooking]         = useState(false);
+  const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState('');
-  const [member, setMember]           = useState<FullMember | null>(null);
+  const [member, setMember] = useState<FullMember | null>(null);
 
-  // Edit step
-  const [form, setForm]     = useState<FormState>({
+  // Photo
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const [photoSaved, setPhotoSaved] = useState(false);
+
+  // Edit form
+  const [form, setForm] = useState<FormState>({
     batch: '', full_name: '', phone_number: '', alternative_phone: '',
-    job_title: '', organisation: '', organisation_address: '', notify_events: '',
+    job_title: '', organisation: '', organisation_address: '', notify_events: '', blood_group: '',
   });
-  const [errors, setErrors]     = useState<Record<string, string>>({});
-  const [saving, setSaving]     = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ full_name: string; status: string } | null>(null);
 
   const set = (field: keyof FormState) =>
@@ -67,21 +76,20 @@ export default function UpdateProfile() {
     const email = lookupEmail.trim();
     if (!email) { setLookupError('Please enter your email address.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setLookupError('Please enter a valid email address.'); return; }
-
     setLooking(true); setLookupError('');
     try {
       const res = await api.lookupMember(email);
       const m = res.data as FullMember;
       setMember(m);
+      // Pre-load existing photo preview
+      const existingSrc = imageUrl(m.photo_url);
+      if (existingSrc) setPhotoPreview(existingSrc);
       setForm({
-        batch:                String(m.batch),
-        full_name:            m.full_name,
-        phone_number:         m.phone_number,
-        alternative_phone:    m.alternative_phone ?? '',
-        job_title:            m.job_title ?? '',
-        organisation:         m.organisation ?? '',
-        organisation_address: m.organisation_address ?? '',
-        notify_events:        m.notify_events ? 'true' : 'false',
+        batch: String(m.batch), full_name: m.full_name, phone_number: m.phone_number,
+        alternative_phone: m.alternative_phone ?? '', job_title: m.job_title ?? '',
+        organisation: m.organisation ?? '', organisation_address: m.organisation_address ?? '',
+        notify_events: m.notify_events ? 'true' : 'false',
+        blood_group: m.blood_group ?? '',
       });
       setStep('edit');
     } catch (err: unknown) {
@@ -92,7 +100,30 @@ export default function UpdateProfile() {
     } finally { setLooking(false); }
   };
 
-  // ── Validate edit form ──────────────────────────────────────────────────────
+  // ── Photo pick ───────────────────────────────────────────────────────────────
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhoto(file);
+    setPhotoSaved(false);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoSave = async () => {
+    if (!photo || !member) return;
+    setPhotoSaving(true);
+    try {
+      await api.updateMemberPhoto(member.email, photo);
+      setPhotoSaved(true);
+      setPhoto(null);
+    } catch (err: unknown) {
+      setErrors(prev => ({ ...prev, photo: err instanceof Error ? err.message : 'Photo upload failed.' }));
+    } finally { setPhotoSaving(false); }
+  };
+
+  // ── Validate ─────────────────────────────────────────────────────────────────
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!form.batch || isNaN(Number(form.batch)) || Number(form.batch) < 1) e.batch = 'Valid batch number is required';
@@ -103,21 +134,17 @@ export default function UpdateProfile() {
     return Object.keys(e).length === 0;
   };
 
-  // ── Save ────────────────────────────────────────────────────────────────────
+  // ── Save profile ─────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!validate() || !member) return;
     setSaving(true);
     try {
       const res = await api.updateMember({
-        email:                member.email,
-        batch:                parseInt(form.batch),
-        full_name:            form.full_name.trim(),
-        phone_number:         form.phone_number.trim(),
-        notify_events:        form.notify_events === 'true',
-        alternative_phone:    form.alternative_phone || undefined,
-        job_title:            form.job_title || undefined,
-        organisation:         form.organisation || undefined,
-        organisation_address: form.organisation_address || undefined,
+        email: member.email, batch: parseInt(form.batch), full_name: form.full_name.trim(),
+        phone_number: form.phone_number.trim(), notify_events: form.notify_events === 'true',
+        alternative_phone: form.alternative_phone || undefined, job_title: form.job_title || undefined,
+        organisation: form.organisation || undefined, organisation_address: form.organisation_address || undefined,
+        blood_group: form.blood_group || null,
       });
       setSaveResult(res.data);
       setStep('success');
@@ -128,7 +155,7 @@ export default function UpdateProfile() {
 
   const statusStyle = member ? (STATUS_STYLES[member.status] ?? STATUS_STYLES.PENDING) : null;
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  // ── Success ──────────────────────────────────────────────────────────────────
   if (step === 'success' && saveResult) return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 bg-[#F5F7FA]">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -138,21 +165,15 @@ export default function UpdateProfile() {
             <CheckCircle className="w-10 h-10 text-[#2ECC71]" />
           </div>
           <h2 className="text-2xl font-extrabold text-[#1F2A44] mb-2">Profile Updated!</h2>
-          <p className="text-gray-500 text-sm mb-6">Your information has been saved successfully.</p>
-
+          <p className="text-gray-500 text-sm mb-6">Your information has been submitted for review.</p>
           <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
-            {[
-              ['Name', saveResult.full_name],
-              ['Email', member!.email],
-              ['Status', STATUS_STYLES[saveResult.status]?.label ?? saveResult.status],
-            ].map(([k, v]) => (
+            {[['Name', saveResult.full_name], ['Email', member!.email], ['Status', STATUS_STYLES[saveResult.status]?.label ?? saveResult.status]].map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm">
                 <span className="text-gray-400 font-medium">{k}</span>
                 <span className="text-[#1F2A44] font-semibold">{v}</span>
               </div>
             ))}
           </div>
-
           <button onClick={() => navigate('/')}
             className="w-full flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm">
             <Home className="w-4 h-4" /> Back to Home
@@ -166,7 +187,6 @@ export default function UpdateProfile() {
     <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] py-12 px-4">
       <div className="max-w-2xl mx-auto">
 
-        {/* Page header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-[#1F2A44] rounded-full flex items-center justify-center mx-auto mb-4">
             <RefreshCw className="w-8 h-8 text-white" />
@@ -175,7 +195,7 @@ export default function UpdateProfile() {
           <p className="text-gray-500 mt-1">Update your STATA member information</p>
         </div>
 
-        {/* ── Step 1: Email lookup ─────────────────────────────────────────── */}
+        {/* ── Lookup ── */}
         {step === 'lookup' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 bg-[#2F5BEA] text-white">
@@ -186,88 +206,101 @@ export default function UpdateProfile() {
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700 leading-relaxed">
                 Enter the email address you used when registering. We'll look up your profile so you can update your details.
               </div>
-
               {lookupError && (
                 <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>{lookupError}</span>
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" /><span>{lookupError}</span>
                 </div>
               )}
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Registered Email Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={lookupEmail}
-                  onChange={e => { setLookupEmail(e.target.value); setLookupError(''); }}
-                  onKeyDown={e => e.key === 'Enter' && handleLookup()}
-                  placeholder="you@example.com"
-                  className={inputCls(!!lookupError)}
-                  autoFocus
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Registered Email Address <span className="text-red-500">*</span></label>
+                <input type="email" value={lookupEmail} onChange={e => { setLookupEmail(e.target.value); setLookupError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && handleLookup()} placeholder="you@example.com" className={inputCls(!!lookupError)} autoFocus />
               </div>
-
-              <button
-                onClick={handleLookup}
-                disabled={looking}
+              <button onClick={handleLookup} disabled={looking}
                 className="w-full py-3.5 rounded-xl font-semibold text-white transition-all text-sm bg-[#2F5BEA] hover:bg-[#1a3fc7] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                {looking
-                  ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Looking up…</>
-                  : <><Search className="w-4 h-4" /> Find My Profile</>}
+                {looking ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Looking up…</> : <><Search className="w-4 h-4" /> Find My Profile</>}
               </button>
-
-              <p className="text-center text-sm text-gray-400">
-                Not a member yet?{' '}
-                <a href="/register" className="text-[#2F5BEA] font-medium hover:underline">Register here</a>
-              </p>
+              <p className="text-center text-sm text-gray-400">Not a member yet?{' '}<a href="/register" className="text-[#2F5BEA] font-medium hover:underline">Register here</a></p>
             </div>
           </div>
         )}
 
-        {/* ── Step 2: Edit form ────────────────────────────────────────────── */}
+        {/* ── Edit ── */}
         {step === 'edit' && member && (
           <div className="space-y-6">
-
-            {/* Back + status banner */}
             <div className="flex items-center justify-between">
-              <button
-                onClick={() => { setStep('lookup'); setMember(null); setErrors({}); }}
+              <button onClick={() => { setStep('lookup'); setMember(null); setErrors({}); setPhoto(null); setPhotoPreview(null); setPhotoSaved(false); }}
                 className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#1F2A44] transition-colors font-medium">
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
-              {statusStyle && (
-                <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
-                  {statusStyle.label}
-                </span>
-              )}
+              {statusStyle && <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusStyle.bg} ${statusStyle.text}`}>{statusStyle.label}</span>}
             </div>
 
-            {/* Email locked notice */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#2F5BEA]/10 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-[#2F5BEA]" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-0.5">Editing profile for</p>
-                <p className="text-sm font-semibold text-[#1F2A44]">{member.email}</p>
-              </div>
+              <div className="w-8 h-8 rounded-full bg-[#2F5BEA]/10 flex items-center justify-center flex-shrink-0"><User className="w-4 h-4 text-[#2F5BEA]" /></div>
+              <div><p className="text-xs text-gray-400 mb-0.5">Editing profile for</p><p className="text-sm font-semibold text-[#1F2A44]">{member.email}</p></div>
               <span className="ml-auto text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded-md">Email locked</span>
             </div>
 
             {errors.general && (
               <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                {errors.general}
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />{errors.general}
               </div>
             )}
 
-            {/* Personal Information */}
+            {/* ── Profile Photo ── */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 bg-[#1F2A44] text-white">
+                <Camera className="w-5 h-5" />
+                <h2 className="font-semibold">Profile Photo</h2>
+                <span className="ml-auto text-xs opacity-70">Applied immediately</span>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-5">
+                  {/* Preview */}
+                  <div className="relative flex-shrink-0">
+                    {photoPreview
+                      ? <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-xl object-cover border-2 border-white shadow ring-2 ring-[#2F5BEA]/30" />
+                      : <div className="w-24 h-24 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1">
+                        <Camera className="w-6 h-6 text-gray-300" />
+                        <span className="text-[10px] text-gray-400">No photo</span>
+                      </div>
+                    }
+                    {photoPreview && (
+                      <button onClick={() => { setPhoto(null); setPhotoPreview(imageUrl(member.photo_url)); setPhotoSaved(false); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors">
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-3">
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:border-[#2F5BEA] hover:text-[#2F5BEA] transition-colors bg-white">
+                      <Camera className="w-4 h-4" /> {photoPreview ? 'Change Photo' : 'Upload Photo'}
+                    </button>
+
+                    {photo && !photoSaved && (
+                      <button onClick={handlePhotoSave} disabled={photoSaving}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60">
+                        {photoSaving ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</> : <><CheckCircle className="w-3.5 h-3.5" /> Save Photo</>}
+                      </button>
+                    )}
+
+                    {photoSaved && <p className="text-sm text-green-600 font-medium flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Photo saved!</p>}
+                    {errors.photo && <p className="text-xs text-red-500">{errors.photo}</p>}
+
+                    <p className="text-xs text-gray-400">JPG, PNG, WEBP or HEIC · Max 15MB · Changes apply immediately</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Personal Information ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 bg-[#2F5BEA] text-white">
-                <User className="w-5 h-5" />
-                <h2 className="font-semibold">Personal Information</h2>
+                <User className="w-5 h-5" /><h2 className="font-semibold">Personal Information</h2>
               </div>
               <div className="p-6 space-y-5">
                 <div>
@@ -282,9 +315,8 @@ export default function UpdateProfile() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                  <input type="email" value={member.email} readOnly
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
-                  <p className="mt-1 text-xs text-gray-400">Email cannot be changed — it identifies your account</p>
+                  <input type="email" value={member.email} readOnly className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
+                  <p className="mt-1 text-xs text-gray-400">Email cannot be changed</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -298,22 +330,36 @@ export default function UpdateProfile() {
                   </div>
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Blood Group <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
+                <select value={form.blood_group} onChange={e => setForm(f => ({ ...f, blood_group: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent bg-white">
+                  <option value="">- Select blood group -</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
             </div>
 
-            {/* Job Details */}
+            {/* ── Job Details ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 bg-[#1F2A44] text-white">
-                <Briefcase className="w-5 h-5" />
-                <h2 className="font-semibold">Job Related Information</h2>
+                <Briefcase className="w-5 h-5" /><h2 className="font-semibold">Job Related Information</h2>
               </div>
               <div className="p-6 space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-                  <input type="text" value={form.job_title} onChange={set('job_title')} placeholder="e.g. Data Scientist, Statistician" className={inputCls(false)} />
+                  <input type="text" value={form.job_title} onChange={set('job_title')} placeholder="e.g. Data Scientist" className={inputCls(false)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Organisation</label>
-                  <input type="text" value={form.organisation} onChange={set('organisation')} placeholder="e.g. Bangladesh Bank, Pathao" className={inputCls(false)} />
+                  <input type="text" value={form.organisation} onChange={set('organisation')} placeholder="e.g. Bangladesh Bank" className={inputCls(false)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
@@ -322,11 +368,10 @@ export default function UpdateProfile() {
               </div>
             </div>
 
-            {/* Notification Preference */}
+            {/* ── Notifications ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-4 bg-[#F39C12] text-white">
-                <Bell className="w-5 h-5" />
-                <h2 className="font-semibold">Event Notifications</h2>
+                <Bell className="w-5 h-5" /><h2 className="font-semibold">Event Notifications</h2>
                 <span className="ml-auto text-xs opacity-80">* Required</span>
               </div>
               <div className="p-6 space-y-3">
@@ -352,14 +397,13 @@ export default function UpdateProfile() {
               </div>
             </div>
 
-            {/* Save */}
-            <button
-              onClick={handleSave}
-              disabled={saving}
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+              <strong>Note:</strong> Profile field changes are reviewed by an admin before going live. Photo changes apply immediately.
+            </div>
+
+            <button onClick={handleSave} disabled={saving}
               className="w-full py-3.5 rounded-xl font-semibold text-white transition-all text-base bg-[#2F5BEA] hover:bg-[#1a3fc7] shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              {saving
-                ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</>
-                : 'Save Changes'}
+              {saving ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</> : 'Submit Profile Changes'}
             </button>
           </div>
         )}

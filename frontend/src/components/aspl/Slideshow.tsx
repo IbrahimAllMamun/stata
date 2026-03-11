@@ -213,7 +213,7 @@ export default function Slideshow() {
   const [players, setPlayers] = useState<AsplPlayer[]>([]);
   const [season, setSeason] = useState<AsplSeason | null>(null);
   const [currentSL, setCurrentSL] = useState(1);
-  const [fetchSL, setFetchSL] = useState(1); // debounced — only triggers DB fetch
+  const [fetchSL, setFetchSL] = useState(1); // debounced - only triggers DB fetch
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [player, setPlayer] = useState<AsplPlayer | null>(null);
   const [animKey, setAnimKey] = useState(0);
@@ -326,7 +326,7 @@ export default function Slideshow() {
           <div className="flex items-center gap-3">
             <div className="relative w-16 h-16 rounded-full flex items-center justify-center text-3xl"
               style={{ background: 'var(--pitch-light)', border: '2px solid var(--gold)', boxShadow: '0 0 18px rgba(245,200,66,0.3)', animation: 'aspl-pulse-ring 2s infinite', fontFamily: 'kanit' }}>
-              <span style={{ color: 'var(--gold)' }}>{player?.sl ?? '—'}</span>
+              <span style={{ color: 'var(--gold)' }}>{player?.sl ?? '-'}</span>
             </div>
             <div>
               <p className="text-[10px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>PLAYER NO.</p>
@@ -458,13 +458,13 @@ export default function Slideshow() {
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 py-2 text-xs"
           style={{ background: 'rgba(229,62,62,0.9)', backdropFilter: 'blur(8px)', fontFamily: 'kanit' }}>
           <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          <span className="tracking-widest text-white">DATABASE DISCONNECTED — RETRYING…</span>
+          <span className="tracking-widest text-white">DATABASE DISCONNECTED - RETRYING…</span>
         </div>
       )}
 
-      {/* FAB — bottom left, sits just above ticker */}
+      {/* FAB - bottom left, sits just above ticker */}
       <div className="fixed z-50" style={{ bottom: '36px', left: '16px' }}>
-        {/* Links — stack upward from button */}
+        {/* Links - stack upward from button */}
         <div className="flex flex-col-reverse items-center gap-2 mb-2">
           {fabOpen && (
             <>
@@ -486,7 +486,7 @@ export default function Slideshow() {
             </>
           )}
         </div>
-        {/* FAB trigger — never moves */}
+        {/* FAB trigger - never moves */}
         <button onClick={() => setFabOpen(o => !o)}
           className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-xl"
           style={{

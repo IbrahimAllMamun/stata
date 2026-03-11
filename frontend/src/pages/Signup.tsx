@@ -1,19 +1,19 @@
-// src/pages/Signup.tsx — Member Registration with email-first flow + optional profile photo
+// src/pages/Signup.tsx - Member Registration with email-first flow + optional profile photo
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, CheckCircle, User, Briefcase, Bell, Clock, Home, Search, AlertCircle, RefreshCw, Upload, Camera } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, imageUrl } from '../lib/api';
 
 interface FormState {
   batch: string; full_name: string; email: string; phone_number: string;
   alternative_phone: string; job_title: string; organisation: string;
-  organisation_address: string; notify_events: '' | 'true' | 'false';
+  organisation_address: string; notify_events: '' | 'true' | 'false'; blood_group: string;
 }
 
 const INITIAL: FormState = {
   batch: '', full_name: '', email: '', phone_number: '',
   alternative_phone: '', job_title: '', organisation: '',
-  organisation_address: '', notify_events: '',
+  organisation_address: '', notify_events: '', blood_group: '',
 };
 
 const inputCls = (err: boolean) =>
@@ -77,17 +77,17 @@ export default function Register() {
         full_name: m.full_name ?? '',
         email: m.email ?? '',
         phone_number: m.phone_number ?? '',
-        alternative_phone: (m as any).alternative_phone ?? '',
-        job_title: (m as any).job_title ?? '',
-        organisation: (m as any).organisation ?? '',
-        organisation_address: (m as any).organisation_address ?? '',
-        notify_events: (m as any).notify_events === true ? 'true' : (m as any).notify_events === false ? 'false' : '',
+        alternative_phone: m.alternative_phone ?? '',
+        job_title: m.job_title ?? '',
+        organisation: m.organisation ?? '',
+        organisation_address: m.organisation_address ?? '',
+        notify_events: m.notify_events === true ? 'true' : m.notify_events === false ? 'false' : '',
+        blood_group: m.blood_group ?? '',
       });
       // Load existing photo preview
       if (m.photo_url) {
-        const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
-        setExistingPhotoUrl(base + m.photo_url);
-        setPhotoPreview(base + m.photo_url);
+        setExistingPhotoUrl(imageUrl(m.photo_url) ?? null);
+        setPhotoPreview(imageUrl(m.photo_url) ?? null);
       }
       setMode('update');
     } catch (err: any) {
@@ -126,6 +126,7 @@ export default function Register() {
     if (form.job_title) fd.append('job_title', form.job_title);
     if (form.organisation) fd.append('organisation', form.organisation);
     if (form.organisation_address) fd.append('organisation_address', form.organisation_address);
+    if (form.blood_group) fd.append('blood_group', form.blood_group);
     if (photo) fd.append('photo', photo);
     return fd;
   };
@@ -139,7 +140,8 @@ export default function Register() {
       await api.registerWithPhoto(buildFormData());
       setSuccess('registered');
     } catch (err: any) {
-      if (err.message?.toLowerCase().includes('email')) {
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('duplicate') || msg.includes('unique')) {
         setErrors({ email: 'This email is already registered' });
       } else {
         setErrors({ general: err.message || 'Registration failed. Please try again.' });
@@ -167,6 +169,7 @@ export default function Register() {
         job_title: form.job_title || undefined,
         organisation: form.organisation || undefined,
         organisation_address: form.organisation_address || undefined,
+        blood_group: form.blood_group || null,
       });
       setSuccess('updated');
     } catch (err: any) {
@@ -290,7 +293,7 @@ export default function Register() {
           </p>
           <p className="text-xs text-gray-400 leading-relaxed mb-3">
             JPG, PNG, or WebP. Square crop works best.
-            {isUpdate && existingPhotoUrl && <><br /><span className="text-gray-300">Current photo loaded — leave empty to keep it.</span></>}
+            {isUpdate && existingPhotoUrl && <><br /><span className="text-gray-300">Current photo loaded - leave empty to keep it.</span></>}
           </p>
           <button type="button" onClick={() => fileRef.current?.click()}
             className="text-xs text-[#2F5BEA] hover:underline font-medium flex items-center gap-1">
@@ -372,6 +375,21 @@ export default function Register() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Alternative Phone <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
                   <input type="tel" value={form.alternative_phone} onChange={set('alternative_phone')} placeholder="+8801XXXXXXXXX" className={inputCls(false)} />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Blood Group <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
+                <select value={form.blood_group} onChange={e => setForm(f => ({ ...f, blood_group: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent bg-white">
+                  <option value="">- Select blood group -</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
               </div>
             </div>
           </div>

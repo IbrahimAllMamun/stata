@@ -1,7 +1,7 @@
 // src/components/aspl/RegistrationForm.tsx
 import { useState, useRef } from 'react';
 import { X, Upload, CheckCircle2, ChevronDown, User, Search, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
-import { api, asplApi, AsplSeason, AsplRegistration } from '../../lib/api';
+import { api, asplApi, AsplSeason, AsplRegistration, imageUrl } from '../../lib/api';
 
 interface Props {
   season: AsplSeason;
@@ -17,6 +17,7 @@ interface FoundMember {
   id: string; full_name: string; email: string; batch: number;
   phone_number: string; job_title?: string | null;
   organisation?: string | null; status: string;
+  photo_url?: string | null;
 }
 
 export default function RegistrationForm({ season, onClose }: Props) {
@@ -72,7 +73,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
       }
       setMember(m);
       // Track if member already has a photo
-      setMemberHasPhoto(!!(m as any).photo_url);
+      setMemberHasPhoto(!!m.photo_url);
+
+      // Pre-fill photo preview from member's profile photo
+      const memberPhotoSrc = imageUrl(m.photo_url);
+      if (memberPhotoSrc) setPhotoPreview(memberPhotoSrc);
 
       // Check if already registered for this season
       let existing: AsplRegistration | null = null;
@@ -80,16 +85,8 @@ export default function RegistrationForm({ season, onClose }: Props) {
         existing = await asplApi.lookupRegistration(trimmed, season.id) as any;
         // Pre-fill position from existing registration
         if (existing?.playing_position) setPosition(existing.playing_position);
-        // Pre-fill photo preview from member's profile photo
-        if ((res.data as any).photo_url) {
-          const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
-          setPhotoPreview(base + (res.data as any).photo_url);
-        } else if (existing?.photo_url) {
-          const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
-          setPhotoPreview(base + existing.photo_url);
-        }
       } catch {
-        // No existing registration — that's fine
+        // No existing registration - that's fine
         existing = null;
       }
       setExistingReg(existing);
@@ -121,7 +118,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
 
       let res;
       if (isUpdate) {
-        // Use update endpoint — only sends position/photo changes
+        // Use update endpoint - only sends position/photo changes
         res = await asplApi.updatePlayerDetails(fd);
         setResult({ ...res, member: { full_name: member!.full_name, batch: member!.batch }, updated: true });
       } else {
@@ -214,7 +211,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
               <div className="rounded-xl px-4 py-3 text-xs leading-relaxed flex items-start gap-2"
                 style={{ background: 'rgba(47,91,234,0.12)', border: '1px solid rgba(47,91,234,0.2)', color: 'rgba(200,215,255,0.8)' }}>
                 <RefreshCw className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                You already have a registration for this season. Your position and photo are pre-filled — update them below.
+                You already have a registration for this season. Your position and photo are pre-filled - update them below.
               </div>
             )}
 

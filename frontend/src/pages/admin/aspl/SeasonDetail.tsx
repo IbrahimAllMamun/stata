@@ -8,28 +8,28 @@ import {
   ClipboardList, ChevronDown, ChevronUp, Mail, Phone, Calendar,
   ToggleLeft, ToggleRight, UserPlus
 } from 'lucide-react';
-import { asplApi, AsplSeason, AsplTeam, AsplRegistration } from '../../../lib/api';
+import { asplApi, imageUrl, AsplSeason, AsplTeam, AsplRegistration } from '../../../lib/api';
 
 const STATUS_META: Record<string, { label: string; color: string; Icon: React.ElementType }> = {
-  DRAFT:     { label: 'Draft',     color: 'bg-gray-100 text-gray-600',  Icon: Clock },
-  ACTIVE:    { label: 'Active',    color: 'bg-green-100 text-green-700', Icon: PlayCircle },
-  COMPLETED: { label: 'Completed', color: 'bg-blue-100 text-blue-700',   Icon: CheckCircle2 },
+  DRAFT: { label: 'Draft', color: 'bg-gray-100 text-gray-600', Icon: Clock },
+  ACTIVE: { label: 'Active', color: 'bg-green-100 text-green-700', Icon: PlayCircle },
+  COMPLETED: { label: 'Completed', color: 'bg-blue-100 text-blue-700', Icon: CheckCircle2 },
 };
 
 // ── Team Form (inline) ────────────────────────────────────────────────────────
 function TeamForm({
-  seasonId, startingBalance, onSaved, onClose, editing,
+  seasonId, startingBalance: _startingBalance, onSaved, onClose, editing,
 }: {
   seasonId: number;
-  startingBalance: number;
+  startingBalance: number; // passed for future use (e.g. initial balance display)
   onSaved: (team: AsplTeam) => void;
   onClose: () => void;
   editing?: AsplTeam | null;
 }) {
   const [ownerName, setOwnerName] = useState(editing?.owner_name ?? '');
-  const [teamName, setTeamName]   = useState(editing?.team_name ?? '');
-  const [color, setColor]         = useState(editing?.color ?? '#2F5BEA');
-  const [logoFile, setLogoFile]   = useState<File | null>(null);
+  const [teamName, setTeamName] = useState(editing?.team_name ?? '');
+  const [color, setColor] = useState(editing?.color ?? '#2F5BEA');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(
     editing?.logo_url ? asplApi.imageUrl(editing.logo_url) : null
   );
@@ -138,8 +138,8 @@ function TeamForm({
 }
 
 // ── Team Card ─────────────────────────────────────────────────────────────────
-function TeamCard({ team, balance, onEdit, onDelete }: {
-  team: AsplTeam; balance: number; onEdit: () => void; onDelete: () => void;
+function TeamCard({ team, balance, onEdit, onDelete, isDeleting }: {
+  team: AsplTeam; balance: number; onEdit: () => void; onDelete: () => void; isDeleting?: boolean;
 }) {
   const logoUrl = asplApi.imageUrl(team.logo_url);
   return (
@@ -170,8 +170,8 @@ function TeamCard({ team, balance, onEdit, onDelete }: {
           <button onClick={onEdit} className="p-1.5 rounded-lg text-gray-400 hover:text-[#2F5BEA] hover:bg-blue-50 transition-colors">
             <Edit2 className="w-3.5 h-3.5" />
           </button>
-          <button onClick={onDelete} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
+          <button onClick={onDelete} disabled={isDeleting} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            {isDeleting ? <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin inline-block" /> : <Trash2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -339,10 +339,10 @@ export default function SeasonDetail() {
           {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
             {[
-              { icon: Users,       label: 'Teams',           value: teams.length },
-              { icon: ShieldCheck, label: 'Player Pool',     value: season.total_players },
-              { icon: DollarSign,  label: 'Starting Balance',value: `$${season.starting_balance}` },
-              { icon: DollarSign,  label: 'Min Bid',         value: `$${season.min_bid_price}` },
+              { icon: Users, label: 'Teams', value: teams.length },
+              { icon: ShieldCheck, label: 'Player Pool', value: season.total_players },
+              { icon: DollarSign, label: 'Starting Balance', value: `$${season.starting_balance}` },
+              { icon: DollarSign, label: 'Min Bid', value: `$${season.min_bid_price}` },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="bg-[#F5F7FA] rounded-xl p-3 text-center">
                 <Icon className="w-4 h-4 text-gray-400 mx-auto mb-1" />
@@ -437,6 +437,7 @@ export default function SeasonDetail() {
                       balance={season.starting_balance}
                       onEdit={() => { setShowForm(false); setEditingTeam(team); }}
                       onDelete={() => handleDeleteTeam(team.id)}
+                      isDeleting={deleting === team.id}
                     />
                   )}
                 </div>
@@ -447,9 +448,9 @@ export default function SeasonDetail() {
 
         {/* ── Registrations ─────────────────────────────────────────────── */}
         {(() => {
-          const pending   = registrations.filter(r => r.status === 'PENDING');
+          const pending = registrations.filter(r => r.status === 'PENDING');
           const conflicts = pending.filter(r => r.conflict_note);
-          const filtered  = regFilter === 'ALL' ? registrations : registrations.filter(r => r.status === regFilter);
+          const filtered = regFilter === 'ALL' ? registrations : registrations.filter(r => r.status === regFilter);
 
           return (
             <div className="mt-8">
@@ -488,7 +489,7 @@ export default function SeasonDetail() {
                   {filtered.map(reg => {
                     const isExpanded = regExpanded === reg.id;
                     const isConflict = !!reg.conflict_note;
-                    const photoUrl = asplApi.imageUrl(reg.photo_url);
+                    const photoUrl = imageUrl(reg.member?.photo_url);
                     return (
                       <div key={reg.id}
                         className={`bg-white rounded-2xl border transition-all ${isConflict ? 'border-amber-200 ring-1 ring-amber-100' : 'border-gray-100'}`}>
@@ -503,13 +504,12 @@ export default function SeasonDetail() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-semibold text-[#1F2A44] text-sm">{reg.member?.full_name ?? reg.email}</p>
                               {isConflict && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                reg.status === 'PENDING'  ? 'bg-amber-50 text-amber-600' :
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${reg.status === 'PENDING' ? 'bg-amber-50 text-amber-600' :
                                 reg.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
-                                'bg-red-50 text-red-500'}`}>{reg.status}</span>
+                                  'bg-red-50 text-red-500'}`}>{reg.status}</span>
                             </div>
                             <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                              <span>Batch {reg.member?.batch ?? '—'}</span>
+                              <span>Batch {reg.member?.batch ?? '-'}</span>
                               <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{reg.playing_position}</span>
                               <span className="truncate">{reg.email}</span>
                             </div>
@@ -545,8 +545,8 @@ export default function SeasonDetail() {
                             )}
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-500">
                               <span className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-gray-300" />{reg.email}</span>
-                              <span className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-gray-300" />{reg.member?.phone_number ?? '—'}</span>
-                              <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-gray-300" />Batch {reg.member?.batch ?? '—'}</span>
+                              <span className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-gray-300" />{reg.member?.phone_number ?? '-'}</span>
+                              <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-gray-300" />Batch {reg.member?.batch ?? '-'}</span>
                               <span className="flex items-center gap-1.5"><Users className="w-3 h-3 text-gray-300" />{reg.playing_position}</span>
                             </div>
                             <p className="text-[10px] text-gray-400">

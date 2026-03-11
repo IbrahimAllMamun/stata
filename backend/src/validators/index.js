@@ -21,6 +21,7 @@ const registerSchema = Joi.object({
   // Accept both real booleans AND the strings "true"/"false" from radio buttons
   notify_events: Joi.boolean().truthy('true').falsy('false').required()
     .messages({ 'any.required': 'notify_events selection is required' }),
+  blood_group: Joi.string().valid(...['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional().allow('', null),
 });
 
 const updateMemberSchema = Joi.object({
@@ -33,6 +34,7 @@ const updateMemberSchema = Joi.object({
   organisation: Joi.string().trim().max(200).optional().allow('', null),
   organisation_address: Joi.string().trim().max(300).optional().allow('', null),
   notify_events: Joi.boolean().truthy('true').falsy('false').optional(),
+  blood_group: Joi.string().valid(...['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional().allow('', null),
 });
 
 const loginSchema = Joi.object({

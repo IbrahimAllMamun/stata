@@ -17,10 +17,10 @@ function BidRow({
   onDelete: (id: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [teamId, setTeamId]   = useState(record.team_id);
-  const [price, setPrice]     = useState(String(record.price));
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState('');
+  const [teamId, setTeamId] = useState(record.team_id);
+  const [price, setPrice] = useState(String(record.price));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const priceRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
@@ -30,7 +30,7 @@ function BidRow({
     try {
       const updated = await asplApi.updateTeamPlayer(record.id, {
         team_id: teamId !== record.team_id ? teamId : undefined,
-        price:   p      !== record.price   ? p      : undefined,
+        price: p !== record.price ? p : undefined,
       });
       onSaved(updated);
       setEditing(false);
@@ -81,7 +81,7 @@ function BidRow({
         ) : (
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: record.team?.color ?? '#888' }} />
-            <span className="text-sm text-[#1F2A44]">{record.team?.team_name ?? '—'}</span>
+            <span className="text-sm text-[#1F2A44]">{record.team?.team_name ?? '-'}</span>
           </div>
         )}
       </td>
@@ -141,14 +141,14 @@ function BidRow({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function BidManager() {
-  const [season, setSeason]           = useState<AsplSeason | null>(null);
-  const [bids, setBids]               = useState<AsplTeamPlayer[]>([]);
-  const [teams, setTeams]             = useState<AsplTeam[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [refreshing, setRefreshing]   = useState(false);
-  const [error, setError]             = useState('');
-  const [search, setSearch]           = useState('');
-  const [filterTeam, setFilterTeam]   = useState<number | 'ALL'>('ALL');
+  const [season, setSeason] = useState<AsplSeason | null>(null);
+  const [bids, setBids] = useState<AsplTeamPlayer[]>([]);
+  const [teams, setTeams] = useState<AsplTeam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filterTeam, setFilterTeam] = useState<number | 'ALL'>('ALL');
 
   useEffect(() => { load(); }, []);
 
@@ -193,7 +193,7 @@ export default function BidManager() {
 
   // filtered bids
   const filtered = bids.filter(b => {
-    const matchTeam  = filterTeam === 'ALL' || b.team_id === filterTeam;
+    const matchTeam = filterTeam === 'ALL' || b.team_id === filterTeam;
     const matchSearch = !search || b.player?.name?.toLowerCase().includes(search.toLowerCase()) || String(b.player_sl).includes(search);
     return matchTeam && matchSearch;
   });

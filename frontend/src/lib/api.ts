@@ -61,6 +61,7 @@ export interface Member {
   organisation_address?: string | null;
   notify_events: boolean;
   photo_url?: string | null;
+  blood_group?: string | null;
   created_at: string;
   is_committee_member: boolean;
   is_president_or_secretary: boolean;
@@ -231,15 +232,17 @@ export const api = {
     job_title?: string;
     organisation?: string;
     organisation_address?: string;
+    blood_group?: string | null;
   }) =>
     request<{ success: boolean; message: string; data: { id: string; full_name: string; status: string } }>('/update-member', {
       method: 'PUT',
       body: data,
     }),
 
-  getMembers: (params?: { batch?: number; page?: number; limit?: number }) => {
+  getMembers: (params?: { batch?: number; blood_group?: string; page?: number; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.batch) qs.set('batch', String(params.batch));
+    if (params?.blood_group) qs.set('blood_group', params.blood_group);
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
     return request<{ success: boolean; data: Member[]; pagination: Pagination }>(`/members?${qs}`);
@@ -370,6 +373,14 @@ export const adminApi = {
   deleteMember: (id: string) =>
     request<{ success: boolean }>(`/admin/members/${id}`, { method: 'DELETE' }),
 
+  uploadMemberPhoto: (id: string, photo: File) => {
+    const fd = new FormData();
+    fd.append('photo', photo);
+    return request<{ success: boolean; data: { photo_url: string } }>(`/admin/members/${id}/photo`, {
+      method: 'POST', body: fd, isFormData: true,
+    });
+  },
+
   getPendingCount: () =>
     request<{ success: boolean; data: { count: number } }>('/admin/members/pending-count'),
 
@@ -458,7 +469,7 @@ export const adminApi = {
 
   getEmailCampaigns: (params?: { page?: number; limit?: number }) => {
     const qs = new URLSearchParams();
-    if (params?.page)  qs.set('page',  String(params.page));
+    if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
     return request<{ success: boolean; data: unknown[]; pagination: Pagination }>(`/admin/email/campaigns?${qs}`);
   },
@@ -562,6 +573,7 @@ export interface AsplRegistration {
     phone_number: string;
     job_title?: string | null;
     organisation?: string | null;
+    photo_url?: string | null;
   } | null;
 }
 

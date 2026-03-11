@@ -90,7 +90,7 @@ function PlayerDrawer({ teamId, onClose }: { teamId: number; onClose: () => void
         <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(245,200,66,0.1)' }}>
           <div>
             <p className="text-[10px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>SQUAD</p>
-            <h2 className="text-lg" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>{team?.team_name ?? '—'}</h2>
+            <h2 className="text-lg" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>{team?.team_name ?? '-'}</h2>
           </div>
           <div className="flex items-center gap-2">
             {!loading && players.length > 0 && (
@@ -117,7 +117,7 @@ function PlayerDrawer({ teamId, onClose }: { teamId: number; onClose: () => void
           <div className="flex gap-4 px-6 py-3 shrink-0" style={{ borderBottom: '1px solid rgba(245,200,66,0.08)' }}>
             {[
               ['PLAYERS', players.length, 'var(--white)'],
-              ['BALANCE', `$${team?.balance ?? '—'}`, 'var(--accent)'],
+              ['BALANCE', `$${team?.balance ?? '-'}`, 'var(--accent)'],
               ['SPENT', `$${totalSpent}`, 'var(--gold)'],
             ].map(([label, val, color]) => (
               <div key={String(label)}>

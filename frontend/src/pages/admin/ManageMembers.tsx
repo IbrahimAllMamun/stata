@@ -1,11 +1,11 @@
 // src/pages/admin/ManageMembers.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Users, CheckCircle, Archive, Trash2, Clock,
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
     Download, Filter, ChevronRight, ArrowRight,
-    AlertCircle, Camera, ZoomIn,
+    AlertCircle, Camera, ZoomIn, Upload,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 
@@ -19,6 +19,7 @@ interface RawMember {
     organisation?: string; organisation_address?: string;
     notify_events: boolean; status: MemberStatus; created_at: string;
     photo_url?: string | null;
+    blood_group?: string | null;
 }
 
 interface MemberUpdateRequest {
@@ -27,6 +28,7 @@ interface MemberUpdateRequest {
     alternative_phone: string | null; job_title: string | null;
     organisation: string | null; organisation_address: string | null;
     notify_events: boolean | null;
+    blood_group: string | null;
     status: UpdateStatus; admin_note: string | null;
     created_at: string; reviewed_at: string | null;
     member: RawMember;
@@ -53,7 +55,7 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
     );
 }
 
-// Clickable photo — opens lightbox on click
+// Clickable photo - opens lightbox on click
 function ExpandablePhoto({ src, alt, className }: { src: string; alt: string; className: string }) {
     const [open, setOpen] = useState(false);
     return (
@@ -69,7 +71,7 @@ function ExpandablePhoto({ src, alt, className }: { src: string; alt: string; cl
     );
 }
 
-// Generic avatar — photo if available, else initial letter
+// Generic avatar - photo if available, else initial letter
 function MemberAvatar({ member, size = 'md' }: { member: RawMember; size?: 'sm' | 'md' | 'lg' }) {
     const photoSrc = imageUrl(member.photo_url);
     const dims = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-16 h-16 text-2xl' : 'w-10 h-10 text-sm';
@@ -90,9 +92,9 @@ function DiffRow({ label, oldVal, newVal }: { label: string; oldVal: string; new
     return (
         <div className={`grid grid-cols-[120px_1fr_24px_1fr] gap-2 items-center py-2 px-3 rounded-lg text-sm ${changed ? 'bg-amber-50' : 'bg-gray-50'}`}>
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
-            <span className={`truncate ${changed ? 'text-red-500 line-through' : 'text-gray-500'}`}>{oldVal || '—'}</span>
+            <span className={`truncate ${changed ? 'text-red-500 line-through' : 'text-gray-500'}`}>{oldVal || '-'}</span>
             {changed ? <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" /> : <span />}
-            <span className={changed ? 'text-green-700 font-semibold' : 'text-gray-500'}>{newVal || '—'}</span>
+            <span className={changed ? 'text-green-700 font-semibold' : 'text-gray-500'}>{newVal || '-'}</span>
         </div>
     );
 }
@@ -106,7 +108,7 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
     const [note, setNote] = useState('');
     const m = req.member;
     const photoSrc = imageUrl(m.photo_url);
-    const notifyLabel = (v: boolean) => v ? 'Yes — notify me' : "No — don't notify";
+    const notifyLabel = (v: boolean) => v ? 'Yes - notify me' : "No - don't notify";
     const handle = async (action: 'approve' | 'reject') => {
         setLoading(true);
         try { if (action === 'approve') await onApprove(req.id, note || undefined); else await onReject(req.id, note || undefined); }
@@ -130,7 +132,7 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
             <div className="px-5 py-4 space-y-1.5">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Proposed Changes</p>
 
-                {/* Profile photo — always visible, click to expand */}
+                {/* Profile photo - always visible, click to expand */}
                 <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-gray-50">
                     <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-[120px] flex-shrink-0">Photo</span>
                     {photoSrc ? (
@@ -160,6 +162,7 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
                 <DiffRow label="Org" oldVal={m.organisation ?? ''} newVal={req.organisation} />
                 <DiffRow label="Address" oldVal={m.organisation_address ?? ''} newVal={req.organisation_address} />
                 <DiffRow label="Notify" oldVal={notifyLabel(m.notify_events)} newVal={req.notify_events !== null ? notifyLabel(req.notify_events) : null} />
+                <DiffRow label="Blood Group" oldVal={m.blood_group ?? '-'} newVal={req.blood_group} />
             </div>
 
             <div className="px-5 pb-4">
@@ -176,6 +179,74 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
                     className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
                     <X className="w-4 h-4" /> Reject
                 </button>
+            </div>
+        </div>
+    );
+}
+
+
+function PhotoUploadRow({ memberId, currentPhotoSrc, onUploaded }: {
+    memberId: string;
+    currentPhotoSrc: string | null;
+    onUploaded: (url: string) => void;
+}) {
+    const fileRef = useRef<HTMLInputElement>(null);
+    const [preview, setPreview] = useState<string | null>(currentPhotoSrc);
+    const [file, setFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [err, setErr] = useState('');
+
+    const handlePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        setFile(f); setSaved(false); setErr('');
+        const r = new FileReader();
+        r.onload = () => setPreview(r.result as string);
+        r.readAsDataURL(f);
+    };
+
+    const handleUpload = async () => {
+        if (!file) return;
+        setUploading(true); setErr('');
+        try {
+            const res = await adminApi.uploadMemberPhoto(memberId, file);
+            setFile(null); setSaved(true);
+            onUploaded(res.data.photo_url);
+            if (fileRef.current) fileRef.current.value = '';
+        } catch (e: unknown) {
+            setErr(e instanceof Error ? e.message : 'Upload failed');
+        } finally { setUploading(false); }
+    };
+
+    return (
+        <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-lg bg-[#F5F7FA] flex items-center justify-center flex-shrink-0 text-[#2F5BEA] mt-0.5">
+                <Camera className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">Profile Photo</p>
+                <div className="flex items-center gap-3">
+                    {preview
+                        ? <img src={preview} alt="photo" className="w-12 h-12 rounded-lg object-cover border border-gray-200 shadow-sm" />
+                        : <div className="w-12 h-12 rounded-lg bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center"><Camera className="w-4 h-4 text-gray-300" /></div>
+                    }
+                    <div className="space-y-1.5">
+                        <input ref={fileRef} type="file" accept="image/*" onChange={handlePick} className="hidden" />
+                        <button onClick={() => fileRef.current?.click()}
+                            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-[#2F5BEA] hover:text-[#2F5BEA] transition-colors bg-white">
+                            <Camera className="w-3 h-3" /> {preview ? 'Change' : 'Upload'}
+                        </button>
+                        {file && !saved && (
+                            <button onClick={handleUpload} disabled={uploading}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2F5BEA] text-white rounded-lg text-xs font-semibold hover:bg-[#1a3fc7] transition-colors disabled:opacity-50">
+                                {uploading ? <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</> : <><Upload className="w-3 h-3" /> Save Photo</>}
+                            </button>
+                        )}
+                        {saved && <p className="text-xs text-green-600 font-medium">✓ Saved</p>}
+                        {err && <p className="text-xs text-red-500">{err}</p>}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -218,22 +289,14 @@ function MemberDetailModal({ member, onClose, onAction }: {
                     <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={member.email} />
                     <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} />
                     {member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />}
+                    {member.blood_group && <DetailRow icon={<span className="text-sm font-bold">🩸</span>} label="Blood Group" value={member.blood_group} />}
                     {member.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={member.job_title} />}
                     {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
                     {member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
                     <DetailRow icon={<Clock className="w-4 h-4" />} label="Registered" value={new Date(member.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} />
-                    <div className="flex items-start gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-[#F5F7FA] flex items-center justify-center flex-shrink-0 text-[#2F5BEA] mt-0.5">
-                            <Camera className="w-4 h-4" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Profile Photo</p>
-                            {photoSrc
-                                ? <p className="text-sm text-green-600 font-medium">Photo uploaded ✓</p>
-                                : <p className="text-sm text-gray-400 italic">No photo uploaded</p>
-                            }
-                        </div>
-                    </div>
+                    <PhotoUploadRow memberId={member.id} currentPhotoSrc={photoSrc} onUploaded={(url) => {
+                        // update member in parent list
+                    }} />
                 </div>
                 <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                     {member.status !== 'APPROVED' && <button disabled={loading} onClick={() => handle('APPROVED')} className="flex items-center gap-1.5 bg-[#2ECC71] hover:bg-[#27AE60] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"><CheckCircle className="w-4 h-4" /> Approve</button>}
@@ -444,7 +507,7 @@ export default function ManageMembers() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <p className="text-sm text-gray-500">{updateRequests.length} pending update{updateRequests.length !== 1 ? 's' : ''} — review proposed changes below. Highlighted rows show what will change.</p>
+                                    <p className="text-sm text-gray-500">{updateRequests.length} pending update{updateRequests.length !== 1 ? 's' : ''} - review proposed changes below. Highlighted rows show what will change.</p>
                                     {updateRequests.map(req => (
                                         <UpdateRequestCard key={req.id} req={req} onApprove={handleApproveUpdate} onReject={handleRejectUpdate} />
                                     ))}

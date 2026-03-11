@@ -101,7 +101,7 @@ export default function LogoLoader({
         viewBox="0 0 286.17 94.75"
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* ── Icon — animation identical to standalone LogoLoader ── */}
+        {/* ── Icon - animation identical to standalone LogoLoader ── */}
         <path className="ll-orange-path" fill="#ED7437"
           d="M16.59,36.73s37.56-2.92,55.87-30.8C72.46,5.93,69.05,57.48,16.59,36.73Z" />
         <circle className="ll-orange-dot" fill="#EB6426" cx="47.6" cy="25.8" r="7.65" />

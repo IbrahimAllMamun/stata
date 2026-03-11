@@ -153,7 +153,7 @@ export default function ManageGallery() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Moment Date <span className="text-red-400">*</span>
-                <span className="font-normal text-gray-400 ml-1">— when was this photo taken?</span>
+                <span className="font-normal text-gray-400 ml-1">- when was this photo taken?</span>
               </label>
               <input
                 type="date"
@@ -179,7 +179,7 @@ export default function ManageGallery() {
                   <p className="text-sm text-gray-400 group-hover:text-[#2F5BEA] transition-colors font-medium">
                     Click to select images
                   </p>
-                  <p className="text-xs text-gray-300 mt-0.5">JPG, PNG, WebP, HEIC — max 15MB each</p>
+                  <p className="text-xs text-gray-300 mt-0.5">JPG, PNG, WebP, HEIC - max 15MB each</p>
                   <input
                     ref={fileInputRef}
                     type="file"

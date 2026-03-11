@@ -310,7 +310,7 @@ export default function Home() {
           ) : (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
               <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400 font-medium">No posts yet — check back soon!</p>
+              <p className="text-gray-400 font-medium">No posts yet - check back soon!</p>
             </div>
           )}
           {latestPosts.length > 0 && (
