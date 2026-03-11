@@ -23,6 +23,7 @@ import AdminSettings from './pages/admin/Settings';
 import ManageMembers from './pages/admin/ManageMembers';
 import Messages from './pages/admin/Messages';
 import ManageGallery from './pages/admin/ManageGallery';
+import EmailCampaigns from './pages/admin/EmailCampaigns';
 import AsplPage from './pages/aspl/AsplPage';
 import PlayersPage from './pages/aspl/PlayersPage';
 import AsplAdmin from './pages/admin/aspl/AsplAdmin';
@@ -88,6 +89,7 @@ function App() {
             <Route path="admin/members" element={<AdminRoute><ManageMembers /></AdminRoute>} />
             <Route path="admin/messages" element={<AdminRoute><Messages /></AdminRoute>} />
             <Route path="admin/gallery" element={<AdminRoute><ManageGallery /></AdminRoute>} />
+            <Route path="admin/email" element={<AdminRoute><EmailCampaigns /></AdminRoute>} />
             <Route path="admin/aspl" element={<AdminRoute><AsplAdmin /></AdminRoute>} />
             <Route path="admin/aspl/seasons/:id" element={<AdminRoute><SeasonDetail /></AdminRoute>} />
             <Route path="admin/aspl/bids" element={<AdminRoute><BidManager /></AdminRoute>} />

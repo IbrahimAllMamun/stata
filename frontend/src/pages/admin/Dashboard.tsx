@@ -1,7 +1,7 @@
 // src/pages/admin/Dashboard.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera, Trophy } from 'lucide-react';
+import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera, Trophy, Mail } from 'lucide-react';
 import { adminApi, DashboardStats } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -125,6 +125,17 @@ export default function AdminDashboard() {
             </div>
             <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Manage Gallery</h2>
             <p className="text-gray-500 text-sm">Upload and organise photo moments</p>
+          </Link>
+
+          <Link to="/admin/email" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-14 h-14 bg-[#2F5BEA] rounded-xl flex items-center justify-center group-hover:bg-[#1a3fc7] transition-colors">
+                <Mail className="w-7 h-7 text-white" />
+              </div>
+              <Plus className="w-5 h-5 text-gray-300 group-hover:text-[#2F5BEA] transition-colors" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Email Campaigns</h2>
+            <p className="text-gray-500 text-sm">Send announcements to members in one click</p>
           </Link>
 
           {isFullAdmin && (

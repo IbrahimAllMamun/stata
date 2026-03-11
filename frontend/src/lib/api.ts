@@ -448,6 +448,28 @@ export const adminApi = {
 
   deleteGalleryPhoto: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/gallery/${id}`, { method: 'DELETE' }),
+
+  // Email Campaigns
+  sendEmailCampaign: (payload: { subject: string; html_body: string; text_body: string; recipient_filter: string }) =>
+    request<{ success: boolean; message: string; data: { campaign_id: string; recipient_count: number } }>('/admin/email/send', {
+      method: 'POST',
+      body: payload,
+    }),
+
+  getEmailCampaigns: (params?: { page?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.page)  qs.set('page',  String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    return request<{ success: boolean; data: unknown[]; pagination: Pagination }>(`/admin/email/campaigns?${qs}`);
+  },
+
+  previewEmailRecipients: (filter: string) =>
+    request<{ success: boolean; data: { count: number; filter: string; sample: { email: string; name: string }[] } }>(
+      `/admin/email/preview-recipients?filter=${encodeURIComponent(filter)}`
+    ).then(res => ({ ...res, data: res.data as { count: number; filter: string; sample: { email: string; name: string }[] } })),
+
+  verifySmtp: () =>
+    request<{ success: boolean; message: string }>('/admin/email/verify-smtp'),
 };
 
 // Base URL for uploaded file serving (no /api suffix).

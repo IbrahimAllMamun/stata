@@ -17,6 +17,7 @@ const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, debugPhotoStatus } = require('../controllers/member.controller');
 const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
+const { sendCampaign, getCampaigns, previewRecipients, verifySMTP } = require('../controllers/email.controller');
 
 // Public auth
 router.post('/login', validate(loginSchema), login);
@@ -76,5 +77,11 @@ router.get('/messages/unread-count', getUnreadCount);
 router.patch('/messages/:id/status', updateMessageStatus);
 router.patch('/messages/:id/feature', toggleFeatured);
 router.delete('/messages/:id', deleteMessage);
+
+// Email campaigns — admin and moderator
+router.get('/email/campaigns', getCampaigns);
+router.get('/email/preview-recipients', previewRecipients);
+router.get('/email/verify-smtp', verifySMTP);
+router.post('/email/send', sendCampaign);
 
 module.exports = router;

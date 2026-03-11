@@ -75,11 +75,38 @@ model Admin {
   role       String   @default("admin")
   created_at DateTime @default(now())
 
-  posts          Post[]
-  events         Event[]
-  gallery_photos GalleryPhoto[]
+  posts           Post[]
+  events          Event[]
+  gallery_photos  GalleryPhoto[]
+  email_campaigns EmailCampaign[]
 
   @@map("admins")
+}
+
+model EmailCampaign {
+  id               String              @id @default(uuid())
+  subject          String
+  html_body        String
+  text_body        String
+  recipient_filter String              @default("ALL_NOTIFIABLE")
+  status           EmailCampaignStatus @default(DRAFT)
+  sent_count       Int                 @default(0)
+  failed_count     Int                 @default(0)
+  sent_at          DateTime?
+  created_by       String
+  created_at       DateTime            @default(now())
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([status])
+  @@index([created_at])
+  @@map("email_campaigns")
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SENT
+  FAILED
 }
 
 model Committee {
