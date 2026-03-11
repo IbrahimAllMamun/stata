@@ -60,6 +60,7 @@ export interface Member {
   organisation?: string | null;
   organisation_address?: string | null;
   notify_events: boolean;
+  photo_url?: string | null;
   created_at: string;
   is_committee_member: boolean;
   is_president_or_secretary: boolean;
@@ -186,6 +187,12 @@ export const postApi = {
 };
 
 export const api = {
+  // Multipart version of register that includes optional photo
+  registerWithPhoto: (formData: FormData) =>
+    request<{ success: boolean; message: string; data: { id: string } }>('/register', {
+      method: 'POST', body: formData, isFormData: true,
+    }),
+
   register: (data: {
     batch: number;
     full_name: string;
@@ -204,6 +211,15 @@ export const api = {
 
   lookupMember: (email: string) =>
     request<{ success: boolean; data: Member & { status: string } }>(`/lookup-member?email=${encodeURIComponent(email)}`),
+
+  updateMemberPhoto: (email: string, photo: File) => {
+    const fd = new FormData();
+    fd.append('email', email);
+    fd.append('photo', photo);
+    return request<{ success: boolean; message: string; data: { photo_url: string } }>('/update-member-photo', {
+      method: 'POST', body: fd, isFormData: true,
+    });
+  },
 
   updateMember: (data: {
     email: string;
@@ -434,7 +450,12 @@ export const adminApi = {
     request<{ success: boolean; message: string }>(`/admin/gallery/${id}`, { method: 'DELETE' }),
 };
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+// Base URL for uploaded file serving (no /api suffix).
+// Set VITE_UPLOAD_URL explicitly in production to avoid brittle string manipulation.
+// e.g. dev:  VITE_UPLOAD_URL=http://localhost:3000
+//      prod: VITE_UPLOAD_URL=https://api.stataisrt.instechbd.com
+const API_BASE = import.meta.env.VITE_UPLOAD_URL
+  || (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
 
 export const imageUrl = (path: string | null | undefined): string | null => {
   if (!path) return null;
@@ -488,7 +509,7 @@ export interface AsplPlayer {
   season_id: number;
   member_email: string;
   playing_position: string;
-  photo_url?: string | null;
+  photo_url?: string | null; // from member table via enrichment
   status: boolean;      // false = available, true = sold
   randomized: boolean;
   // enriched from Member at query time:
@@ -506,7 +527,6 @@ export interface AsplRegistration {
   season_id: number;
   email: string;
   playing_position: string;
-  photo_url?: string | null;
   status: AsplRegistrationStatus;
   conflict_note?: string | null;
   admin_note?: string | null;
@@ -631,7 +651,7 @@ export const asplApi = {
   imageUrl: (path: string | null | undefined): string | null => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '');
+    const base = import.meta.env.VITE_UPLOAD_URL || (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
     return `${base}${path}`;
   },
 };

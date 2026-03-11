@@ -15,7 +15,35 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
   );
 }
 
+function MemberAvatar({ member, size = 'sm' }: { member: Member; size?: 'sm' | 'lg' }) {
+  const photoSrc = imageUrl((member as any).photo_url);
+  const sizeClasses = size === 'lg'
+    ? 'w-20 h-20 rounded-2xl text-3xl border-4 border-white shadow-md'
+    : 'w-9 h-9 rounded-full text-xs';
+  const bgColor = member.is_president_or_secretary
+    ? 'bg-amber-500'
+    : member.is_committee_member
+      ? 'bg-[#2F5BEA]'
+      : 'bg-[#1F2A44]';
+
+  if (photoSrc) {
+    return (
+      <img
+        src={photoSrc}
+        alt={member.full_name}
+        className={`${sizeClasses} object-cover flex-shrink-0 ${size === 'sm' ? 'border-2 border-white shadow-sm' : ''}`}
+      />
+    );
+  }
+  return (
+    <div className={`${sizeClasses} ${bgColor} flex items-center justify-center text-white font-bold flex-shrink-0`}>
+      {member.full_name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 function MemberModal({ member, onClose }: { member: Member; onClose: () => void }) {
+  const photoSrc = imageUrl((member as any).photo_url);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
@@ -23,9 +51,12 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className={`h-20 ${member.is_president_or_secretary ? "bg-gradient-to-r from-amber-500 to-amber-400" : "bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA]"}`} />
         <div className="px-6 -mt-10 flex justify-between items-end mb-4">
-          <div className="w-20 h-20 rounded-2xl bg-[#2F5BEA] flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md">
-            {member.full_name.charAt(0).toUpperCase()}
-          </div>
+          {photoSrc
+            ? <img src={photoSrc} alt={member.full_name} className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
+            : <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${member.is_president_or_secretary ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
+              {member.full_name.charAt(0).toUpperCase()}
+            </div>
+          }
           <div className="flex items-center gap-2 pb-1">
             {member.is_president_or_secretary && (
               <span className="flex items-center gap-1 bg-amber-100 text-amber-700 text-xs px-2.5 py-1 rounded-full font-semibold border border-amber-200">
@@ -194,21 +225,6 @@ export default function People() {
         </div>
       </section>
 
-      {/* <section className="bg-[#2F5BEA] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-5 grid grid-cols-3 divide-x divide-white/10">
-          {[
-            { label: "Total Members", value: loadingMembers ? "..." : members.length },
-            { label: "Batches", value: loadingMembers ? "..." : batches.length },
-            { label: "Committees", value: loadingCommittees ? "..." : sortedCommittees.length },
-          ].map(({ label, value }) => (
-            <div key={label} className="text-center px-4">
-              <div className="text-2xl font-extrabold leading-none">{value}</div>
-              <div className="text-xs opacity-70 mt-1">{label}</div>
-            </div>
-          ))}
-        </div>
-      </section> */}
-
       <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 flex">
           <button onClick={() => setActiveTab("members")}
@@ -278,35 +294,44 @@ export default function People() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {filtered.map((member, idx) => (
-                        <tr key={member.id} onClick={() => setSelectedMember(member)}
-                          className={`cursor-pointer transition-colors ${member.is_president_or_secretary ? "bg-amber-50/50 hover:bg-amber-50" :
-                            member.is_committee_member ? "bg-blue-50/30 hover:bg-blue-50" : "hover:bg-gray-50"
-                            }`}>
-                          <td className="px-5 py-4 text-gray-300 text-xs font-medium">{idx + 1}</td>
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${member.is_president_or_secretary ? "bg-amber-500" :
-                                member.is_committee_member ? "bg-[#2F5BEA]" : "bg-[#1F2A44]"
-                                }`}>
-                                {member.full_name.charAt(0).toUpperCase()}
+                      {filtered.map((member, idx) => {
+                        const photoSrc = imageUrl((member as any).photo_url);
+                        const bgColor = member.is_president_or_secretary
+                          ? 'bg-amber-500'
+                          : member.is_committee_member
+                            ? 'bg-[#2F5BEA]'
+                            : 'bg-[#1F2A44]';
+                        return (
+                          <tr key={member.id} onClick={() => setSelectedMember(member)}
+                            className={`cursor-pointer transition-colors ${member.is_president_or_secretary ? "bg-amber-50/50 hover:bg-amber-50" :
+                              member.is_committee_member ? "bg-blue-50/30 hover:bg-blue-50" : "hover:bg-gray-50"
+                              }`}>
+                            <td className="px-5 py-4 text-gray-300 text-xs font-medium">{idx + 1}</td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                {photoSrc
+                                  ? <img src={photoSrc} alt={member.full_name} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0 ring-1 ring-gray-100" />
+                                  : <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${bgColor}`}>
+                                    {member.full_name.charAt(0).toUpperCase()}
+                                  </div>
+                                }
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-[#1F2A44]">{member.full_name}</span>
+                                  {member.is_president_or_secretary && (
+                                    <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full border border-amber-200 font-semibold">
+                                      <Crown className="w-2.5 h-2.5" /> Leader
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-[#1F2A44]">{member.full_name}</span>
-                                {member.is_president_or_secretary && (
-                                  <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full border border-amber-200 font-semibold">
-                                    <Crown className="w-2.5 h-2.5" /> Leader
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="bg-[#1F2A44] text-white text-xs px-2.5 py-0.5 rounded-full font-medium">{member.batch}</span>
-                          </td>
-                          <td className="px-5 py-4 text-gray-400 text-sm hidden md:table-cell">{member.email}</td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className="bg-[#1F2A44] text-white text-xs px-2.5 py-0.5 rounded-full font-medium">{member.batch}</span>
+                            </td>
+                            <td className="px-5 py-4 text-gray-400 text-sm hidden md:table-cell">{member.email}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -1,7 +1,7 @@
-// src/pages/Signup.tsx — Member Registration with email-first flow
-import { useState } from 'react';
+// src/pages/Signup.tsx — Member Registration with email-first flow + optional profile photo
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, CheckCircle, User, Briefcase, Bell, Clock, Home, Search, AlertCircle, RefreshCw } from 'lucide-react';
+import { UserPlus, CheckCircle, User, Briefcase, Bell, Clock, Home, Search, AlertCircle, RefreshCw, Upload, Camera } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface FormState {
@@ -31,7 +31,6 @@ type Mode = 'email-check' | 'register' | 'update';
 export default function Register() {
   const navigate = useNavigate();
 
-  // Email check popup
   const [mode, setMode] = useState<Mode>('email-check');
   const [checkEmail, setCheckEmail] = useState('');
   const [checking, setChecking] = useState(false);
@@ -42,11 +41,23 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<'registered' | 'updated' | ''>('');
 
+  // Photo state
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const set = (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setForm(f => ({ ...f, [field]: e.target.value }));
       setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
     };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    setPhoto(f);
+    setPhotoPreview(URL.createObjectURL(f));
+  };
 
   // ── Email check ────────────────────────────────────────────────────────────
   const handleEmailCheck = async () => {
@@ -61,7 +72,6 @@ export default function Register() {
         setCheckErr('Your account has been archived. Please contact an admin.');
         return;
       }
-      // Pre-fill form with existing data
       setForm({
         batch: String(m.batch ?? ''),
         full_name: m.full_name ?? '',
@@ -73,11 +83,16 @@ export default function Register() {
         organisation_address: (m as any).organisation_address ?? '',
         notify_events: (m as any).notify_events === true ? 'true' : (m as any).notify_events === false ? 'false' : '',
       });
+      // Load existing photo preview
+      if (m.photo_url) {
+        const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
+        setExistingPhotoUrl(base + m.photo_url);
+        setPhotoPreview(base + m.photo_url);
+      }
       setMode('update');
     } catch (err: any) {
       const msg = (err?.message ?? '').toLowerCase();
       if (msg.includes('404') || msg.includes('not found') || msg.includes('no member') || msg.includes('member not found')) {
-        // New user — start fresh with their email
         setForm({ ...INITIAL, email: trimmed });
         setMode('register');
       } else {
@@ -86,7 +101,6 @@ export default function Register() {
     } finally { setChecking(false); }
   };
 
-  // ── Validate ───────────────────────────────────────────────────────────────
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!form.batch || isNaN(Number(form.batch)) || Number(form.batch) < 1) e.batch = 'Valid batch number is required';
@@ -100,23 +114,29 @@ export default function Register() {
 
   const canSubmit = form.notify_events !== '' && !loading;
 
-  // ── Register (new member) ──────────────────────────────────────────────────
+  // Build FormData for register (multipart)
+  const buildFormData = () => {
+    const fd = new FormData();
+    fd.append('batch', form.batch);
+    fd.append('full_name', form.full_name.trim());
+    fd.append('email', form.email.trim().toLowerCase());
+    fd.append('phone_number', form.phone_number.trim());
+    fd.append('notify_events', String(form.notify_events === 'true'));
+    if (form.alternative_phone) fd.append('alternative_phone', form.alternative_phone);
+    if (form.job_title) fd.append('job_title', form.job_title);
+    if (form.organisation) fd.append('organisation', form.organisation);
+    if (form.organisation_address) fd.append('organisation_address', form.organisation_address);
+    if (photo) fd.append('photo', photo);
+    return fd;
+  };
+
+  // ── Register ───────────────────────────────────────────────────────────────
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
     try {
-      await api.register({
-        batch: parseInt(form.batch),
-        full_name: form.full_name.trim(),
-        email: form.email.trim().toLowerCase(),
-        phone_number: form.phone_number.trim(),
-        notify_events: form.notify_events === 'true',
-        alternative_phone: form.alternative_phone || undefined,
-        job_title: form.job_title || undefined,
-        organisation: form.organisation || undefined,
-        organisation_address: form.organisation_address || undefined,
-      });
+      await api.registerWithPhoto(buildFormData());
       setSuccess('registered');
     } catch (err: any) {
       if (err.message?.toLowerCase().includes('email')) {
@@ -127,12 +147,16 @@ export default function Register() {
     } finally { setLoading(false); }
   };
 
-  // ── Update (existing member) ───────────────────────────────────────────────
+  // ── Update ─────────────────────────────────────────────────────────────────
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
     try {
+      // If a new photo was selected, upload it first (direct update, no approval queue)
+      if (photo) {
+        await api.updateMemberPhoto(form.email.trim().toLowerCase(), photo);
+      }
       await api.updateMember({
         email: form.email.trim().toLowerCase(),
         batch: parseInt(form.batch),
@@ -166,7 +190,6 @@ export default function Register() {
               </div>
             )}
           </div>
-
           <h2 className="text-2xl font-extrabold text-[#1F2A44] mb-2">
             {success === 'registered' ? 'Registration Received!' : 'Information Updated!'}
           </h2>
@@ -175,7 +198,6 @@ export default function Register() {
               ? 'Your application has been submitted successfully.'
               : 'Your update request has been submitted and is pending admin review.'}
           </p>
-
           {success === 'registered' && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
               <div className="flex items-center gap-2 mb-2">
@@ -187,7 +209,6 @@ export default function Register() {
               </p>
             </div>
           )}
-
           <button onClick={() => navigate('/')}
             className="w-full flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm">
             <Home className="w-4 h-4" /> Back to Home
@@ -197,7 +218,7 @@ export default function Register() {
     </div>
   );
 
-  // ── Email check popup ──────────────────────────────────────────────────────
+  // ── Email check ────────────────────────────────────────────────────────────
   if (mode === 'email-check') return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 bg-[#F5F7FA]">
       <div className="max-w-sm w-full bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -218,28 +239,18 @@ export default function Register() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-              <input
-                type="email"
-                value={checkEmail}
+              <input type="email" value={checkEmail}
                 onChange={e => { setCheckEmail(e.target.value); setCheckErr(''); }}
                 onKeyDown={e => e.key === 'Enter' && handleEmailCheck()}
-                placeholder="example@isrt.ac.bd"
-                autoFocus
-                className={inputCls(!!checkErr)}
-              />
+                placeholder="example@isrt.ac.bd" autoFocus className={inputCls(!!checkErr)} />
             </div>
-
-            <button
-              onClick={handleEmailCheck}
-              disabled={checking}
-              className="w-full flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
-            >
+            <button onClick={handleEmailCheck} disabled={checking}
+              className="w-full flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm">
               {checking
                 ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Checking…</>
                 : <><Search className="w-4 h-4" /> Continue</>}
             </button>
           </div>
-
           <p className="text-center text-xs text-gray-400 mt-5">
             Already a member? We'll pre-fill your information.
           </p>
@@ -248,8 +259,47 @@ export default function Register() {
     </div>
   );
 
-  // ── Registration / Update form ─────────────────────────────────────────────
   const isUpdate = mode === 'update';
+
+  // ── Photo upload widget ────────────────────────────────────────────────────
+  const PhotoUpload = () => (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-[#2F5BEA]/80 to-[#1F2A44] text-white">
+        <Camera className="w-5 h-5" />
+        <h2 className="font-semibold">Profile Photo</h2>
+        <span className="ml-auto text-xs opacity-70">Optional</span>
+      </div>
+      <div className="p-6 flex items-center gap-6">
+        {/* Avatar preview */}
+        <div
+          onClick={() => fileRef.current?.click()}
+          className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer relative group flex-shrink-0 hover:border-[#2F5BEA] transition-colors"
+        >
+          {photoPreview
+            ? <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+            : <User className="w-8 h-8 text-gray-300" />}
+          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+            <Upload className="w-5 h-5 text-white mb-1" />
+            <span className="text-[10px] text-white font-medium">{photoPreview ? 'Change' : 'Upload'}</span>
+          </div>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-1">
+            {isUpdate && existingPhotoUrl ? 'Update your photo' : 'Add a profile photo'}
+          </p>
+          <p className="text-xs text-gray-400 leading-relaxed mb-3">
+            JPG, PNG, or WebP. Square crop works best.
+            {isUpdate && existingPhotoUrl && <><br /><span className="text-gray-300">Current photo loaded — leave empty to keep it.</span></>}
+          </p>
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="text-xs text-[#2F5BEA] hover:underline font-medium flex items-center gap-1">
+            <Upload className="w-3 h-3" /> {photoPreview ? 'Change photo' : 'Choose photo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] py-12 px-4">
@@ -266,9 +316,8 @@ export default function Register() {
           </p>
           {isUpdate && (
             <button
-              onClick={() => { setMode('email-check'); setCheckEmail(''); setForm(INITIAL); setErrors({}); }}
-              className="mt-2 text-xs text-[#2F5BEA] hover:underline"
-            >
+              onClick={() => { setMode('email-check'); setCheckEmail(''); setForm(INITIAL); setErrors({}); setPhoto(null); setPhotoPreview(null); setExistingPhotoUrl(null); }}
+              className="mt-2 text-xs text-[#2F5BEA] hover:underline">
               ← Use a different email
             </button>
           )}
@@ -282,9 +331,12 @@ export default function Register() {
           {isUpdate && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
               ℹ️ Your information has been pre-filled. Make any changes and click <strong>Update Information</strong>.
-              Updates are reviewed by an admin before being applied.
+              Updates are reviewed by an admin before being applied. Profile photo changes apply immediately.
             </div>
           )}
+
+          {/* Profile Photo */}
+          <PhotoUpload />
 
           {/* Personal Information */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -305,15 +357,9 @@ export default function Register() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={set('email')}
-                  placeholder="example@isrt.ac.bd"
-                  className={inputCls(!!errors.email)}
-                  readOnly={isUpdate}
-                  style={isUpdate ? { backgroundColor: '#F9FAFB', color: '#6B7280', cursor: 'not-allowed' } : {}}
-                />
+                <input type="email" value={form.email} onChange={set('email')} placeholder="example@isrt.ac.bd"
+                  className={inputCls(!!errors.email)} readOnly={isUpdate}
+                  style={isUpdate ? { backgroundColor: '#F9FAFB', color: '#6B7280', cursor: 'not-allowed' } : {}} />
                 {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -379,7 +425,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Submit */}
           <button type="submit" disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl font-semibold text-white transition-all text-base
               ${canSubmit

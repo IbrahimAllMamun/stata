@@ -30,6 +30,8 @@ export default function RegistrationForm({ season, onClose }: Props) {
 
   // Whether this member already has a registration this season
   const [existingReg, setExistingReg] = useState<AsplRegistration | null>(null);
+  // Whether the member already has a profile photo
+  const [memberHasPhoto, setMemberHasPhoto] = useState(false);
 
   // Photo + position
   const [position, setPosition] = useState('');
@@ -47,6 +49,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
     setStep('email');
     setMember(null);
     setExistingReg(null);
+    setMemberHasPhoto(false);
     setPosition('');
     setPhoto(null);
     setPhotoPreview(null);
@@ -68,6 +71,8 @@ export default function RegistrationForm({ season, onClose }: Props) {
         return;
       }
       setMember(m);
+      // Track if member already has a photo
+      setMemberHasPhoto(!!(m as any).photo_url);
 
       // Check if already registered for this season
       let existing: AsplRegistration | null = null;
@@ -75,9 +80,12 @@ export default function RegistrationForm({ season, onClose }: Props) {
         existing = await asplApi.lookupRegistration(trimmed, season.id) as any;
         // Pre-fill position from existing registration
         if (existing?.playing_position) setPosition(existing.playing_position);
-        // Pre-fill photo preview if they have one
-        if (existing?.photo_url) {
-          const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '');
+        // Pre-fill photo preview from member's profile photo
+        if ((res.data as any).photo_url) {
+          const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
+          setPhotoPreview(base + (res.data as any).photo_url);
+        } else if (existing?.photo_url) {
+          const base = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '');
           setPhotoPreview(base + existing.photo_url);
         }
       } catch {
@@ -99,6 +107,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
   // ── Step 2: submit ─────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!position) { setFormError('Please select your playing position.'); return; }
+    if (!memberHasPhoto && !photo) {
+      setFormError('A profile photo is required for ASPL registration. Please upload a photo.');
+      return;
+    }
     setFormError(''); setSubmitting(true);
     try {
       const fd = new FormData();
@@ -249,8 +261,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
             {/* Photo upload */}
             <div>
               <label className={LABEL}>
-                Profile Photo <span className="text-white/20 normal-case">· shown during auction</span>
-                {isUpdate && photoPreview && <span className="text-[var(--accent)]/60 normal-case"> · current photo loaded</span>}
+                Profile Photo{' '}
+                {memberHasPhoto
+                  ? <span className="text-white/20 normal-case">· shown during auction · current photo loaded</span>
+                  : <span className="text-red-400/80 normal-case">· required for ASPL registration</span>}
               </label>
               <div className="flex items-center gap-4">
                 <div onClick={() => fileRef.current?.click()}
@@ -269,8 +283,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
                 <p className="text-xs text-white/30 leading-relaxed">
                   JPG, PNG, or WebP<br />
                   Square crop works best
-                  {isUpdate && !photo && existingReg?.photo_url && (
+                  {memberHasPhoto && !photo && (
                     <><br /><span className="text-white/20">Leave empty to keep current photo</span></>
+                  )}
+                  {!memberHasPhoto && (
+                    <><br /><span className="text-red-400/60">Photo is required to register</span></>
                   )}
                 </p>
               </div>

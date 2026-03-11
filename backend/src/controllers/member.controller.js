@@ -1,5 +1,12 @@
 // src/controllers/member.controller.js
 const prisma = require('../config/database');
+const { processImage, toUrlPath } = require('../utils/processImage');
+
+async function uploadPhoto(file) {
+  if (!file) return null;
+  const fp = await processImage(file.buffer, file.mimetype, { maxWidth: 600, maxHeight: 600, quality: 85 });
+  return toUrlPath(fp);
+}
 const { paginate, paginatedResponse } = require('../utils/helpers');
 
 // ─── Public ───────────────────────────────────────────────────────────────────
@@ -11,6 +18,8 @@ const register = async (req, res, next) => {
       alternative_phone, job_title, organisation,
       organisation_address, notify_events,
     } = req.body;
+
+    const photo_url = await uploadPhoto(req.file);
 
     const existing = await prisma.member.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) {
@@ -28,6 +37,7 @@ const register = async (req, res, next) => {
         organisation: organisation || null,
         organisation_address: organisation_address || null,
         notify_events,
+        photo_url: photo_url || null,
         status: 'PENDING',
       },
     });
@@ -71,7 +81,7 @@ const getMembers = async (req, res, next) => {
         email: m.email, phone_number: m.phone_number,
         alternative_phone: m.alternative_phone, job_title: m.job_title,
         organisation: m.organisation, organisation_address: m.organisation_address,
-        notify_events: m.notify_events, created_at: m.created_at,
+        notify_events: m.notify_events, photo_url: m.photo_url ?? null, created_at: m.created_at,
         is_committee_member: positions.length > 0,
         is_president_or_secretary:
           positions.includes('PRESIDENT') || positions.includes('GENERAL_SECRETARY'),
@@ -164,13 +174,41 @@ const lookupMember = async (req, res, next) => {
         id: true, batch: true, full_name: true, email: true,
         phone_number: true, alternative_phone: true,
         job_title: true, organisation: true,
-        organisation_address: true, notify_events: true, status: true,
+        organisation_address: true, notify_events: true, photo_url: true, status: true,
       },
     });
 
     if (!member) return res.status(404).json({ success: false, message: 'No member found with that email.' });
 
     res.json({ success: true, data: member });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+// ─── Public: POST /update-member-photo ───────────────────────────────────────
+// Photo updates apply immediately (no approval queue).
+const updateMemberPhoto = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+    const member = await prisma.member.findUnique({ where: { email: email.toLowerCase().trim() } });
+    if (!member) return res.status(404).json({ success: false, message: 'No member found with that email.' });
+    if (member.status === 'ARCHIVED') {
+      return res.status(403).json({ success: false, message: 'This account has been archived.' });
+    }
+
+    const photo_url = await uploadPhoto(req.file);
+    if (!photo_url) return res.status(400).json({ success: false, message: 'No photo provided.' });
+
+    await prisma.member.update({
+      where: { email: email.toLowerCase().trim() },
+      data: { photo_url },
+    });
+
+    res.json({ success: true, message: 'Profile photo updated.', data: { photo_url } });
   } catch (err) {
     next(err);
   }
@@ -241,7 +279,7 @@ const getMemberUpdateRequests = async (req, res, next) => {
             id: true, full_name: true, email: true, batch: true,
             phone_number: true, alternative_phone: true,
             job_title: true, organisation: true,
-            organisation_address: true, notify_events: true, status: true,
+            organisation_address: true, notify_events: true, photo_url: true, status: true,
           },
         },
       },
@@ -398,9 +436,30 @@ const deleteMember = async (req, res, next) => {
   }
 };
 
+
+// ─── Admin: GET /admin/members/debug-photo ───────────────────────────────────
+// Temporary debug endpoint — remove after confirming photos work.
+// Returns photo_url for every member so you can verify DB + Prisma are in sync.
+const debugPhotoStatus = async (req, res, next) => {
+  try {
+    const members = await prisma.member.findMany({
+      select: { id: true, email: true, full_name: true, photo_url: true },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+    });
+    res.json({
+      success: true,
+      message: 'If photo_url column is missing from results, run the DB migration and npx prisma generate',
+      data: members,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   register, getMembers, exportCSV, getApprovedBatches,
-  lookupMember, updateMember,
+  lookupMember, updateMember, updateMemberPhoto,
   getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount,
-  getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember,
+  getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, debugPhotoStatus,
 };

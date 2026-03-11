@@ -7,7 +7,7 @@ async function enrichPlayers(players) {
   const emails  = [...new Set(players.map(p => p.member_email))];
   const members = await prisma.member.findMany({
     where:  { email: { in: emails } },
-    select: { email: true, full_name: true, batch: true, phone_number: true, job_title: true, organisation: true },
+    select: { email: true, full_name: true, batch: true, phone_number: true, job_title: true, organisation: true, photo_url: true },
   });
   const map = Object.fromEntries(members.map(m => [m.email, m]));
   return players.map(p => {
@@ -19,6 +19,7 @@ async function enrichPlayers(players) {
       phone:        m?.phone_number ?? null,
       job_title:    m?.job_title    ?? null,
       organisation: m?.organisation ?? null,
+      photo_url:    m?.photo_url    ?? null,
     };
   });
 }

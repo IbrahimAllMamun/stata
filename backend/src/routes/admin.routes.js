@@ -15,7 +15,7 @@ const { createCommittee, assignMember, deleteCommittee } = require('../controlle
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
-const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount } = require('../controllers/member.controller');
+const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, debugPhotoStatus } = require('../controllers/member.controller');
 const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
 
 // Public auth
@@ -30,6 +30,7 @@ router.get('/dashboard', getDashboardStats);
 // Member management — admin and moderator
 router.get('/members', getMembersByStatus);
 router.get('/members/pending-count', getPendingCount);
+router.get('/members/debug-photo', debugPhotoStatus); // remove after confirming photos work
 router.get('/members/export-csv', exportCSV);
 router.get('/members/batches', getApprovedBatches);
 router.patch('/members/:id/status', updateMemberStatus);

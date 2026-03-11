@@ -5,9 +5,9 @@ import {
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
     Download, Filter, ChevronRight, ArrowRight,
-    AlertCircle,
+    AlertCircle, Camera, ZoomIn,
 } from 'lucide-react';
-import { adminApi } from '../../lib/api';
+import { adminApi, imageUrl } from '../../lib/api';
 
 type MemberStatus = 'PENDING' | 'APPROVED' | 'ARCHIVED';
 type UpdateStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -18,6 +18,7 @@ interface RawMember {
     phone_number: string; alternative_phone?: string; job_title?: string;
     organisation?: string; organisation_address?: string;
     notify_events: boolean; status: MemberStatus; created_at: string;
+    photo_url?: string | null;
 }
 
 interface MemberUpdateRequest {
@@ -31,6 +32,57 @@ interface MemberUpdateRequest {
     member: RawMember;
 }
 
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+    return (
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)' }}
+            onClick={onClose}
+        >
+            <div className="relative max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+                <img src={src} alt={alt} className="w-full rounded-2xl shadow-2xl object-cover" />
+                <button
+                    onClick={onClose}
+                    className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors"
+                >
+                    <X className="w-4 h-4 text-gray-700" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// Clickable photo — opens lightbox on click
+function ExpandablePhoto({ src, alt, className }: { src: string; alt: string; className: string }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <div className="relative group cursor-zoom-in" onClick={() => setOpen(true)}>
+                <img src={src} alt={alt} className={className} />
+                <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.35)' }}>
+                    <ZoomIn className="w-5 h-5 text-white drop-shadow" />
+                </div>
+            </div>
+            {open && <Lightbox src={src} alt={alt} onClose={() => setOpen(false)} />}
+        </>
+    );
+}
+
+// Generic avatar — photo if available, else initial letter
+function MemberAvatar({ member, size = 'md' }: { member: RawMember; size?: 'sm' | 'md' | 'lg' }) {
+    const photoSrc = imageUrl(member.photo_url);
+    const dims = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-16 h-16 text-2xl' : 'w-10 h-10 text-sm';
+    const radius = size === 'lg' ? 'rounded-xl' : 'rounded-full';
+    if (photoSrc) {
+        return <img src={photoSrc} alt={member.full_name} className={`${dims} ${radius} object-cover border-2 border-white shadow-sm flex-shrink-0`} />;
+    }
+    return (
+        <div className={`${dims} ${radius} bg-[#2F5BEA] flex items-center justify-center text-white font-bold flex-shrink-0`}>
+            {member.full_name.charAt(0).toUpperCase()}
+        </div>
+    );
+}
 
 function DiffRow({ label, oldVal, newVal }: { label: string; oldVal: string; newVal: string | null }) {
     if (newVal === null) return null;
@@ -53,18 +105,19 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
     const [loading, setLoading] = useState(false);
     const [note, setNote] = useState('');
     const m = req.member;
+    const photoSrc = imageUrl(m.photo_url);
     const notifyLabel = (v: boolean) => v ? 'Yes — notify me' : "No — don't notify";
     const handle = async (action: 'approve' | 'reject') => {
         setLoading(true);
         try { if (action === 'approve') await onApprove(req.id, note || undefined); else await onReject(req.id, note || undefined); }
         finally { setLoading(false); }
     };
+
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Header */}
             <div className="flex items-center gap-3 px-5 py-4 bg-[#F5F7FA] border-b border-gray-100">
-                <div className="w-10 h-10 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white font-bold flex-shrink-0">
-                    {m.full_name.charAt(0).toUpperCase()}
-                </div>
+                <MemberAvatar member={m} size="md" />
                 <div className="min-w-0">
                     <p className="font-semibold text-[#1F2A44] truncate">{m.full_name}</p>
                     <p className="text-xs text-gray-400">{m.email} · Batch {m.batch}</p>
@@ -73,8 +126,32 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
                     {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
             </div>
-            <div className="px-5 py-4 space-y-1">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Proposed Changes</p>
+
+            <div className="px-5 py-4 space-y-1.5">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Proposed Changes</p>
+
+                {/* Profile photo — always visible, click to expand */}
+                <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-gray-50">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-[120px] flex-shrink-0">Photo</span>
+                    {photoSrc ? (
+                        <div className="flex items-center gap-3">
+                            <ExpandablePhoto
+                                src={photoSrc}
+                                alt={m.full_name}
+                                className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow ring-1 ring-gray-200"
+                            />
+                            <span className="text-xs text-gray-400">Click photo to expand</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-xl bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
+                                <Camera className="w-5 h-5 text-gray-300" />
+                            </div>
+                            <span className="text-xs text-gray-400 italic">No photo uploaded</span>
+                        </div>
+                    )}
+                </div>
+
                 <DiffRow label="Name" oldVal={m.full_name} newVal={req.full_name} />
                 <DiffRow label="Batch" oldVal={String(m.batch)} newVal={req.batch !== null ? String(req.batch) : null} />
                 <DiffRow label="Phone" oldVal={m.phone_number} newVal={req.phone_number} />
@@ -84,6 +161,7 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
                 <DiffRow label="Address" oldVal={m.organisation_address ?? ''} newVal={req.organisation_address} />
                 <DiffRow label="Notify" oldVal={notifyLabel(m.notify_events)} newVal={req.notify_events !== null ? notifyLabel(req.notify_events) : null} />
             </div>
+
             <div className="px-5 pb-4">
                 <input type="text" value={note} onChange={e => setNote(e.target.value)}
                     placeholder="Admin note (optional)…"
@@ -108,6 +186,7 @@ function MemberDetailModal({ member, onClose, onAction }: {
     onAction: (id: string, action: 'APPROVED' | 'ARCHIVED' | 'PENDING' | 'DELETE') => Promise<void>;
 }) {
     const [loading, setLoading] = useState(false);
+    const photoSrc = imageUrl(member.photo_url);
     const handle = async (action: 'APPROVED' | 'ARCHIVED' | 'PENDING' | 'DELETE') => {
         setLoading(true);
         try { await onAction(member.id, action); } finally { setLoading(false); onClose(); }
@@ -118,9 +197,12 @@ function MemberDetailModal({ member, onClose, onAction }: {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] h-16" />
                 <div className="px-6 -mt-8 flex justify-between items-end mb-4">
-                    <div className="w-16 h-16 rounded-xl bg-[#2F5BEA] flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow">
-                        {member.full_name.charAt(0).toUpperCase()}
-                    </div>
+                    {photoSrc
+                        ? <ExpandablePhoto src={photoSrc} alt={member.full_name} className="w-16 h-16 rounded-xl object-cover border-4 border-white shadow-md" />
+                        : <div className="w-16 h-16 rounded-xl bg-[#2F5BEA] flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow">
+                            {member.full_name.charAt(0).toUpperCase()}
+                        </div>
+                    }
                     <div className="flex items-center gap-2 pb-1">
                         <StatusBadge status={member.status} />
                         <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
@@ -140,6 +222,18 @@ function MemberDetailModal({ member, onClose, onAction }: {
                     {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
                     {member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
                     <DetailRow icon={<Clock className="w-4 h-4" />} label="Registered" value={new Date(member.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} />
+                    <div className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-[#F5F7FA] flex items-center justify-center flex-shrink-0 text-[#2F5BEA] mt-0.5">
+                            <Camera className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Profile Photo</p>
+                            {photoSrc
+                                ? <p className="text-sm text-green-600 font-medium">Photo uploaded ✓</p>
+                                : <p className="text-sm text-gray-400 italic">No photo uploaded</p>
+                            }
+                        </div>
+                    </div>
                 </div>
                 <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                     {member.status !== 'APPROVED' && <button disabled={loading} onClick={() => handle('APPROVED')} className="flex items-center gap-1.5 bg-[#2ECC71] hover:bg-[#27AE60] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"><CheckCircle className="w-4 h-4" /> Approve</button>}
@@ -387,7 +481,12 @@ export default function ManageMembers() {
                                             {filtered.map((m, idx) => (
                                                 <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-5 py-3.5 text-gray-400 text-xs">{idx + 1}</td>
-                                                    <td className="px-5 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{m.full_name.charAt(0).toUpperCase()}</div><span className="font-medium text-[#1F2A44]">{m.full_name}</span></div></td>
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <MemberAvatar member={m} size="sm" />
+                                                            <span className="font-medium text-[#1F2A44]">{m.full_name}</span>
+                                                        </div>
+                                                    </td>
                                                     <td className="px-5 py-3.5"><span className="bg-[#1F2A44] text-white text-xs px-2 py-0.5 rounded-full font-medium">{m.batch}</span></td>
                                                     <td className="px-5 py-3.5 text-gray-500 hidden md:table-cell">{m.email}</td>
                                                     <td className="px-5 py-3.5 text-gray-400 text-xs hidden lg:table-cell">{new Date(m.created_at).toLocaleDateString()}</td>
