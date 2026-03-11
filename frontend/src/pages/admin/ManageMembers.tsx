@@ -294,8 +294,8 @@ function MemberDetailModal({ member, onClose, onAction }: {
                     {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
                     {member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
                     <DetailRow icon={<Clock className="w-4 h-4" />} label="Registered" value={new Date(member.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} />
-                    <PhotoUploadRow memberId={member.id} currentPhotoSrc={photoSrc} onUploaded={(url) => {
-                        // update member in parent list
+                    <PhotoUploadRow memberId={member.id} currentPhotoSrc={photoSrc} onUploaded={(_url) => {
+                        onClose();
                     }} />
                 </div>
                 <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-wrap gap-2">

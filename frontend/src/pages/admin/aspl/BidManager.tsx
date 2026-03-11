@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, RefreshCw, Trash2, Check, X, ChevronDown,
-  DollarSign, Users, AlertCircle, Search, Trophy
+  DollarSign, AlertCircle, Search, Trophy
 } from 'lucide-react';
 import { asplApi, AsplTeamPlayer, AsplTeam, AsplSeason } from '../../../lib/api';
 

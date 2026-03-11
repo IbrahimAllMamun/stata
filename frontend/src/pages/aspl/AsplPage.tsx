@@ -6,17 +6,7 @@ import { asplApi, AsplTeam, AsplTeamPlayer, AsplSeason } from '../../lib/api';
 import RegistrationForm from '../../components/aspl/RegistrationForm';
 import './aspl.css';
 
-const posCls = (p: string) => {
-  const u = p?.toUpperCase() || '';
-  if (u === 'GK') return 'pos-GK';
-  if (['LB', 'RB', 'DEF'].includes(u)) return 'pos-DEF';
-  if (['CDM', 'CM', 'MID'].includes(u)) return 'pos-MID';
-  if (['LW', 'RW'].includes(u)) return 'pos-LW';
-  if (['CF', 'FWD'].includes(u)) return 'pos-FWD';
-  return 'pos-MID';
-};
-
-// ── Position badge colours (light-mode) ───────────────────────────────────────
+// ── Position badge colours ────────────────────────────────────────────────────
 const posMeta: Record<string, { bg: string; text: string; border: string }> = {
   GK: { bg: '#EDE9FE', text: '#7C3AED', border: '#C4B5FD' },
   DEF: { bg: '#DBEAFE', text: '#1D4ED8', border: '#93C5FD' },
@@ -159,9 +149,7 @@ function PlayerDrawer({ teamId, onClose }: { teamId: number; onClose: () => void
                       <p className="text-sm truncate" style={{ color: 'var(--white)', fontFamily: 'fredoka' }}>{tp.player.name}</p>
                       <p className="text-[10px]" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>Batch {tp.player.batch}</p>
                     </div>
-                    <span className={`badge text-[10px] px-2 py-0.5 ${posCls(tp.player.playing_position)}`} style={{ fontFamily: 'kanit' }}>
-                      {tp.player.playing_position}
-                    </span>
+                    <PosBadge pos={tp.player.playing_position} />
                     <span className="text-sm w-14 text-right" style={{ color: 'var(--gold)', fontFamily: 'kanit' }}>${tp.price}</span>
                   </div>
                 );

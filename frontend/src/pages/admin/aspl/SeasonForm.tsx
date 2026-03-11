@@ -1,6 +1,6 @@
 // src/pages/admin/aspl/SeasonForm.tsx
 import { useState } from 'react';
-import { X, Footprints, CircleDot, ChevronDown } from 'lucide-react';
+import { X, Footprints, CircleDot } from 'lucide-react';
 import { asplApi, AsplSeason, AsplSport } from '../../../lib/api';
 
 interface Props {
