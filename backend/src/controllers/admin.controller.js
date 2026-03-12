@@ -1,6 +1,6 @@
 // src/controllers/admin.controller.js
 const prisma = require('../config/database');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const login = async (req, res, next) => {
