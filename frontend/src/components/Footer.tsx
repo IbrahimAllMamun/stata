@@ -32,7 +32,11 @@ export default function Footer() {
   const [stats, setStats] = useState<{ today: number; lifetime: number } | null>(null);
 
   useEffect(() => {
-    visitorApi.track();
+    if (!sessionStorage.getItem('tracked')) {
+      visitorApi.track()
+        .then(() => sessionStorage.setItem('tracked', 'true'))
+        .catch(() => { });
+    }
     visitorApi.getStats()
       .then(setStats)
       .catch(() => { });
