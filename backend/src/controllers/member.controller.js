@@ -21,22 +21,26 @@ const register = async (req, res, next) => {
 
     const photo_url = await uploadPhoto(req.file);
 
-    const existing = await prisma.member.findUnique({ where: { email: email.toLowerCase() } });
+    const existing = await prisma.member.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (existing) {
       return res.status(409).json({ success: false, message: 'Email already registered' });
     }
 
+    // notify_events arrives as a boolean after Joi coercion, but guard against
+    // string values that may slip through (e.g. "true"/"false" from FormData)
+    const notifyBool = notify_events === true || notify_events === 'true';
+
     const member = await prisma.member.create({
       data: {
         batch: parseInt(batch),
-        full_name,
-        email: email.toLowerCase(),
-        phone_number,
-        alternative_phone: alternative_phone || null,
-        job_title: job_title || null,
-        organisation: organisation || null,
-        organisation_address: organisation_address || null,
-        notify_events,
+        full_name: full_name.trim(),
+        email: email.toLowerCase().trim(),
+        phone_number: phone_number.trim(),
+        alternative_phone: alternative_phone?.trim() || null,
+        job_title: job_title?.trim() || null,
+        organisation: organisation?.trim() || null,
+        organisation_address: organisation_address?.trim() || null,
+        notify_events: notifyBool,
         photo_url: photo_url || null,
         blood_group: blood_group || null,
         status: 'PENDING',

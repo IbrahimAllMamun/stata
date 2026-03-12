@@ -4,7 +4,8 @@ const errorHandler = (err, req, res, next) => {
 
   // Multer errors
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ success: false, message: 'File too large. Max 2MB allowed.' });
+    const maxMB = Math.round((parseInt(process.env.MAX_FILE_SIZE) || 15 * 1024 * 1024) / (1024 * 1024));
+    return res.status(400).json({ success: false, message: `File too large. Max ${maxMB}MB allowed.` });
   }
 
   if (err.message && err.message.includes('Invalid file type')) {

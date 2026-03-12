@@ -108,6 +108,7 @@ export default function Register() {
     if (!form.email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email format';
     if (!form.phone_number.trim()) e.phone_number = 'Phone number is required';
+    if (!form.notify_events) e.notify_events = 'Please select a notification preference';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -440,6 +441,7 @@ export default function Register() {
                   <p className="text-xs text-gray-400 mt-0.5">You can change this preference at any time</p>
                 </div>
               </label>
+              {errors.notify_events && <p className="mt-1 text-xs text-red-500">{errors.notify_events}</p>}
             </div>
           </div>
 
