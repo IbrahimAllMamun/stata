@@ -59,7 +59,7 @@ function AppRoutes() {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Signup />} />
         <Route path="update-profile" element={<UpdateProfile />} />
-        <Route path="submit-post" element={<SubmitPost />} />
+        <Route path="posts/submit" element={<SubmitPost />} />
         <Route path="aspl" element={<AsplPage />} />
         <Route path="aspl/players" element={<PlayersPage />} />
       </Route>

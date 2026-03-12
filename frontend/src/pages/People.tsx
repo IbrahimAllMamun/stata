@@ -60,7 +60,7 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
           <div className="flex items-center gap-2 pb-1">
             {member.is_president_or_secretary && (
               <span className="flex items-center gap-1 bg-amber-100 text-amber-700 text-xs px-2.5 py-1 rounded-full font-semibold border border-amber-200">
-                <Crown className="w-3 h-3" /> Leader
+                <Crown className="w-3 h-3" />
               </span>
             )}
             {!member.is_president_or_secretary && member.is_committee_member && (
@@ -337,7 +337,7 @@ export default function People() {
                                   <span className="font-semibold text-[#1F2A44]">{member.full_name}</span>
                                   {member.is_president_or_secretary && (
                                     <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full border border-amber-200 font-semibold">
-                                      <Crown className="w-2.5 h-2.5" /> Leader
+                                      <Crown className="w-2.5 h-2.5" />
                                     </span>
                                   )}
                                 </div>

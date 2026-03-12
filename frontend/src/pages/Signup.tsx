@@ -210,7 +210,7 @@ export default function Register() {
                 <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Approval</span>
               </div>
               <p className="text-sm text-amber-700 leading-relaxed">
-                Your membership is under review. You will be notified once approved. This usually takes 1–3 business days.
+                Your membership is under review. Thank you for your patience.
               </p>
             </div>
           )}
