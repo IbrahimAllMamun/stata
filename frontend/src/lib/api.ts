@@ -213,9 +213,9 @@ export const api = {
   lookupMember: async (email: string) => {
     const res = await fetch(`${BASE_URL}/lookup-member?email=${encodeURIComponent(email)}`);
     const data = await res.json();
+    if (res.status === 404) return { success: false, data: null, notFound: true as const };
     if (!res.ok) throw new Error(data.message || 'Request failed');
-    if (!data.found) return { success: false, data: null, notFound: true as const };
-    return data as { success: boolean; found: true; data: Member & { status: string }; notFound?: false };
+    return data as { success: boolean; data: Member & { status: string }; notFound?: false };
   },
 
   updateMemberPhoto: (email: string, photo: File) => {
@@ -662,9 +662,16 @@ export const asplApi = {
     asplRequest<AsplRegistration>(`/registrations/check?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
   getPendingRegistrationCount: () =>
     asplRequest<{ success: boolean; data: { count: number } }>('/registrations/pending-count'),
-  lookupRegistration: (email: string, seasonId: number) =>
-    asplRequest<AsplRegistration & { member: { full_name: string; batch: number; phone_number: string; job_title?: string | null; organisation?: string | null } | null }>(
-      `/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
+  lookupRegistration: async (email: string, seasonId: number) => {
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${ASPL_BASE}/aspl/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`, { headers });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!data.found) return { found: false as const, data: null };
+    return data as { found: true; data: AsplRegistration & { member: { full_name: string; batch: number; phone_number: string; job_title?: string | null; organisation?: string | null } | null } };
+  },
   getRegistrations: (seasonId?: number, status?: string) =>
     asplRequest<AsplRegistration[]>(
       `/registrations?${seasonId ? `season_id=${seasonId}` : ''}${status ? `&status=${status}` : ''}`

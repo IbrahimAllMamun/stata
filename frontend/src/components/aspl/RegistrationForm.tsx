@@ -66,7 +66,14 @@ export default function RegistrationForm({ season, onClose }: Props) {
     setLooking(true); setLookupErr('');
     try {
       const res = await api.lookupMember(trimmed);
-      const m = res.data as FoundMember;
+
+      // Not a STATA member → show not-found step
+      if (res.notFound || !res.data) {
+        setStep('not-found');
+        return;
+      }
+
+      const m = res.data;
       if (m.status === 'ARCHIVED') {
         setLookupErr('Your account has been archived. Please contact an admin.');
         return;
@@ -82,9 +89,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
       // Check if already registered for this season
       let existing: AsplRegistration | null = null;
       try {
-        existing = await asplApi.lookupRegistration(trimmed, season.id) as any;
-        // Pre-fill position from existing registration
-        if (existing?.playing_position) setPosition(existing.playing_position);
+        const regRes = await asplApi.lookupRegistration(trimmed, season.id);
+        if (regRes.found && regRes.data) {
+          existing = regRes.data;
+          if (existing?.playing_position) setPosition(existing.playing_position);
+        }
       } catch {
         // No existing registration - that's fine
         existing = null;
@@ -92,12 +101,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
       setExistingReg(existing);
       setStep('form');
     } catch (err: unknown) {
-      const msg = (err instanceof Error ? err.message : '').toLowerCase();
-      if (msg.includes('404') || msg.includes('not found') || msg.includes('no member') || msg.includes('member not found')) {
-        setStep('not-found');
-      } else {
-        setLookupErr(msg || 'Something went wrong. Please try again.');
-      }
+      setLookupErr((err instanceof Error ? err.message : '') || 'Something went wrong. Please try again.');
     } finally { setLooking(false); }
   };
 

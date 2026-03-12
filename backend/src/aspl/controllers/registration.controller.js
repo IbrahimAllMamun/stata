@@ -165,12 +165,12 @@ const lookupRegistration = async (req, res) => {
         where: { email_season_id: { email: emailLower, season_id: parseInt(season_id) } },
       }),
       prisma.member.findUnique({
-        where:  { email: emailLower },
+        where: { email: emailLower },
         select: { full_name: true, batch: true, phone_number: true, job_title: true, organisation: true, photo_url: true },
       }),
     ]);
-    if (!reg) return res.status(404).json({ error: 'No registration found for that email.' });
-    return res.json({ ...reg, member });
+    if (!reg) return res.status(200).json({ found: false, data: null });
+    return res.json({ found: true, data: { ...reg, member } });
   } catch (err) {
     console.error('lookupRegistration error:', err);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -184,7 +184,7 @@ const getRegistrations = async (req, res) => {
     const regs = await prisma.asplRegistration.findMany({
       where: {
         ...(season_id && { season_id: parseInt(season_id) }),
-        ...(status    && { status }),
+        ...(status && { status }),
       },
       orderBy: [{ conflict_note: 'desc' }, { created_at: 'asc' }],
     });
@@ -217,30 +217,30 @@ const approveRegistration = async (req, res) => {
       if (existingPlayer) {
         await tx.asplPlayer.update({
           where: { sl: existingPlayer.sl },
-          data:  { playing_position: reg.playing_position },
+          data: { playing_position: reg.playing_position },
         });
         await tx.asplRegistration.update({
           where: { id },
-          data:  { status: 'APPROVED', player_sl: existingPlayer.sl, conflict_note: null, admin_note: admin_note ?? null },
+          data: { status: 'APPROVED', player_sl: existingPlayer.sl, conflict_note: null, admin_note: admin_note ?? null },
         });
       } else {
         await tx.asplPlayer.create({
           data: {
-            sl:               nextSL,
-            season_id:        reg.season_id,
-            member_email:     reg.email,
+            sl: nextSL,
+            season_id: reg.season_id,
+            member_email: reg.email,
             playing_position: reg.playing_position,
-            status:           false,
-            randomized:       false,
+            status: false,
+            randomized: false,
           },
         });
         await tx.asplRegistration.update({
           where: { id },
-          data:  { status: 'APPROVED', player_sl: nextSL, conflict_note: null, admin_note: admin_note ?? null },
+          data: { status: 'APPROVED', player_sl: nextSL, conflict_note: null, admin_note: admin_note ?? null },
         });
         await tx.asplSeason.update({
           where: { id: reg.season_id },
-          data:  { total_players: { increment: 1 } },
+          data: { total_players: { increment: 1 } },
         });
       }
     });
@@ -258,7 +258,7 @@ const rejectRegistration = async (req, res) => {
   try {
     await prisma.asplRegistration.update({
       where: { id },
-      data:  { status: 'REJECTED', admin_note: admin_note ?? null, conflict_note: null },
+      data: { status: 'REJECTED', admin_note: admin_note ?? null, conflict_note: null },
     });
     return res.json({ message: 'Registration rejected.' });
   } catch (err) {
