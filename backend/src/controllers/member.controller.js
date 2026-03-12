@@ -184,9 +184,9 @@ const lookupMember = async (req, res, next) => {
       },
     });
 
-    if (!member) return res.status(404).json({ success: false, message: 'No member found with that email.' });
+    if (!member) return res.status(200).json({ success: false, found: false, data: null });
 
-    res.json({ success: true, data: member });
+    res.json({ success: true, found: true, data: member });
   } catch (err) {
     next(err);
   }

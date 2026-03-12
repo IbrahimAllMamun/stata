@@ -67,6 +67,14 @@ export default function Register() {
     setChecking(true); setCheckErr('');
     try {
       const res = await api.lookupMember(trimmed);
+
+      // Not found → registration form
+      if (res.notFound || !res.data) {
+        setForm({ ...INITIAL, email: trimmed });
+        setMode('register');
+        return;
+      }
+
       const m = res.data;
       if (m.status === 'ARCHIVED') {
         setCheckErr('Your account has been archived. Please contact an admin.');
@@ -84,20 +92,13 @@ export default function Register() {
         notify_events: m.notify_events === true ? 'true' : m.notify_events === false ? 'false' : '',
         blood_group: m.blood_group ?? '',
       });
-      // Load existing photo preview
       if (m.photo_url) {
         setExistingPhotoUrl(imageUrl(m.photo_url) ?? null);
         setPhotoPreview(imageUrl(m.photo_url) ?? null);
       }
       setMode('update');
     } catch (err: any) {
-      const msg = (err?.message ?? '').toLowerCase();
-      if (msg.includes('404') || msg.includes('not found') || msg.includes('no member') || msg.includes('member not found')) {
-        setForm({ ...INITIAL, email: trimmed });
-        setMode('register');
-      } else {
-        setCheckErr(err?.message || 'Something went wrong. Please try again.');
-      }
+      setCheckErr(err?.message || 'Something went wrong. Please try again.');
     } finally { setChecking(false); }
   };
 

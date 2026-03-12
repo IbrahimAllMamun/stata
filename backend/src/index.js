@@ -13,6 +13,9 @@ const asplRoutes = require('./aspl/routes/aspl.routes');
 
 const app = express();
 
+// Trust reverse proxy (cPanel/Nginx/Apache) — required for express-rate-limit with X-Forwarded-For
+app.set('trust proxy', 1);
+
 // CORS — allow frontend origin
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
   .split(',')

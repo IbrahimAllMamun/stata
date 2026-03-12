@@ -210,8 +210,13 @@ export const api = {
       body: data,
     }),
 
-  lookupMember: (email: string) =>
-    request<{ success: boolean; data: Member & { status: string } }>(`/lookup-member?email=${encodeURIComponent(email)}`),
+  lookupMember: async (email: string) => {
+    const res = await fetch(`${BASE_URL}/lookup-member?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed');
+    if (!data.found) return { success: false, data: null, notFound: true as const };
+    return data as { success: boolean; found: true; data: Member & { status: string }; notFound?: false };
+  },
 
   updateMemberPhoto: (email: string, photo: File) => {
     const fd = new FormData();
