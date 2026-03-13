@@ -186,9 +186,9 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-0">
             {[
               { icon: Users, label: 'Members', value: '200+' },
-              { icon: Calendar, label: 'Events Held', value: '50+' },
-              { icon: Trophy, label: 'Batches', value: '15+' },
-              { icon: Heart, label: 'Years Active', value: '10+' },
+              { icon: Calendar, label: 'Events Held', value: '30+' },
+              { icon: Trophy, label: 'Batches', value: '30+' },
+              { icon: Heart, label: 'Years of Activity', value: '10+' },
             ].map(({ icon: Icon, label, value }, i) => (
               <div key={label} className={`flex items-center gap-3 px-6 py-1 ${i !== 3 ? 'border-r border-white/10' : ''
                 } ${i === 1 ? 'md:border-r-0' : ''

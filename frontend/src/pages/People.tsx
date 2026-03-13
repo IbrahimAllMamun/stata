@@ -140,7 +140,7 @@ function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
   const imgSrc = imageUrl(person.image_url);
   return (
     <button onClick={onSelect}
-      className={`w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left ${isCurrent ? "border-amber-200" : "border-gray-100"}`}>
+      className={`w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left flex flex-col ${isCurrent ? "border-amber-200" : "border-gray-100"}`}>
       <div className={`${color} px-4 py-2.5 flex items-center gap-2`}>
         {icon}
         <span className="text-sm font-semibold text-white">{role}</span>
@@ -382,7 +382,7 @@ export default function People() {
                         <div className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold shadow-sm ${isCurrent ? "bg-[#2F5BEA] text-white" : "bg-white text-[#1F2A44] border border-gray-200"
                           }`}>
                           {isCurrent && <span className="w-2 h-2 rounded-full bg-white animate-pulse" />}
-                          {isCurrent ? "Current Committee" : `${committee.acting_year}`}
+                          {isCurrent ? "Current Committee" : `${committee.acting_year}-${committee.acting_year + 1}`}
                         </div>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>

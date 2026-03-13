@@ -101,6 +101,7 @@ export interface CommitteeMemberDetail {
   full_name: string;
   email: string;
   batch: number;
+  phone_number?: string | null;
   job_title?: string | null;
   organisation?: string | null;
   image_url: string;
@@ -213,9 +214,9 @@ export const api = {
   lookupMember: async (email: string) => {
     const res = await fetch(`${BASE_URL}/lookup-member?email=${encodeURIComponent(email)}`);
     const data = await res.json();
-    if (res.status === 404) return { success: false, data: null, notFound: true as const };
     if (!res.ok) throw new Error(data.message || 'Request failed');
-    return data as { success: boolean; data: Member & { status: string }; notFound?: false };
+    if (!data.found) return { success: false, data: null, notFound: true as const };
+    return data as { success: boolean; found: true; data: Member & { status: string }; notFound?: false };
   },
 
   updateMemberPhoto: (email: string, photo: File) => {

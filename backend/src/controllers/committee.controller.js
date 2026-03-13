@@ -14,6 +14,7 @@ const getCommittees = async (req, res, next) => {
               select: {
                 id: true, full_name: true, email: true,
                 batch: true, job_title: true, organisation: true,
+                phone_number: true,
               },
             },
           },

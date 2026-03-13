@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 // import { Facebook, Twitter, Instagram, Mail, MapPin, Phone, Heart } from 'lucide-react';
 import { Facebook, Mail, MapPin, Phone, Heart, Eye, Users } from 'lucide-react';
-import { visitorApi } from '../lib/api';
+import { visitorApi, api } from '../lib/api';
 import { Link } from 'react-router-dom';
 import LogoLoaderFull from './LogoLoaderFull';
 
@@ -15,21 +15,18 @@ const quickLinks = [
   { label: 'Contact', href: '/contact' },
 ];
 
-const contact = [
-  { icon: MapPin, text: 'ISRT, University of Dhaka' },
-  { icon: Mail, text: 'info@stataisrt.org' },
-  { icon: Phone, text: '+880 123 456 789' },
-];
-
 const socials = [
   { icon: Facebook, href: 'https://www.facebook.com/stataisrt', label: 'Facebook' },
   // { icon: Twitter, href: '#', label: 'Twitter' },
   // { icon: Instagram, href: '#', label: 'Instagram' },
 ];
 
+const DEFAULT_PHONE = '+880 123 456 789';
+
 export default function Footer() {
   const [logoKey, setLogoKey] = useState(0);
   const [stats, setStats] = useState<{ today: number; lifetime: number } | null>(null);
+  const [presidentPhone, setPresidentPhone] = useState<string>(DEFAULT_PHONE);
 
   useEffect(() => {
     if (!sessionStorage.getItem('tracked')) {
@@ -39,6 +36,16 @@ export default function Footer() {
     }
     visitorApi.getStats()
       .then(setStats)
+      .catch(() => { });
+
+    // Fetch current committee president's phone
+    api.getCommittees()
+      .then(res => {
+        const sorted = [...res.data].sort((a, b) => b.acting_year - a.acting_year);
+        const current = sorted[0];
+        const phone = current?.president?.phone_number;
+        if (phone) setPresidentPhone(phone);
+      })
       .catch(() => { });
   }, []);
 
@@ -124,7 +131,11 @@ export default function Footer() {
           <div className="md:col-span-5">
             <h4 className="text-xs font-bold tracking-widest uppercase text-gray-500 mb-5">Contact Info</h4>
             <ul className="space-y-4">
-              {contact.map(({ icon: Icon, text }) => (
+              {[
+                { icon: MapPin, text: 'ISRT, University of Dhaka' },
+                { icon: Mail, text: 'info@stataisrt.org' },
+                { icon: Phone, text: presidentPhone },
+              ].map(({ icon: Icon, text }) => (
                 <li key={text} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Icon className="w-3.5 h-3.5 text-[#F39C12]" />

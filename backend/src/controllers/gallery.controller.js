@@ -19,7 +19,7 @@ const getGallery = async (req, res, next) => {
 
     const photos = await prisma.galleryPhoto.findMany({
       where,
-      orderBy: [{ moment_date: 'desc' }, { created_at: 'asc' }],
+      orderBy: [{ moment_date: 'desc' }, { created_at: 'desc' }],
       select: { id: true, image_url: true, caption: true, moment_date: true, created_at: true },
     });
 
@@ -84,7 +84,7 @@ const uploadPhotos = async (req, res, next) => {
       data: { count: photoData.length },
     });
   } catch (err) {
-    for (const p of savedPaths) { try { fs.unlinkSync(p); } catch {} }
+    for (const p of savedPaths) { try { fs.unlinkSync(p); } catch { } }
     next(err);
   }
 };
@@ -93,7 +93,7 @@ const deletePhoto = async (req, res, next) => {
   try {
     const photo = await prisma.galleryPhoto.findUnique({ where: { id: req.params.id } });
     if (!photo) return res.status(404).json({ success: false, message: 'Photo not found' });
-    if (photo.image_url) try { fs.unlinkSync(toFilePath(photo.image_url)); } catch {}
+    if (photo.image_url) try { fs.unlinkSync(toFilePath(photo.image_url)); } catch { }
     await prisma.galleryPhoto.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Photo deleted' });
   } catch (err) { next(err); }
@@ -102,7 +102,7 @@ const deletePhoto = async (req, res, next) => {
 const getAdminGallery = async (req, res, next) => {
   try {
     const photos = await prisma.galleryPhoto.findMany({
-      orderBy: [{ moment_date: 'desc' }, { created_at: 'asc' }],
+      orderBy: [{ moment_date: 'desc' }, { created_at: 'desc' }],
       select: {
         id: true, image_url: true, caption: true, moment_date: true, created_at: true,
         admin: { select: { id: true, username: true } },
