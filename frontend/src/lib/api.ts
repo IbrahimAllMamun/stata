@@ -152,17 +152,26 @@ export interface Speech {
 export interface GalleryPhoto {
   id: string;
   image_url: string;
-  caption?: string | null;
+  subject: string;
   moment_date: string;
   created_at: string;
   admin?: { id: string; username: string };
 }
 
-export interface GalleryGroup {
-  date: string; // YYYY-MM-DD
+export interface GallerySubjectGroup {
+  subject: string;
   photos: GalleryPhoto[];
 }
 
+export interface GalleryGroup {
+  date: string;
+  subjects: GallerySubjectGroup[];
+}
+
+export interface GalleryDateEntry {
+  date: string;
+  subjects: string[];
+}
 
 export const visitorApi = {
   track: () => fetch(`${BASE_URL}/track`, { method: 'POST' }).catch(() => { }),
@@ -275,16 +284,21 @@ export const api = {
     return request<{ success: boolean; data: Event[]; pagination: Pagination }>(`/events${qs}`);
   },
 
-  getGallery: (params?: { from?: string; to?: string }) => {
+  getGallery: (params?: { from?: string; to?: string; subject?: string }) => {
     const qs = new URLSearchParams();
     if (params?.from) qs.set('from', params.from);
     if (params?.to) qs.set('to', params.to);
+    if (params?.subject) qs.set('subject', params.subject);
     const q = qs.toString();
     return request<{ success: boolean; data: GalleryGroup[]; total: number }>(`/gallery${q ? '?' + q : ''}`);
   },
 
   getGalleryDates: () =>
-    request<{ success: boolean; data: string[] }>('/gallery/dates'),
+    request<{ success: boolean; data: GalleryDateEntry[] }>('/gallery/dates'),
+
+  getGallerySubjectsByDate: (date: string) =>
+    request<{ success: boolean; data: string[] }>(`/gallery/subjects?date=${date}`),
+
 };
 
 export const adminApi = {
@@ -455,6 +469,9 @@ export const adminApi = {
   // Gallery
   getGallery: () =>
     request<{ success: boolean; data: GalleryGroup[]; total: number }>('/admin/gallery'),
+
+  getGallerySubjectsByDate: (date: string) =>
+    request<{ success: boolean; data: string[] }>(`/admin/gallery/subjects?date=${date}`),
 
   uploadGalleryPhotos: (formData: FormData) =>
     request<{ success: boolean; message: string; data: { count: number } }>('/admin/gallery', {

@@ -16,7 +16,7 @@ const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approv
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, adminUpdateMemberPhoto, debugPhotoStatus } = require('../controllers/member.controller');
-const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
+const { uploadPhotos, deletePhoto, getAdminGallery, getSubjectsByDate } = require('../controllers/gallery.controller');
 const { sendCampaign, getCampaigns, previewRecipients, verifySMTP } = require('../controllers/email.controller');
 
 // Public auth
@@ -69,6 +69,7 @@ router.delete('/events/:id', deleteEvent);
 
 // Gallery — admin and moderator
 router.get('/gallery', getAdminGallery);
+router.get('/gallery/subjects', getSubjectsByDate);
 router.post('/gallery', upload.array('images', 10), uploadPhotos);
 router.delete('/gallery/:id', deletePhoto);
 
