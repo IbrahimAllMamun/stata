@@ -1,6 +1,6 @@
 // src/pages/admin/Settings.tsx - Committee Management
 import { useEffect, useState } from 'react';
-import { Crown, Plus, Trash2, Upload, Users, X, CheckCircle, UserPlus, Shield } from 'lucide-react';
+import { Crown, Plus, Trash2, Upload, Users, X, CheckCircle } from 'lucide-react';
 import { adminApi, api, Member, Committee, imageUrl } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -14,11 +14,11 @@ export default function AdminSettings() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [newYear, setNewYear] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
+  const [photoSource, setPhotoSource] = useState<'profile' | 'upload' | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [creatingYear, setCreatingYear] = useState(false);
-  const [modForm, setModForm] = useState({ username: '', password: '' });
-  const [creatingMod, setCreatingMod] = useState(false);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -44,6 +44,35 @@ export default function AdminSettings() {
     if (!file) return;
     setForm(f => ({ ...f, image: file }));
     setPreview(URL.createObjectURL(file));
+    setPhotoSource('upload');
+  };
+
+  const handleMemberSelect = (memberId: string) => {
+    setForm(f => ({ ...f, member_id: memberId, image: null }));
+    const member = members.find(m => m.id === memberId);
+    if (member?.photo_url) {
+      const url = imageUrl(member.photo_url);
+      if (url) {
+        setPreview(url);
+        setPhotoSource('profile');
+        setPhotoLoading(true);
+        fetch(url)
+          .then(r => r.blob())
+          .then(blob => {
+            const file = new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' });
+            setForm(f => ({ ...f, image: file }));
+          })
+          .catch(() => {
+            setPreview(null);
+            setPhotoSource('upload');
+          })
+          .finally(() => setPhotoLoading(false));
+        return;
+      }
+    }
+    setPreview(null);
+    setPhotoSource('upload');
+    setPhotoLoading(false);
   };
 
   const handleCreateYear = async () => {
@@ -63,8 +92,12 @@ export default function AdminSettings() {
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.committee_id || !form.member_id || !form.position || !form.image) {
-      showToast('All fields including photo are required', false);
+    if (!form.committee_id || !form.member_id || !form.position) {
+      showToast('All fields are required', false);
+      return;
+    }
+    if (!form.image) {
+      showToast(photoLoading ? 'Photo is still loading, please wait a moment' : 'Please upload a photo', false);
       return;
     }
     setSubmitting(true);
@@ -77,6 +110,8 @@ export default function AdminSettings() {
       await adminApi.assignCommitteeMember(fd);
       setForm(EMPTY_FORM);
       setPreview(null);
+      setPhotoSource(null);
+      setPhotoLoading(false);
       showToast('Member assigned successfully');
       load();
     } catch (err: any) {
@@ -205,7 +240,7 @@ export default function AdminSettings() {
                 </label>
                 <select
                   value={form.member_id}
-                  onChange={e => setForm(f => ({ ...f, member_id: e.target.value }))}
+                  onChange={e => handleMemberSelect(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
                 >
                   <option value="">- Select member -</option>
@@ -225,18 +260,40 @@ export default function AdminSettings() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Photo <span className="text-red-500">*</span>
                 </label>
+                {photoSource === 'profile' && preview && (
+                  <div className="flex items-center gap-3 mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="relative flex-shrink-0">
+                      <img src={preview} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-green-300" />
+                      {photoLoading && (
+                        <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center">
+                          <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-green-700">
+                        {photoLoading ? 'Loading profile photo…' : 'Profile photo loaded automatically'}
+                      </p>
+                      <p className="text-xs text-green-600">You can upload a different one below</p>
+                    </div>
+                    <button type="button" onClick={() => { setPreview(null); setPhotoSource('upload'); setPhotoLoading(false); setForm(f => ({ ...f, image: null })); }}
+                      className="text-green-500 hover:text-red-500 transition-colors"><X className="w-4 h-4" /></button>
+                  </div>
+                )}
                 <div className="flex items-start gap-4">
                   <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#2F5BEA] transition-colors flex-1 cursor-pointer">
                     <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" id="cm_image" />
                     <label htmlFor="cm_image" className="cursor-pointer flex flex-col items-center gap-1">
                       <Upload className="w-6 h-6 text-gray-400" />
-                      <span className="text-xs text-gray-500">Click to upload (jpg, png, webp - max 2MB)</span>
+                      <span className="text-xs text-gray-500">
+                        {photoSource === 'profile' ? 'Upload a different photo (optional)' : 'Click to upload (jpg, png, webp)'}
+                      </span>
                     </label>
                   </div>
-                  {preview && (
+                  {preview && photoSource === 'upload' && (
                     <div className="relative">
                       <img src={preview} alt="Preview" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" />
-                      <button type="button" onClick={() => { setPreview(null); setForm(f => ({ ...f, image: null })); }}
+                      <button type="button" onClick={() => { setPreview(null); setPhotoSource(null); setForm(f => ({ ...f, image: null })); }}
                         className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
                         <X className="w-3 h-3" />
                       </button>
@@ -245,10 +302,10 @@ export default function AdminSettings() {
                 </div>
               </div>
 
-              <button type="submit" disabled={submitting}
+              <button type="submit" disabled={submitting || photoLoading}
                 className="bg-[#F39C12] hover:bg-[#e08e0b] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-2">
                 <Crown className="w-4 h-4" />
-                {submitting ? 'Assigning...' : 'Assign to Committee'}
+                {submitting ? 'Assigning...' : photoLoading ? 'Loading photo…' : 'Assign to Committee'}
               </button>
             </form>
           )}
@@ -290,64 +347,8 @@ export default function AdminSettings() {
             </div>
           )}
         </div>
-        {/* Moderator Management */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
-          <h2 className="text-lg font-bold text-[#1F2A44] mb-5 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#9B59B6]" />
-            Create Moderator Account
-          </h2>
-          <p className="text-sm text-gray-500 mb-5">
-            Moderators can create and manage posts and events but cannot access committee settings.
-          </p>
-          <div className="space-y-4 max-w-sm">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
-              <input
-                type="text"
-                value={modForm.username}
-                onChange={e => setModForm(f => ({ ...f, username: e.target.value }))}
-                placeholder="e.g. john_mod"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-              <input
-                type="password"
-                value={modForm.password}
-                onChange={e => setModForm(f => ({ ...f, password: e.target.value }))}
-                placeholder="Min. 8 characters"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent outline-none"
-              />
-            </div>
-            <button
-              disabled={creatingMod || !modForm.username || !modForm.password}
-              onClick={async () => {
-                if (!modForm.username || modForm.password.length < 8) {
-                  showToast('Password must be at least 8 characters', false);
-                  return;
-                }
-                setCreatingMod(true);
-                try {
-                  await adminApi.createModerator(modForm.username, modForm.password);
-                  showToast(`Moderator "${modForm.username}" created`);
-                  setModForm({ username: '', password: '' });
-                } catch (err: any) {
-                  showToast(err.message || 'Failed to create moderator', false);
-                } finally {
-                  setCreatingMod(false);
-                }
-              }}
-              className="flex items-center gap-2 bg-[#9B59B6] hover:bg-[#8E44AD] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-            >
-              <UserPlus className="w-4 h-4" />
-              {creatingMod ? 'Creating...' : 'Create Moderator'}
-            </button>
-          </div>
-        </div>
+
       </div>
-
-
     </div>
   );
 }

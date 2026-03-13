@@ -5,7 +5,7 @@ import {
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
     Download, Filter, ChevronRight, ArrowRight,
-    AlertCircle, Camera, ZoomIn, Upload,
+    AlertCircle, Camera, ZoomIn, Upload, Shield, UserPlus,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 
@@ -341,6 +341,8 @@ export default function ManageMembers() {
     const [csvNotify, setCsvNotify] = useState('');
     const [csvLoading, setCsvLoading] = useState(false);
     const [availableBatches, setAvailableBatches] = useState<number[]>([]);
+    const [modForm, setModForm] = useState({ username: '', password: '' });
+    const [creatingMod, setCreatingMod] = useState(false);
 
     const showToast = (msg: string, ok = true) => {
         setToast({ msg, ok });
@@ -571,7 +573,64 @@ export default function ManageMembers() {
                         </>
                     )}
                 </div>
+                {/* ── Create Moderator Account ── */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
+                    <h2 className="text-lg font-bold text-[#1F2A44] mb-2 flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-[#9B59B6]" />
+                        Create Moderator Account
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-5">
+                        Moderators can create and manage posts and events but cannot access committee settings.
+                    </p>
+                    <div className="space-y-4 max-w-sm">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+                            <input
+                                type="text"
+                                value={modForm.username}
+                                onChange={e => setModForm(f => ({ ...f, username: e.target.value }))}
+                                placeholder="e.g. john_mod"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                            <input
+                                type="password"
+                                value={modForm.password}
+                                onChange={e => setModForm(f => ({ ...f, password: e.target.value }))}
+                                placeholder="Min. 8 characters"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent outline-none"
+                            />
+                        </div>
+                        <button
+                            disabled={creatingMod || !modForm.username || !modForm.password}
+                            onClick={async () => {
+                                if (!modForm.username || modForm.password.length < 8) {
+                                    showToast('Password must be at least 8 characters', false);
+                                    return;
+                                }
+                                setCreatingMod(true);
+                                try {
+                                    await adminApi.createModerator(modForm.username, modForm.password);
+                                    showToast(`Moderator "${modForm.username}" created`);
+                                    setModForm({ username: '', password: '' });
+                                } catch (err: any) {
+                                    showToast(err.message || 'Failed to create moderator', false);
+                                } finally {
+                                    setCreatingMod(false);
+                                }
+                            }}
+                            className="flex items-center gap-2 bg-[#9B59B6] hover:bg-[#8E44AD] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            {creatingMod ? 'Creating...' : 'Create Moderator'}
+                        </button>
+                    </div>
+                </div>
             </div>
+
+
 
             {selected && <MemberDetailModal member={selected} onClose={() => setSelected(null)} onAction={handleMemberAction} />}
             {toast && <div className={`fixed bottom-6 right-6 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium z-50 transition-all ${toast.ok ? 'bg-[#2ECC71]' : 'bg-red-500'}`}>{toast.msg}</div>}
