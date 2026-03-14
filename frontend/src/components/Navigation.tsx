@@ -1,6 +1,6 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine, Trophy } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine, Trophy, Shield } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, asplApi } from '../lib/api';
@@ -28,7 +28,7 @@ export default function Navigation() {
   const [asplVisible, setAsplVisible] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
+  const { isAdmin, isFullAdmin, isModerator, logout, admin, loading: authLoading } = useAuth();
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -64,26 +64,33 @@ export default function Navigation() {
   useEffect(() => { setIsOpen(false); setDropdownOpen(false); }, [location.pathname]);
 
   // Fetch all counts, refresh on route change + every 60s
+  // Auto-logout if any request returns 401 (expired token)
   useEffect(() => {
-    if (!isAdmin) return;
+    if (authLoading || !isAdmin) return;
+
+    const handle401 = (err: any) => {
+      if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('unauthorized') || err?.message?.toLowerCase().includes('no token') || err?.message?.toLowerCase().includes('invalid') || err?.message?.toLowerCase().includes('expired')) {
+        logout();
+      }
+    };
 
     const fetchAll = () => {
       if (!location.pathname.startsWith('/admin/members'))
-        adminApi.getPendingCount().then(r => setPendingMembers(r.data.count)).catch(() => { });
+        adminApi.getPendingCount().then(r => setPendingMembers(r.data.count)).catch(handle401);
       if (!location.pathname.startsWith('/admin/posts'))
-        adminApi.getPendingPostCount().then(r => setPendingPosts(r.data.count)).catch(() => { });
+        adminApi.getPendingPostCount().then(r => setPendingPosts(r.data.count)).catch(handle401);
       if (!location.pathname.startsWith('/admin/communications')) {
-        adminApi.getUnreadMessageCount().then(r => setUnreadCommunications(r.data.count)).catch(() => { });
-        adminApi.getInboxUnreadCount().then(r => setUnreadInbox(r.data.count)).catch(() => { });
+        adminApi.getUnreadMessageCount().then(r => setUnreadCommunications(r.data.count)).catch(handle401);
+        adminApi.getInboxUnreadCount().then(r => setUnreadInbox(r.data.count)).catch(handle401);
       }
       if (!location.pathname.startsWith('/admin/aspl'))
-        asplApi.getPendingRegistrationCount().then(r => setPendingAspl(r.data.count)).catch(() => { });
+        asplApi.getPendingRegistrationCount().then(r => setPendingAspl(r.data.count)).catch(handle401);
     };
 
     fetchAll();
     const t = setInterval(fetchAll, 60000);
     return () => clearInterval(t);
-  }, [isAdmin, location.pathname]);
+  }, [authLoading, isAdmin, location.pathname, logout]);
 
   // Clear badge when visiting that section
   useEffect(() => {
@@ -193,10 +200,16 @@ export default function Navigation() {
                         <Badge count={unreadCommunications + unreadInbox} />
                       </Link>
                       {isFullAdmin && (
-                        <Link to="/admin/settings"
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors border-t border-gray-100 mt-1">
-                          <Settings className="w-4 h-4 text-[#9B59B6]" /> Committee Settings
-                        </Link>
+                        <>
+                          <Link to="/admin/settings"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors border-t border-gray-100 mt-1">
+                            <Settings className="w-4 h-4 text-[#9B59B6]" /> Committee Settings
+                          </Link>
+                          <Link to="/admin/accounts"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                            <Shield className="w-4 h-4 text-amber-500" /> Account Management
+                          </Link>
+                        </>
                       )}
                     </div>
                     <div className="border-t border-gray-100 px-4 py-2">
@@ -301,10 +314,16 @@ export default function Navigation() {
                   <Badge count={unreadCommunications + unreadInbox} />
                 </Link>
                 {isFullAdmin && (
-                  <Link to="/admin/settings"
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                    <Settings className="w-4 h-4 text-purple-400" /> Committee Settings
-                  </Link>
+                  <>
+                    <Link to="/admin/settings"
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                      <Settings className="w-4 h-4 text-purple-400" /> Committee Settings
+                    </Link>
+                    <Link to="/admin/accounts"
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                      <Shield className="w-4 h-4 text-amber-400" /> Account Management
+                    </Link>
+                  </>
                 )}
                 <button onClick={() => { logout(); setIsOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors mt-1 border-t border-white/10 pt-3">

@@ -35,7 +35,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
       throw new Error(data.errors.join(', '));
     }
-    throw new Error(data.message || 'Request failed');
+    // Include status code in message so callers can detect 401/403
+    const msg = data.message || 'Request failed';
+    throw new Error(res.status === 401 ? `401: ${msg}` : res.status === 403 ? `403: ${msg}` : msg);
   }
   return data;
 }
@@ -425,6 +427,23 @@ export const adminApi = {
     request<{ success: boolean; data: { id: string; username: string; role: string } }>('/admin/moderators', {
       method: 'POST',
       body: { username, password },
+    }),
+
+  // Account management
+  listAccounts: () =>
+    request<{ success: boolean; data: { id: string; username: string; role: string; created_at: string }[] }>('/admin/accounts'),
+
+  createAccount: (username: string, password: string, role: 'admin' | 'moderator') =>
+    request<{ success: boolean; message: string; data: { id: string; username: string; role: string } }>('/admin/accounts', {
+      method: 'POST', body: { username, password, role },
+    }),
+
+  deleteAccount: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/accounts/${id}`, { method: 'DELETE' }),
+
+  changePassword: (id: string, password: string) =>
+    request<{ success: boolean; message: string }>(`/admin/accounts/${id}/password`, {
+      method: 'PATCH', body: { password },
     }),
 
   deleteCommittee: (id: string) =>

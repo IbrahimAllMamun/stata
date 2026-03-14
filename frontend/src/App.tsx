@@ -30,6 +30,7 @@ import ManageGallery from './pages/admin/ManageGallery';
 import Communications from './pages/admin/Communications';
 import PostEditor from './pages/admin/PostEditor';
 import Settings from './pages/admin/Settings';
+import ManageAdmins from './pages/admin/ManageAdmins';
 import AsplAdmin from './pages/admin/aspl/AsplAdmin';
 import AsplSlideshow from './pages/admin/aspl/AsplSlideshow';
 import SeasonDetail from './pages/admin/aspl/SeasonDetail';
@@ -76,6 +77,7 @@ function AppRoutes() {
 
         <Route path="communications" element={<Communications />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="accounts" element={<ManageAdmins />} />
         <Route path="aspl" element={<AsplAdmin />} />
         <Route path="aspl/slideshow" element={<AsplSlideshow />} />
         <Route path="aspl/seasons/:id" element={<SeasonDetail />} />

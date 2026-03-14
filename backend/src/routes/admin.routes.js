@@ -10,7 +10,7 @@ const {
   postSchema, updatePostSchema, eventSchema, updateEventSchema,
 } = require('../validators');
 
-const { login, getDashboardStats, createModerator } = require('../controllers/admin.controller');
+const { login, getDashboardStats, listAdmins, createAccount, deleteAccount, changePassword, createModerator } = require('../controllers/admin.controller');
 const { createCommittee, assignMember, deleteCommitteeMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
@@ -46,6 +46,10 @@ router.post('/member-updates/:id/reject', rejectMemberUpdate);
 
 // Moderator management — admin only
 router.post('/moderators', requireRole('admin'), createModerator);
+router.get('/accounts', requireRole('admin'), listAdmins);
+router.post('/accounts', requireRole('admin'), createAccount);
+router.delete('/accounts/:id', requireRole('admin'), deleteAccount);
+router.patch('/accounts/:id/password', requireRole('admin'), changePassword);
 
 // Committee — admin only
 router.post('/committee', requireRole('admin'), validate(committeeSchema), createCommittee);
