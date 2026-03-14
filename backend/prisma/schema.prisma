@@ -128,7 +128,6 @@ model CommitteeMember {
   committee_id String
   member_id    String
   position     Position
-  image_url    String
   created_at   DateTime  @default(now())
 
   committee Committee @relation(fields: [committee_id], references: [id], onDelete: Cascade)

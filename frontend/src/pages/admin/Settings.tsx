@@ -1,10 +1,10 @@
 // src/pages/admin/Settings.tsx - Committee Management
 import { useEffect, useState } from 'react';
-import { Crown, Plus, Trash2, Upload, Users, X, CheckCircle } from 'lucide-react';
+import { Crown, Plus, Trash2, Users, X, CheckCircle, UserPlus, Shield, Star } from 'lucide-react';
 import { adminApi, api, Member, Committee, imageUrl } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
-const EMPTY_FORM = { committee_id: '', member_id: '', position: '' as '' | 'PRESIDENT' | 'GENERAL_SECRETARY', acting_year: '', image: null as File | null };
+const EMPTY_FORM = { committee_id: '', member_id: '', position: '' as '' | 'PRESIDENT' | 'GENERAL_SECRETARY' };
 
 export default function AdminSettings() {
   const { isAdmin } = useAuth();
@@ -13,12 +13,12 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY_FORM);
   const [newYear, setNewYear] = useState('');
-  const [preview, setPreview] = useState<string | null>(null);
-  const [photoSource, setPhotoSource] = useState<'profile' | 'upload' | null>(null);
-  const [photoLoading, setPhotoLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [creatingYear, setCreatingYear] = useState(false);
+  const [modForm, setModForm] = useState({ username: '', password: '' });
+  const [creatingMod, setCreatingMod] = useState(false);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -38,42 +38,6 @@ export default function AdminSettings() {
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setForm(f => ({ ...f, image: file }));
-    setPreview(URL.createObjectURL(file));
-    setPhotoSource('upload');
-  };
-
-  const handleMemberSelect = (memberId: string) => {
-    setForm(f => ({ ...f, member_id: memberId, image: null }));
-    const member = members.find(m => m.id === memberId);
-    if (member?.photo_url) {
-      const url = imageUrl(member.photo_url);
-      if (url) {
-        setPreview(url);
-        setPhotoSource('profile');
-        setPhotoLoading(true);
-        fetch(url)
-          .then(r => r.blob())
-          .then(blob => {
-            const file = new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' });
-            setForm(f => ({ ...f, image: file }));
-          })
-          .catch(() => {
-            setPreview(null);
-            setPhotoSource('upload');
-          })
-          .finally(() => setPhotoLoading(false));
-        return;
-      }
-    }
-    setPreview(null);
-    setPhotoSource('upload');
-    setPhotoLoading(false);
-  };
 
   const handleCreateYear = async () => {
     if (!newYear || isNaN(Number(newYear))) return showToast('Enter a valid year', false);
@@ -96,22 +60,14 @@ export default function AdminSettings() {
       showToast('All fields are required', false);
       return;
     }
-    if (!form.image) {
-      showToast(photoLoading ? 'Photo is still loading, please wait a moment' : 'Please upload a photo', false);
-      return;
-    }
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append('committee_id', form.committee_id);
-      fd.append('member_id', form.member_id);
-      fd.append('position', form.position);
-      fd.append('image', form.image);
-      await adminApi.assignCommitteeMember(fd);
+      await adminApi.assignCommitteeMember({
+        committee_id: form.committee_id,
+        member_id: form.member_id,
+        position: form.position,
+      });
       setForm(EMPTY_FORM);
-      setPreview(null);
-      setPhotoSource(null);
-      setPhotoLoading(false);
       showToast('Member assigned successfully');
       load();
     } catch (err: any) {
@@ -132,6 +88,20 @@ export default function AdminSettings() {
     }
   };
 
+  const handleDeleteCommitteeMember = async (committeeMemberId: string, name: string) => {
+    if (!confirm(`Remove ${name} from this committee?`)) return;
+    setDeletingMemberId(committeeMemberId);
+    try {
+      await adminApi.deleteCommitteeMember(committeeMemberId);
+      showToast(`${name} removed`);
+      load();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to remove', false);
+    } finally {
+      setDeletingMemberId(null);
+    }
+  };
+
   if (!isAdmin) return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
       <p className="text-gray-500">Access denied</p>
@@ -140,6 +110,9 @@ export default function AdminSettings() {
 
   const sortedCommittees = [...committees].sort((a, b) => b.acting_year - a.acting_year);
   const currentYear = sortedCommittees.length > 0 ? sortedCommittees[0].acting_year : null;
+
+  // Selected member preview for assign form
+  const selectedMember = members.find(m => m.id === form.member_id);
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] py-8 px-4">
@@ -196,11 +169,11 @@ export default function AdminSettings() {
             </div>
           ) : (
             <form onSubmit={handleAssign} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Committee year dropdown */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Committee year */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Committee Acting Year <span className="text-red-500">*</span>
+                    Acting Year <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={form.committee_id}
@@ -210,13 +183,13 @@ export default function AdminSettings() {
                     <option value="">- Select year -</option>
                     {sortedCommittees.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} ★` : `${c.acting_year} - ${c.acting_year + 1}`}
+                        {`${c.acting_year}-${c.acting_year + 1}`}{c.acting_year === currentYear ? ' ★' : ''}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Position dropdown */}
+                {/* Position */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Position <span className="text-red-500">*</span>
@@ -231,81 +204,48 @@ export default function AdminSettings() {
                     <option value="GENERAL_SECRETARY">General Secretary</option>
                   </select>
                 </div>
-              </div>
 
-              {/* Member dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Select Member <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={form.member_id}
-                  onChange={e => handleMemberSelect(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
-                >
-                  <option value="">- Select member -</option>
-                  {[...members]
-                    .sort((a, b) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name))
-                    .map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.full_name} - Batch {m.batch}
-                      </option>
-                    ))
-                  }
-                </select>
-              </div>
-
-              {/* Photo upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Photo <span className="text-red-500">*</span>
-                </label>
-                {photoSource === 'profile' && preview && (
-                  <div className="flex items-center gap-3 mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="relative flex-shrink-0">
-                      <img src={preview} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-green-300" />
-                      {photoLoading && (
-                        <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center">
-                          <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-green-700">
-                        {photoLoading ? 'Loading profile photo…' : 'Profile photo loaded automatically'}
-                      </p>
-                      <p className="text-xs text-green-600">You can upload a different one below</p>
-                    </div>
-                    <button type="button" onClick={() => { setPreview(null); setPhotoSource('upload'); setPhotoLoading(false); setForm(f => ({ ...f, image: null })); }}
-                      className="text-green-500 hover:text-red-500 transition-colors"><X className="w-4 h-4" /></button>
-                  </div>
-                )}
-                <div className="flex items-start gap-4">
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#2F5BEA] transition-colors flex-1 cursor-pointer">
-                    <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" id="cm_image" />
-                    <label htmlFor="cm_image" className="cursor-pointer flex flex-col items-center gap-1">
-                      <Upload className="w-6 h-6 text-gray-400" />
-                      <span className="text-xs text-gray-500">
-                        {photoSource === 'profile' ? 'Upload a different photo (optional)' : 'Click to upload (jpg, png, webp)'}
-                      </span>
-                    </label>
-                  </div>
-                  {preview && photoSource === 'upload' && (
-                    <div className="relative">
-                      <img src={preview} alt="Preview" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" />
-                      <button type="button" onClick={() => { setPreview(null); setPhotoSource(null); setForm(f => ({ ...f, image: null })); }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
+                {/* Member */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Member <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={form.member_id}
+                    onChange={e => setForm(f => ({ ...f, member_id: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
+                  >
+                    <option value="">- Select member -</option>
+                    {[...members]
+                      .sort((a, b) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name))
+                      .map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.full_name} — Batch {m.batch}
+                        </option>
+                      ))
+                    }
+                  </select>
                 </div>
               </div>
 
-              <button type="submit" disabled={submitting || photoLoading}
+              {/* Selected member preview */}
+              {selectedMember && (
+                <div className="flex items-center gap-3 bg-[#F5F7FA] rounded-xl p-3 border border-gray-100">
+                  {imageUrl(selectedMember.photo_url)
+                    ? <img src={imageUrl(selectedMember.photo_url)!} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" alt={selectedMember.full_name} />
+                    : <div className="w-10 h-10 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold">{selectedMember.full_name.charAt(0)}</div>
+                  }
+                  <div>
+                    <p className="text-sm font-semibold text-[#1F2A44]">{selectedMember.full_name}</p>
+                    <p className="text-xs text-gray-400">Batch {selectedMember.batch}{selectedMember.job_title ? ` · ${selectedMember.job_title}` : ''}</p>
+                  </div>
+                </div>
+              )}
+
+              <button type="submit" disabled={submitting}
                 className="bg-[#F39C12] hover:bg-[#e08e0b] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-2">
                 <Crown className="w-4 h-4" />
-                {submitting ? 'Assigning...' : photoLoading ? 'Loading photo…' : 'Assign to Committee'}
+                {submitting ? 'Assigning...' : 'Assign to Committee'}
               </button>
             </form>
           )}
@@ -328,49 +268,74 @@ export default function AdminSettings() {
               {sortedCommittees.map(c => (
                 <div key={c.id} className={`border rounded-xl p-4 ${c.acting_year === currentYear ? 'border-[#2F5BEA] bg-blue-50' : 'border-gray-100'}`}>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-bold ${c.acting_year === currentYear ? 'text-[#2F5BEA]' : 'text-[#1F2A44]'}`}>
-                        {c.acting_year === currentYear ? `${c.acting_year} - ${c.acting_year + 1} ★` : `${c.acting_year} - ${c.acting_year + 1}`}
-                      </span>
-                    </div>
+                    <span className={`text-sm font-bold ${c.acting_year === currentYear ? 'text-[#2F5BEA]' : 'text-[#1F2A44]'}`}>
+                      {c.acting_year}{c.acting_year === currentYear ? ' ★ Current' : ''}
+                    </span>
                     <button onClick={() => handleDeleteCommittee(c.id, c.acting_year)}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1">
+                      className="text-gray-300 hover:text-red-500 transition-colors p-1" title="Delete entire committee year">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <MiniCard person={c.president} role="President" color="amber" />
-                    <MiniCard person={c.general_secretary} role="General Secretary" color="blue" />
+                    <MiniCard
+                      person={c.president} role="President" color="amber"
+                      deletingId={deletingMemberId}
+                      onDelete={c.president ? () => handleDeleteCommitteeMember(c.president!.committee_member_id, c.president!.full_name) : undefined}
+                    />
+                    <MiniCard
+                      person={c.general_secretary} role="General Secretary" color="blue"
+                      deletingId={deletingMemberId}
+                      onDelete={c.general_secretary ? () => handleDeleteCommitteeMember(c.general_secretary!.committee_member_id, c.general_secretary!.full_name) : undefined}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
 }
 
-function MiniCard({ person, role, color }: { person: any; role: string; color: 'amber' | 'blue' }) {
+function MiniCard({ person, role, color, onDelete, deletingId }: {
+  person: any; role: string; color: 'amber' | 'blue';
+  onDelete?: () => void; deletingId: string | null;
+}) {
   const colorMap = { amber: 'bg-amber-100 text-amber-700', blue: 'bg-blue-100 text-blue-700' };
+  const icon = color === 'amber' ? <Crown className="w-3 h-3" /> : <Star className="w-3 h-3" />;
+
   if (!person) return (
     <div className="border border-dashed border-gray-200 rounded-lg p-3 text-center text-xs text-gray-400">
       No {role}
     </div>
   );
-  const imgSrc = imageUrl(person.image_url);
+
+  const photoSrc = imageUrl(person.photo_url) || null;
+  const isDeleting = deletingId === person.committee_member_id;
+
   return (
     <div className="border border-gray-100 rounded-lg p-3 flex items-center gap-2 bg-white">
-      {imgSrc
-        ? <img src={imgSrc} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-        : <div className="w-8 h-8 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{person.full_name.charAt(0)}</div>
+      {photoSrc
+        ? <img src={photoSrc} className="w-9 h-9 rounded-full object-cover flex-shrink-0 border-2 border-gray-100" />
+        : <div className="w-9 h-9 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{person.full_name.charAt(0)}</div>
       }
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-[#1F2A44] truncate">{person.full_name}</p>
-        <span className={`text-xs px-1.5 py-0.5 rounded ${colorMap[color]}`}>{role}</span>
+        <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${colorMap[color]}`}>
+          {icon} {role}
+        </span>
       </div>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          disabled={isDeleting}
+          title={`Remove ${person.full_name}`}
+          className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }

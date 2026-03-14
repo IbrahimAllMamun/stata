@@ -11,12 +11,12 @@ const {
 } = require('../validators');
 
 const { login, getDashboardStats, createModerator } = require('../controllers/admin.controller');
-const { createCommittee, assignMember, deleteCommittee } = require('../controllers/committee.controller');
+const { createCommittee, assignMember, deleteCommitteeMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, adminUpdateMemberPhoto, debugPhotoStatus } = require('../controllers/member.controller');
-const { uploadPhotos, deletePhoto, getAdminGallery, getSubjectsByDate } = require('../controllers/gallery.controller');
+const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
 const { sendCampaign, getCampaigns, previewRecipients, verifySMTP } = require('../controllers/email.controller');
 
 // Public auth
@@ -49,7 +49,8 @@ router.post('/moderators', requireRole('admin'), createModerator);
 
 // Committee — admin only
 router.post('/committee', requireRole('admin'), validate(committeeSchema), createCommittee);
-router.post('/committee/assign', requireRole('admin'), upload.single('image'), assignMember);
+router.post('/committee/assign', requireRole('admin'), assignMember);
+router.delete('/committee/member/:id', requireRole('admin'), deleteCommitteeMember);
 router.delete('/committee/:id', requireRole('admin'), deleteCommittee);
 
 // Posts — admin and moderator
@@ -69,7 +70,6 @@ router.delete('/events/:id', deleteEvent);
 
 // Gallery — admin and moderator
 router.get('/gallery', getAdminGallery);
-router.get('/gallery/subjects', getSubjectsByDate);
 router.post('/gallery', upload.array('images', 10), uploadPhotos);
 router.delete('/gallery/:id', deletePhoto);
 

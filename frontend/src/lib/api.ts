@@ -102,9 +102,12 @@ export interface CommitteeMemberDetail {
   email: string;
   batch: number;
   phone_number?: string | null;
+  alternative_phone?: string | null;
   job_title?: string | null;
   organisation?: string | null;
-  image_url: string;
+  organisation_address?: string | null;
+  blood_group?: string | null;
+  photo_url?: string | null;
   committee_member_id: string;
 }
 
@@ -374,12 +377,8 @@ export const adminApi = {
       body: { acting_year },
     }),
 
-  assignCommitteeMember: (formData: FormData) =>
-    request('/admin/committee/assign', {
-      method: 'POST',
-      body: formData,
-      isFormData: true,
-    }),
+  assignCommitteeMember: (data: { committee_id: string; member_id: string; position: string }) =>
+    request('/admin/committee/assign', { method: 'POST', body: data }),
 
   getMembersByStatus: (status: string) =>
     request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?status=${status}`),
@@ -430,6 +429,10 @@ export const adminApi = {
 
   deleteCommittee: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/committee/${id}`, { method: 'DELETE' }),
+
+  deleteCommitteeMember: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/committee/member/${id}`, { method: 'DELETE' }),
+
 
   exportMembersCSV: (filters: { batch?: number | ''; notify_events?: boolean | '' }) => {
     const qs = new URLSearchParams();
