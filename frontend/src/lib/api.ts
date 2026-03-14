@@ -457,6 +457,10 @@ export const adminApi = {
   getUnreadMessageCount: () =>
     request<{ success: boolean; data: { count: number } }>('/admin/messages/unread-count'),
 
+  getInboxUnreadCount: () =>
+    request<{ success: boolean; data: { count: number } }>('/admin/email/inbox-unread-count'),
+
+
   updateMessageStatus: (id: string, status: 'UNREAD' | 'READ' | 'ARCHIVED') =>
     request<{ success: boolean; data: ContactMessage }>(`/admin/messages/${id}/status`, {
       method: 'PATCH',

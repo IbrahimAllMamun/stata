@@ -17,7 +17,7 @@ const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, adminUpdateMemberPhoto, debugPhotoStatus } = require('../controllers/member.controller');
 const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
-const { sendCampaign, getCampaigns, previewRecipients, verifySMTP } = require('../controllers/email.controller');
+const { sendCampaign, getCampaigns, previewRecipients, verifySMTP, sendIndividual, getInbox, getInboxUnreadCount } = require('../controllers/email.controller');
 
 // Public auth
 router.post('/login', validate(loginSchema), login);
@@ -85,5 +85,8 @@ router.get('/email/campaigns', getCampaigns);
 router.get('/email/preview-recipients', previewRecipients);
 router.get('/email/verify-smtp', verifySMTP);
 router.post('/email/send', sendCampaign);
+router.post('/email/send-individual', sendIndividual);
+router.get('/email/inbox', getInbox);
+router.get('/email/inbox-unread-count', getInboxUnreadCount);
 
 module.exports = router;

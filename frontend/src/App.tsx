@@ -27,8 +27,7 @@ import ManageMembers from './pages/admin/ManageMembers';
 import ManagePosts from './pages/admin/ManagePosts';
 import ManageEvents from './pages/admin/ManageEvents';
 import ManageGallery from './pages/admin/ManageGallery';
-import Messages from './pages/admin/Messages';
-import EmailCampaigns from './pages/admin/EmailCampaigns';
+import Communications from './pages/admin/Communications';
 import PostEditor from './pages/admin/PostEditor';
 import Settings from './pages/admin/Settings';
 import AsplAdmin from './pages/admin/aspl/AsplAdmin';
@@ -74,8 +73,8 @@ function AppRoutes() {
         <Route path="posts/:id/edit" element={<PostEditor />} />
         <Route path="events" element={<ManageEvents />} />
         <Route path="gallery" element={<ManageGallery />} />
-        <Route path="messages" element={<Messages />} />
-        <Route path="email" element={<EmailCampaigns />} />
+
+        <Route path="communications" element={<Communications />} />
         <Route path="settings" element={<Settings />} />
         <Route path="aspl" element={<AsplAdmin />} />
         <Route path="aspl/slideshow" element={<AsplSlideshow />} />

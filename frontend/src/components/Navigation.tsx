@@ -20,7 +20,8 @@ export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [pendingMembers, setPendingMembers] = useState(0);
   const [pendingPosts, setPendingPosts] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadCommunications, setUnreadCommunications] = useState(0);
+  const [unreadInbox, setUnreadInbox] = useState(0);
   const [pendingAspl, setPendingAspl] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoKey, setLogoKey] = useState(0);
@@ -39,7 +40,7 @@ export default function Navigation() {
     { name: 'Contact', href: '/contact' },
   ];
 
-  const totalBadge = pendingMembers + pendingPosts + unreadMessages + pendingAspl;
+  const totalBadge = pendingMembers + pendingPosts + unreadCommunications + unreadInbox + pendingAspl;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -71,8 +72,10 @@ export default function Navigation() {
         adminApi.getPendingCount().then(r => setPendingMembers(r.data.count)).catch(() => { });
       if (!location.pathname.startsWith('/admin/posts'))
         adminApi.getPendingPostCount().then(r => setPendingPosts(r.data.count)).catch(() => { });
-      if (!location.pathname.startsWith('/admin/messages'))
-        adminApi.getUnreadMessageCount().then(r => setUnreadMessages(r.data.count)).catch(() => { });
+      if (!location.pathname.startsWith('/admin/communications')) {
+        adminApi.getUnreadMessageCount().then(r => setUnreadCommunications(r.data.count)).catch(() => { });
+        adminApi.getInboxUnreadCount().then(r => setUnreadInbox(r.data.count)).catch(() => { });
+      }
       if (!location.pathname.startsWith('/admin/aspl'))
         asplApi.getPendingRegistrationCount().then(r => setPendingAspl(r.data.count)).catch(() => { });
     };
@@ -86,7 +89,7 @@ export default function Navigation() {
   useEffect(() => {
     if (location.pathname.startsWith('/admin/members')) setPendingMembers(0);
     if (location.pathname.startsWith('/admin/posts')) setPendingPosts(0);
-    if (location.pathname.startsWith('/admin/messages')) setUnreadMessages(0);
+    if (location.pathname.startsWith('/admin/communications')) { setUnreadCommunications(0); setUnreadInbox(0); }
     if (location.pathname.startsWith('/admin/aspl')) setPendingAspl(0);
   }, [location.pathname]);
 
@@ -182,12 +185,12 @@ export default function Navigation() {
                         </span>
                         <Badge count={pendingAspl} />
                       </Link>
-                      <Link to="/admin/messages"
+                      <Link to="/admin/communications"
                         className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
                         <span className="flex items-center gap-3">
-                          <MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Messages
+                          <MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Communications
                         </span>
-                        <Badge count={unreadMessages} />
+                        <Badge count={unreadCommunications + unreadInbox} />
                       </Link>
                       {isFullAdmin && (
                         <Link to="/admin/settings"
@@ -292,10 +295,10 @@ export default function Navigation() {
                   <span className="flex items-center gap-3"><Trophy className="w-4 h-4 text-yellow-400" /> ASPL</span>
                   <Badge count={pendingAspl} />
                 </Link>
-                <Link to="/admin/messages"
+                <Link to="/admin/communications"
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Messages</span>
-                  <Badge count={unreadMessages} />
+                  <span className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Communications</span>
+                  <Badge count={unreadCommunications + unreadInbox} />
                 </Link>
                 {isFullAdmin && (
                   <Link to="/admin/settings"
