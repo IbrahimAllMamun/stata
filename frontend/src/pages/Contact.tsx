@@ -1,7 +1,9 @@
 // src/pages/Contact.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, MapPin, Phone, Facebook, Send, CheckCircle, AlertCircle } from 'lucide-react';
-import { contactApi } from '../lib/api';
+import { contactApi, api } from '../lib/api';
+
+const DEFAULT_PHONE = '+880 123 456 789';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -9,6 +11,17 @@ export default function Contact() {
   });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [presidentPhone, setPresidentPhone] = useState<string>(DEFAULT_PHONE);
+
+  useEffect(() => {
+    api.getCommittees()
+      .then(res => {
+        const sorted = [...res.data].sort((a, b) => b.acting_year - a.acting_year);
+        const phone = sorted[0]?.president?.phone_number;
+        if (phone) setPresidentPhone(phone);
+      })
+      .catch(() => { });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,7 +156,7 @@ export default function Contact() {
             {[
               { icon: MapPin, color: 'bg-[#2F5BEA]', title: 'Address', lines: ['Institute of Statistical Research and Training', 'University of Dhaka', 'Dhaka 1000'] },
               { icon: Mail, color: 'bg-[#2ECC71]', title: 'Email', lines: ['info@stataisrt.org'] },
-              { icon: Phone, color: 'bg-[#F39C12]', title: 'Phone', lines: ['+880 123 456 789'] },
+              { icon: Phone, color: 'bg-[#F39C12]', title: 'Phone', lines: [presidentPhone] },
             ].map(({ icon: Icon, color, title, lines }) => (
               <div key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-start gap-4">
                 <div className={`w-11 h-11 ${color} rounded-xl flex items-center justify-center flex-shrink-0`}>

@@ -128,7 +128,6 @@ model CommitteeMember {
   committee_id String
   member_id    String
   position     Position
-  image_url    String
   created_at   DateTime  @default(now())
 
   committee Committee @relation(fields: [committee_id], references: [id], onDelete: Cascade)
@@ -219,7 +218,7 @@ enum MessageStatus {
 model GalleryPhoto {
   id          String   @id @default(uuid())
   image_url   String
-  caption     String?
+  subject     String
   moment_date DateTime
   created_by  String
   created_at  DateTime @default(now())
@@ -228,6 +227,7 @@ model GalleryPhoto {
 
   @@index([moment_date])
   @@index([created_at])
+  @@index([subject])
   @@map("gallery_photos")
 }
 

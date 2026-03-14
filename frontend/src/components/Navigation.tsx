@@ -160,7 +160,7 @@ export default function Navigation() {
                       <Link to="/admin/members"
                         className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
                         <span className="flex items-center gap-3">
-                          <UserCheck className="w-4 h-4 text-amber-500" /> Member Approvals
+                          <UserCheck className="w-4 h-4 text-amber-500" /> Manage Members
                         </span>
                         <Badge count={pendingMembers} />
                       </Link>
@@ -275,7 +275,7 @@ export default function Navigation() {
                 </Link>
                 <Link to="/admin/members"
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-3"><UserCheck className="w-4 h-4 text-amber-400" /> Member Approvals</span>
+                  <span className="flex items-center gap-3"><UserCheck className="w-4 h-4 text-amber-400" /> Manage Members</span>
                   <Badge count={pendingMembers} />
                 </Link>
                 <Link to="/admin/posts"

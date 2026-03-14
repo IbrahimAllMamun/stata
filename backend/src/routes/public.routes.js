@@ -11,7 +11,7 @@ const { getCommittees } = require('../controllers/committee.controller');
 const { getPosts, getPostBySlug, submitPost } = require('../controllers/post.controller');
 const { getEvents, getEventBySlug } = require('../controllers/event.controller');
 const { submitMessage, getSpeeches } = require('../controllers/contact.controller');
-const { getGallery, getGalleryDates } = require('../controllers/gallery.controller');
+const { getGallery, getGalleryDates, getSubjectsByDate } = require('../controllers/gallery.controller');
 
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 10,
@@ -59,6 +59,7 @@ router.get('/speeches', getSpeeches);
 // Gallery
 router.get('/gallery', getGallery);
 router.get('/gallery/dates', getGalleryDates);
+router.get('/gallery/subjects', getSubjectsByDate);
 
 module.exports = router;
 

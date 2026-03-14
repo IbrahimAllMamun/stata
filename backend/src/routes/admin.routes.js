@@ -11,7 +11,7 @@ const {
 } = require('../validators');
 
 const { login, getDashboardStats, createModerator } = require('../controllers/admin.controller');
-const { createCommittee, assignMember, deleteCommittee } = require('../controllers/committee.controller');
+const { createCommittee, assignMember, deleteCommitteeMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
@@ -49,7 +49,8 @@ router.post('/moderators', requireRole('admin'), createModerator);
 
 // Committee — admin only
 router.post('/committee', requireRole('admin'), validate(committeeSchema), createCommittee);
-router.post('/committee/assign', requireRole('admin'), upload.single('image'), assignMember);
+router.post('/committee/assign', requireRole('admin'), assignMember);
+router.delete('/committee/member/:id', requireRole('admin'), deleteCommitteeMember);
 router.delete('/committee/:id', requireRole('admin'), deleteCommittee);
 
 // Posts — admin and moderator

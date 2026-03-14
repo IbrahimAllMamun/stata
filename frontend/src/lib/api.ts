@@ -101,9 +101,13 @@ export interface CommitteeMemberDetail {
   full_name: string;
   email: string;
   batch: number;
+  phone_number?: string | null;
+  alternative_phone?: string | null;
   job_title?: string | null;
   organisation?: string | null;
-  image_url: string;
+  organisation_address?: string | null;
+  blood_group?: string | null;
+  photo_url?: string | null;
   committee_member_id: string;
 }
 
@@ -151,17 +155,26 @@ export interface Speech {
 export interface GalleryPhoto {
   id: string;
   image_url: string;
-  caption?: string | null;
+  subject: string;
   moment_date: string;
   created_at: string;
   admin?: { id: string; username: string };
 }
 
-export interface GalleryGroup {
-  date: string; // YYYY-MM-DD
+export interface GallerySubjectGroup {
+  subject: string;
   photos: GalleryPhoto[];
 }
 
+export interface GalleryGroup {
+  date: string;
+  subjects: GallerySubjectGroup[];
+}
+
+export interface GalleryDateEntry {
+  date: string;
+  subjects: string[];
+}
 
 export const visitorApi = {
   track: () => fetch(`${BASE_URL}/track`, { method: 'POST' }).catch(() => { }),
@@ -213,9 +226,9 @@ export const api = {
   lookupMember: async (email: string) => {
     const res = await fetch(`${BASE_URL}/lookup-member?email=${encodeURIComponent(email)}`);
     const data = await res.json();
-    if (res.status === 404) return { success: false, data: null, notFound: true as const };
     if (!res.ok) throw new Error(data.message || 'Request failed');
-    return data as { success: boolean; data: Member & { status: string }; notFound?: false };
+    if (!data.found) return { success: false, data: null, notFound: true as const };
+    return data as { success: boolean; found: true; data: Member & { status: string }; notFound?: false };
   },
 
   updateMemberPhoto: (email: string, photo: File) => {
@@ -274,16 +287,21 @@ export const api = {
     return request<{ success: boolean; data: Event[]; pagination: Pagination }>(`/events${qs}`);
   },
 
-  getGallery: (params?: { from?: string; to?: string }) => {
+  getGallery: (params?: { from?: string; to?: string; subject?: string }) => {
     const qs = new URLSearchParams();
     if (params?.from) qs.set('from', params.from);
     if (params?.to) qs.set('to', params.to);
+    if (params?.subject) qs.set('subject', params.subject);
     const q = qs.toString();
     return request<{ success: boolean; data: GalleryGroup[]; total: number }>(`/gallery${q ? '?' + q : ''}`);
   },
 
   getGalleryDates: () =>
-    request<{ success: boolean; data: string[] }>('/gallery/dates'),
+    request<{ success: boolean; data: GalleryDateEntry[] }>('/gallery/dates'),
+
+  getGallerySubjectsByDate: (date: string) =>
+    request<{ success: boolean; data: string[] }>(`/gallery/subjects?date=${date}`),
+
 };
 
 export const adminApi = {
@@ -359,12 +377,8 @@ export const adminApi = {
       body: { acting_year },
     }),
 
-  assignCommitteeMember: (formData: FormData) =>
-    request('/admin/committee/assign', {
-      method: 'POST',
-      body: formData,
-      isFormData: true,
-    }),
+  assignCommitteeMember: (data: { committee_id: string; member_id: string; position: string }) =>
+    request('/admin/committee/assign', { method: 'POST', body: data }),
 
   getMembersByStatus: (status: string) =>
     request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?status=${status}`),
@@ -416,6 +430,10 @@ export const adminApi = {
   deleteCommittee: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/committee/${id}`, { method: 'DELETE' }),
 
+  deleteCommitteeMember: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/committee/member/${id}`, { method: 'DELETE' }),
+
+
   exportMembersCSV: (filters: { batch?: number | ''; notify_events?: boolean | '' }) => {
     const qs = new URLSearchParams();
     if (filters.batch !== undefined && filters.batch !== '') qs.set('batch', String(filters.batch));
@@ -454,6 +472,9 @@ export const adminApi = {
   // Gallery
   getGallery: () =>
     request<{ success: boolean; data: GalleryGroup[]; total: number }>('/admin/gallery'),
+
+  getGallerySubjectsByDate: (date: string) =>
+    request<{ success: boolean; data: string[] }>(`/admin/gallery/subjects?date=${date}`),
 
   uploadGalleryPhotos: (formData: FormData) =>
     request<{ success: boolean; message: string; data: { count: number } }>('/admin/gallery', {
