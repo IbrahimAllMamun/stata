@@ -393,6 +393,10 @@ export default function Register() {
                   <option value="O-">O-</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+                <input type="text" value={form.organisation_address} onChange={set('organisation_address')} placeholder="Address" className={inputCls(false)} />
+              </div>
             </div>
           </div>
 
@@ -410,10 +414,6 @@ export default function Register() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Organisation</label>
                 <input type="text" value={form.organisation} onChange={set('organisation')} placeholder="e.g. Bangladesh Bank, Pathao" className={inputCls(false)} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-                <input type="text" value={form.organisation_address} onChange={set('organisation_address')} placeholder="Address" className={inputCls(false)} />
               </div>
             </div>
           </div>
