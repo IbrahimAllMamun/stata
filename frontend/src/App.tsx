@@ -27,10 +27,10 @@ import ManageMembers from './pages/admin/ManageMembers';
 import ManagePosts from './pages/admin/ManagePosts';
 import ManageEvents from './pages/admin/ManageEvents';
 import ManageGallery from './pages/admin/ManageGallery';
-import Messages from './pages/admin/Messages';
-import EmailCampaigns from './pages/admin/EmailCampaigns';
+import Communications from './pages/admin/Communications';
 import PostEditor from './pages/admin/PostEditor';
 import Settings from './pages/admin/Settings';
+import ManageAdmins from './pages/admin/ManageAdmins';
 import AsplAdmin from './pages/admin/aspl/AsplAdmin';
 import AsplSlideshow from './pages/admin/aspl/AsplSlideshow';
 import SeasonDetail from './pages/admin/aspl/SeasonDetail';
@@ -74,9 +74,10 @@ function AppRoutes() {
         <Route path="posts/:id/edit" element={<PostEditor />} />
         <Route path="events" element={<ManageEvents />} />
         <Route path="gallery" element={<ManageGallery />} />
-        <Route path="messages" element={<Messages />} />
-        <Route path="email" element={<EmailCampaigns />} />
+
+        <Route path="communications" element={<Communications />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="accounts" element={<ManageAdmins />} />
         <Route path="aspl" element={<AsplAdmin />} />
         <Route path="aspl/slideshow" element={<AsplSlideshow />} />
         <Route path="aspl/seasons/:id" element={<SeasonDetail />} />

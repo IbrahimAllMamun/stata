@@ -10,14 +10,14 @@ const {
   postSchema, updatePostSchema, eventSchema, updateEventSchema,
 } = require('../validators');
 
-const { login, getDashboardStats, createModerator } = require('../controllers/admin.controller');
+const { login, getDashboardStats, listAdmins, createAccount, deleteAccount, changePassword, createModerator } = require('../controllers/admin.controller');
 const { createCommittee, assignMember, deleteCommitteeMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, adminUpdateMemberPhoto, debugPhotoStatus } = require('../controllers/member.controller');
 const { uploadPhotos, deletePhoto, getAdminGallery } = require('../controllers/gallery.controller');
-const { sendCampaign, getCampaigns, previewRecipients, verifySMTP } = require('../controllers/email.controller');
+const { sendCampaign, getCampaigns, previewRecipients, verifySMTP, sendIndividual, getInbox, getInboxUnreadCount } = require('../controllers/email.controller');
 
 // Public auth
 router.post('/login', validate(loginSchema), login);
@@ -46,6 +46,10 @@ router.post('/member-updates/:id/reject', rejectMemberUpdate);
 
 // Moderator management — admin only
 router.post('/moderators', requireRole('admin'), createModerator);
+router.get('/accounts', requireRole('admin'), listAdmins);
+router.post('/accounts', requireRole('admin'), createAccount);
+router.delete('/accounts/:id', requireRole('admin'), deleteAccount);
+router.patch('/accounts/:id/password', requireRole('admin'), changePassword);
 
 // Committee — admin only
 router.post('/committee', requireRole('admin'), validate(committeeSchema), createCommittee);
@@ -85,5 +89,8 @@ router.get('/email/campaigns', getCampaigns);
 router.get('/email/preview-recipients', previewRecipients);
 router.get('/email/verify-smtp', verifySMTP);
 router.post('/email/send', sendCampaign);
+router.post('/email/send-individual', sendIndividual);
+router.get('/email/inbox', getInbox);
+router.get('/email/inbox-unread-count', getInboxUnreadCount);
 
 module.exports = router;

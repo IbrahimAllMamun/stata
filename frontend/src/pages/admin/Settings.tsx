@@ -1,6 +1,6 @@
 // src/pages/admin/Settings.tsx - Committee Management
 import { useEffect, useState } from 'react';
-import { Crown, Plus, Trash2, Users, X, CheckCircle, UserPlus, Shield, Star } from 'lucide-react';
+import { Crown, Plus, Trash2, Users, X, CheckCircle, Star } from 'lucide-react';
 import { adminApi, api, Member, Committee, imageUrl } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -16,8 +16,6 @@ export default function AdminSettings() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [creatingYear, setCreatingYear] = useState(false);
-  const [modForm, setModForm] = useState({ username: '', password: '' });
-  const [creatingMod, setCreatingMod] = useState(false);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
 
   const showToast = (msg: string, ok = true) => {

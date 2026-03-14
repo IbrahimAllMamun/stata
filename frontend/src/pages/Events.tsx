@@ -105,7 +105,7 @@ export default function Events() {
       <section className="bg-[#1F2A44] py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <span className="text-xs font-bold tracking-widest uppercase text-[#F39C12] mb-4 block">Get Involved</span>
-          <h2 className="text-3xl font-bold text-white mb-4">Want to Organize an Event?</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">Have an Idea?</h2>
           <p className="text-gray-400 mb-8">Have ideas for events or want to get involved? We would love to hear from you!</p>
           <Link to="/contact" className="inline-flex items-center gap-2 bg-[#F39C12] hover:bg-[#E67E22] text-white px-8 py-3.5 rounded-xl font-semibold transition-colors">Contact Us <ArrowRight className="w-4 h-4" /></Link>
         </div>
