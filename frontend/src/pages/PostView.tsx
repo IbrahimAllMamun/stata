@@ -6,7 +6,7 @@ import { api, Post, imageUrl } from '../lib/api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function PostView() {
-  const { slug } = useParams<{ slug: string }>();
+  const { id: slug } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);

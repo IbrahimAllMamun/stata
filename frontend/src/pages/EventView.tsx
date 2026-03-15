@@ -6,13 +6,13 @@ import { api, Event, imageUrl } from '../lib/api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function EventView() {
-  const { slug } = useParams<{ slug: string }>();
+  const { id: slug } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) { setLoading(false); return; }
     api.getEventBySlug(slug)
       .then(res => setEvent(res.data))
       .catch(() => navigate('/events'))
