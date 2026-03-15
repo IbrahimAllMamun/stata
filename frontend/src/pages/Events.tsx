@@ -4,17 +4,23 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, MapPin, Clock, ArrowRight } from 'lucide-react';
 import { api, Event, imageUrl } from '../lib/api';
 function formatDate(d: string) { return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
-function stripMarkdown(md: string) {
-  return md
-    .replace(/!\[.*?\]\(.*?\)/g, '')   // images
-    .replace(/\[([^\]]+)\]\(.*?\)/g, '$1') // links
-    .replace(/#{1,6}\s*/g, '')         // headings
-    .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
-    .replace(/(\*|_)(.*?)\1/g, '$2')   // italic
-    .replace(/`{1,3}[^`]*`{1,3}/g, '') // code
-    .replace(/>\s?/g, '')              // blockquotes
-    .replace(/[-*+]\s/g, '')           // list items
-    .replace(/\n+/g, ' ')             // newlines
+function stripMarkdown(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[([^\]]+)\]\(.*?\)/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]*`/g, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/~~(.*?)~~/g, '$1')
+    .replace(/^>\s?/gm, '')
+    .replace(/^[-*+]\s/gm, '')
+    .replace(/^\d+\.\s/gm, '')
+    .replace(/\|/g, ' ')
+    .replace(/\n+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
     .trim();
 }
 function EventCard({ event, onClick }: { event: Event; onClick: () => void }) {

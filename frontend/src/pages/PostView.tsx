@@ -77,7 +77,7 @@ export default function PostView() {
         </button>
 
         <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {img && <img src={img} alt={post.title} className="w-full h-72 object-cover" />}
+          {img && <div className="w-full overflow-hidden" style={{ maxHeight: "min(75vw, 75vh)" }}><img src={img} alt={post.title} className="w-full h-auto block" style={{ maxHeight: "min(75vw, 75vh)", objectFit: "cover" }} /></div>}
           <div className="p-8 md:p-10">
             <h1 className="text-3xl md:text-4xl font-extrabold text-[#1F2A44] mb-5 leading-tight">{post.title}</h1>
 

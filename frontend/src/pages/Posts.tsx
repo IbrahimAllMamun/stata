@@ -7,10 +7,25 @@ import { api, Post, imageUrl } from '../lib/api';
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
-function stripMarkdown(text: string | null | undefined) {
+function stripMarkdown(text: string | null | undefined): string {
   if (!text) return '';
-  const s = text.replace(/[#*`_>\-\[\]!]/g, '').replace(/\s+/g, ' ').trim();
-  return s.length > 130 ? s.slice(0, 130) + '...' : s;
+  return text
+    .replace(/!\[.*?\]\(.*?\)/g, '')        // images
+    .replace(/\[([^\]]+)\]\(.*?\)/g, '$1')   // links → keep label
+    .replace(/```[\s\S]*?```/g, '')           // fenced code blocks
+    .replace(/`[^`]*`/g, '')                  // inline code
+    .replace(/^#{1,6}\s+/gm, '')             // headings
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')      // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')         // italic
+    .replace(/~~(.*?)~~/g, '$1')              // strikethrough
+    .replace(/^>\s?/gm, '')                  // blockquotes
+    .replace(/^[-*+]\s/gm, '')               // unordered list markers
+    .replace(/^\d+\.\s/gm, '')              // ordered list markers
+    .replace(/^[-*_]{3,}$/gm, '')             // horizontal rules
+    .replace(/\|/g, ' ')                     // table pipes
+    .replace(/\n+/g, ' ')                    // newlines → space
+    .replace(/\s{2,}/g, ' ')                 // collapse spaces
+    .trim();
 }
 function Skeleton() {
   return (

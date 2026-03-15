@@ -40,7 +40,7 @@ export default function EventView() {
         <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {img ? (
             <div className="relative">
-              <img src={img} alt={event.title} className="w-full h-80 object-cover" />
+              <div className="w-full overflow-hidden" style={{ maxHeight: "min(75vw, 75vh)" }}><img src={img} alt={event.title} className="w-full h-auto block" style={{ maxHeight: "min(75vw, 75vh)", objectFit: "cover" }} /></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-5 left-6">
                 <span className={`text-xs px-3 py-1.5 rounded-full font-bold ${event.is_upcoming ? 'bg-[#2ECC71] text-white' : 'bg-white/20 backdrop-blur text-white border border-white/30'}`}>

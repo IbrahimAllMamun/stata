@@ -11,10 +11,25 @@ function formatDate(dateStr: string) {
   });
 }
 
-function stripHtml(html: string | null | undefined) {
-  if (!html) return '';
-  const stripped = html.replace(/<[^>]*>/g, '');
-  return stripped.slice(0, 120) + (stripped.length > 120 ? '…' : '');
+function stripMarkdown(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/!\[.*?\]\(.*?\)/g, '')        // images
+    .replace(/\[([^\]]+)\]\(.*?\)/g, '$1')   // links → keep label
+    .replace(/```[\s\S]*?```/g, '')           // fenced code blocks
+    .replace(/`[^`]*`/g, '')                  // inline code
+    .replace(/^#{1,6}\s+/gm, '')             // headings
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')      // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')         // italic
+    .replace(/~~(.*?)~~/g, '$1')              // strikethrough
+    .replace(/^>\s?/gm, '')                  // blockquotes
+    .replace(/^[-*+]\s/gm, '')               // unordered list markers
+    .replace(/^\d+\.\s/gm, '')              // ordered list markers
+    .replace(/^[-*_]{3,}$/gm, '')             // horizontal rules
+    .replace(/\|/g, ' ')                     // table pipes
+    .replace(/\n+/g, ' ')                    // newlines → space
+    .replace(/\s{2,}/g, ' ')                 // collapse spaces
+    .trim();
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -73,7 +88,7 @@ function EventCard({ event }: { event: Event }) {
       <div className="p-5 flex flex-col flex-1">
         <h3 className="font-bold text-[#1F2A44] text-lg mb-2 line-clamp-2 group-hover:text-[#2F5BEA] transition-colors">{event.title}</h3>
         {event.description && (
-          <p className="text-gray-500 text-sm line-clamp-2 mb-3 flex-1">{stripHtml(event.description)}</p>
+          <p className="text-gray-500 text-sm line-clamp-2 mb-3 flex-1">{stripMarkdown(event.description)}</p>
         )}
         <div className="flex flex-col gap-1 mt-auto pt-3 border-t border-gray-50">
           {event.location && (
@@ -117,7 +132,7 @@ function PostCard({ post }: { post: Post }) {
           )}
         </div>
         <h3 className="font-bold text-[#1F2A44] text-lg mb-2 line-clamp-2 group-hover:text-[#2F5BEA] transition-colors">{post.title}</h3>
-        <p className="text-gray-500 text-sm line-clamp-3 flex-1">{stripHtml(post.content)}</p>
+        <p className="text-gray-500 text-sm line-clamp-3 flex-1">{stripMarkdown(post.content)}</p>
         <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#2F5BEA] group-hover:text-[#F39C12] transition-colors">
           Read more <ChevronRight className="w-3.5 h-3.5" />
         </div>
@@ -329,15 +344,19 @@ function SpeechCarousel({ speeches }: { speeches: Speech[] }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [speeches, setSpeeches] = useState<Speech[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
     speechApi.getAll().then(res => setSpeeches(res.data)).catch(() => { });
-    api.getEvents('upcoming')
-      .then(res => setUpcomingEvents(res.data.slice(0, 3)))
+    Promise.all([api.getEvents('upcoming'), api.getEvents('past')])
+      .then(([upcoming, past]) => {
+        const all = [...upcoming.data, ...past.data];
+        all.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+        setRecentEvents(all.slice(0, 3));
+      })
       .catch(console.error)
       .finally(() => setLoadingEvents(false));
 
@@ -438,8 +457,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4">
           <SectionHeader
             label="What's On"
-            title="Upcoming Events"
-            subtitle="Don't miss out on our latest events and activities"
+            title="Recent Events"
+            subtitle="Stay up to date with our latest events and activities"
             href="/events"
             linkLabel="All Events"
           />
@@ -456,20 +475,17 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          ) : upcomingEvents.length > 0 ? (
+          ) : recentEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {upcomingEvents.map(event => <EventCard key={event.id} event={event} />)}
+              {recentEvents.map(event => <EventCard key={event.id} event={event} />)}
             </div>
           ) : (
             <div className="text-center py-16 bg-[#F5F7FA] rounded-2xl">
               <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400 font-medium">No upcoming events right now</p>
-              <Link to="/events" className="text-[#2F5BEA] text-sm font-semibold mt-2 inline-block hover:underline">
-                View past events →
-              </Link>
+              <p className="text-gray-400 font-medium">No events yet</p>
             </div>
           )}
-          {upcomingEvents.length > 0 && (
+          {recentEvents.length > 0 && (
             <div className="text-center mt-8">
               <Link to="/events"
                 className="inline-flex items-center gap-2 bg-[#1F2A44] hover:bg-[#2F5BEA] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors">
