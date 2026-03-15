@@ -5,7 +5,7 @@ import {
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
     Download, Filter, ChevronRight, ArrowRight,
-    AlertCircle, Camera, ZoomIn, Upload,
+    AlertCircle, Camera, ZoomIn, Upload, Shield, UserPlus,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 
@@ -29,6 +29,7 @@ interface MemberUpdateRequest {
     organisation: string | null; organisation_address: string | null;
     notify_events: boolean | null;
     blood_group: string | null;
+    photo_url: string | null;
     status: UpdateStatus; admin_note: string | null;
     created_at: string; reviewed_at: string | null;
     member: RawMember;
@@ -132,26 +133,33 @@ function UpdateRequestCard({ req, onApprove, onReject }: {
             <div className="px-5 py-4 space-y-1.5">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Proposed Changes</p>
 
-                {/* Profile photo - always visible, click to expand */}
-                <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-gray-50">
+                {/* Photo diff — show current vs proposed new photo */}
+                <div className={`flex items-center gap-3 py-2 px-3 rounded-lg ${req.photo_url ? 'bg-amber-50' : 'bg-gray-50'}`}>
                     <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-[120px] flex-shrink-0">Photo</span>
-                    {photoSrc ? (
-                        <div className="flex items-center gap-3">
-                            <ExpandablePhoto
-                                src={photoSrc}
-                                alt={m.full_name}
-                                className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow ring-1 ring-gray-200"
-                            />
-                            <span className="text-xs text-gray-400">Click photo to expand</span>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        {/* Current photo */}
+                        <div className="flex flex-col items-center gap-1">
+                            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Current</span>
+                            {photoSrc ? (
+                                <ExpandablePhoto src={photoSrc} alt={m.full_name} className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow ring-1 ring-gray-200" />
+                            ) : (
+                                <div className="w-14 h-14 rounded-xl bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center">
+                                    <Camera className="w-5 h-5 text-gray-300" />
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-xl bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
-                                <Camera className="w-5 h-5 text-gray-300" />
-                            </div>
-                            <span className="text-xs text-gray-400 italic">No photo uploaded</span>
-                        </div>
-                    )}
+                        {/* Proposed new photo */}
+                        {req.photo_url && (
+                            <>
+                                <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                <div className="flex flex-col items-center gap-1">
+                                    <span className="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">Proposed</span>
+                                    <ExpandablePhoto src={imageUrl(req.photo_url) || ''} alt="Proposed photo" className="w-14 h-14 rounded-xl object-cover border-2 border-amber-200 shadow ring-2 ring-amber-300" />
+                                </div>
+                            </>
+                        )}
+                        {!req.photo_url && <span className="text-xs text-gray-400 italic">No photo change requested</span>}
+                    </div>
                 </div>
 
                 <DiffRow label="Name" oldVal={m.full_name} newVal={req.full_name} />
@@ -341,7 +349,8 @@ export default function ManageMembers() {
     const [csvNotify, setCsvNotify] = useState('');
     const [csvLoading, setCsvLoading] = useState(false);
     const [availableBatches, setAvailableBatches] = useState<number[]>([]);
-
+    const [modForm, setModForm] = useState({ username: '', password: '' });
+    const [creatingMod, setCreatingMod] = useState(false);
 
     const showToast = (msg: string, ok = true) => {
         setToast({ msg, ok });

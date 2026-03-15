@@ -79,10 +79,13 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="accounts" element={<ManageAdmins />} />
         <Route path="aspl" element={<AsplAdmin />} />
-        <Route path="aspl/slideshow" element={<AsplSlideshow />} />
+
         <Route path="aspl/seasons/:id" element={<SeasonDetail />} />
         <Route path="aspl/seasons/:seasonId/bid/:teamId" element={<BidManager />} />
       </Route>
+
+      {/* ASPL Slideshow — no navbar/footer */}
+      <Route path="/admin/aspl/slideshow" element={<ProtectedRoute><AsplSlideshow /></ProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

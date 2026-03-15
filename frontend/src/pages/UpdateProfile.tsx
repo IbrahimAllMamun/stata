@@ -115,6 +115,7 @@ export default function UpdateProfile() {
     if (!photo || !member) return;
     setPhotoSaving(true);
     try {
+      // Photo goes through approval queue — does NOT update member immediately
       await api.updateMemberPhoto(member.email, photo);
       setPhotoSaved(true);
       setPhoto(null);
@@ -288,7 +289,7 @@ export default function UpdateProfile() {
                       </button>
                     )}
 
-                    {photoSaved && <p className="text-sm text-green-600 font-medium flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Photo saved!</p>}
+                    {photoSaved && <p className="text-sm text-amber-600 font-medium flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Photo submitted — pending admin approval.</p>}
                     {errors.photo && <p className="text-xs text-red-500">{errors.photo}</p>}
 
                     <p className="text-xs text-gray-400">JPG, PNG, WEBP or HEIC · Max 15MB · Changes apply immediately</p>

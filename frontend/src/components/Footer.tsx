@@ -21,7 +21,7 @@ const socials = [
   // { icon: Instagram, href: '#', label: 'Instagram' },
 ];
 
-const DEFAULT_PHONE = '+880 123 456 789';
+const DEFAULT_PHONE = '01581101890';
 
 export default function Footer() {
   const [logoKey, setLogoKey] = useState(0);

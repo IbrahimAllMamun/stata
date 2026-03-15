@@ -194,7 +194,7 @@ const lookupMember = async (req, res, next) => {
 
 
 // ─── Public: POST /update-member-photo ───────────────────────────────────────
-// Photo updates apply immediately (no approval queue).
+// Photo updates go through the approval queue, same as other field changes.
 const updateMemberPhoto = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -209,12 +209,26 @@ const updateMemberPhoto = async (req, res, next) => {
     const photo_url = await uploadPhoto(req.file);
     if (!photo_url) return res.status(400).json({ success: false, message: 'No photo provided.' });
 
-    await prisma.member.update({
-      where: { email: email.toLowerCase().trim() },
-      data: { photo_url },
+    // Cancel any existing pending update for this member (superseded)
+    await prisma.memberUpdateRequest.updateMany({
+      where: { member_id: member.id, status: 'PENDING' },
+      data: { status: 'REJECTED', admin_note: 'Superseded by a newer update request.' },
     });
 
-    res.json({ success: true, message: 'Profile photo updated.', data: { photo_url } });
+    // Create a pending update request with just the new photo
+    await prisma.memberUpdateRequest.create({
+      data: {
+        member_id: member.id,
+        photo_url,
+        status: 'PENDING',
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Photo update submitted and is pending admin approval.',
+      data: { photo_url },
+    });
   } catch (err) {
     next(err);
   }
@@ -246,6 +260,9 @@ const updateMember = async (req, res, next) => {
       data: { status: 'REJECTED', admin_note: 'Superseded by a newer update request.' },
     });
 
+    // Process photo if provided alongside the profile update
+    const photo_url = req.file ? await uploadPhoto(req.file) : null;
+
     // Create pending request — only store fields that are actually provided
     const request = await prisma.memberUpdateRequest.create({
       data: {
@@ -259,6 +276,7 @@ const updateMember = async (req, res, next) => {
         organisation_address: organisation_address?.trim() || null,
         notify_events: notify_events !== undefined ? notify_events : null,
         blood_group: blood_group !== undefined ? (blood_group || null) : null,
+        photo_url: photo_url || null,
         status: 'PENDING',
       },
     });
@@ -322,6 +340,7 @@ const approveMemberUpdate = async (req, res, next) => {
     if (request.organisation_address !== null) updateData.organisation_address = request.organisation_address;
     if (request.notify_events !== null) updateData.notify_events = request.notify_events;
     if (request.blood_group !== null) updateData.blood_group = request.blood_group;
+    if (request.photo_url !== null) updateData.photo_url = request.photo_url;
 
     await prisma.$transaction([
       prisma.member.update({ where: { id: request.member_id }, data: updateData }),
