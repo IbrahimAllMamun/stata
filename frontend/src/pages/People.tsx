@@ -56,8 +56,8 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
         </div>
         <div className="px-6 pb-6 space-y-3">
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={member.email} />
-          <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} />
-          {member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />}
+          {/* <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} /> */}
+          {/* {member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />} */}
           {member.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={member.blood_group} />}
           {member.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={member.job_title} />}
           {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
@@ -106,8 +106,8 @@ function LeaderModal({ person, role, year, onClose }: {
         </div>
         <div className="px-6 pb-6 space-y-3">
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={person.email} />
-          {person.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={person.phone_number} />}
-          {person.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={person.alternative_phone} />}
+          {/* {person.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={person.phone_number} />} */}
+          {/* {person.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={person.alternative_phone} />} */}
           {person.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={person.blood_group} />}
           {person.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={person.job_title} />}
           {person.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={person.organisation} />}
