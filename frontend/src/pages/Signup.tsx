@@ -157,22 +157,21 @@ export default function Register() {
     if (!validate()) return;
     setLoading(true);
     try {
-      // If a new photo was selected, upload it first (direct update, no approval queue)
-      if (photo) {
-        await api.updateMemberPhoto(form.email.trim().toLowerCase(), photo);
-      }
-      await api.updateMember({
-        email: form.email.trim().toLowerCase(),
-        batch: parseInt(form.batch),
-        full_name: form.full_name.trim(),
-        phone_number: form.phone_number.trim(),
-        notify_events: form.notify_events === 'true',
-        alternative_phone: form.alternative_phone || undefined,
-        job_title: form.job_title || undefined,
-        organisation: form.organisation || undefined,
-        organisation_address: form.organisation_address || undefined,
-        blood_group: form.blood_group || null,
-      });
+      // Build a single FormData so photo + fields go in one request → one approval
+      const fd = new FormData();
+      fd.append('email', form.email.trim().toLowerCase());
+      fd.append('batch', form.batch);
+      fd.append('full_name', form.full_name.trim());
+      fd.append('phone_number', form.phone_number.trim());
+      fd.append('notify_events', String(form.notify_events === 'true'));
+      if (form.alternative_phone) fd.append('alternative_phone', form.alternative_phone);
+      if (form.job_title) fd.append('job_title', form.job_title);
+      if (form.organisation) fd.append('organisation', form.organisation);
+      if (form.organisation_address) fd.append('organisation_address', form.organisation_address);
+      if (form.blood_group) fd.append('blood_group', form.blood_group);
+      // Photo included in same request — goes through approval queue, not applied immediately
+      if (photo) fd.append('photo', photo);
+      await api.updateMemberWithPhoto(fd);
       setSuccess('updated');
     } catch (err: any) {
       setErrors({ general: err.message || 'Update failed. Please try again.' });
@@ -201,7 +200,7 @@ export default function Register() {
           <p className="text-gray-500 text-sm mb-6">
             {success === 'registered'
               ? 'Your application has been submitted successfully.'
-              : 'Your update request has been submitted and is pending admin review.'}
+              : 'Your update request has been submitted and is pending admin review. Changes will appear once approved.'}
           </p>
           {success === 'registered' && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">

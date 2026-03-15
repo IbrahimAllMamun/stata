@@ -37,7 +37,7 @@ router.get('/members', getMembers);
 router.get('/members/export', exportCSV);
 router.get('/members/batches', getApprovedBatches);
 router.get('/lookup-member', lookupMember);
-router.put('/update-member', validate(updateMemberSchema), updateMember);
+router.put('/update-member', upload.single('photo'), validate(updateMemberSchema), updateMember);
 router.post('/update-member-photo', upload.single('photo'), updateMemberPhoto);
 
 // Posts (public)

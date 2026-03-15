@@ -35,9 +35,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
       throw new Error(data.errors.join(', '));
     }
-    // Include status code in message so callers can detect 401/403
-    const msg = data.message || 'Request failed';
-    throw new Error(res.status === 401 ? `401: ${msg}` : res.status === 403 ? `403: ${msg}` : msg);
+    throw new Error(data.message || 'Request failed');
   }
   return data;
 }
@@ -257,6 +255,14 @@ export const api = {
     request<{ success: boolean; message: string; data: { id: string; full_name: string; status: string } }>('/update-member', {
       method: 'PUT',
       body: data,
+    }),
+
+  // Photo + fields in one request — both go through approval queue
+  updateMemberWithPhoto: (formData: FormData) =>
+    request<{ success: boolean; message: string; data: { request_id: string } }>('/update-member', {
+      method: 'PUT',
+      body: formData,
+      isFormData: true,
     }),
 
   getMembers: (params?: { batch?: number; blood_group?: string; page?: number; limit?: number }) => {

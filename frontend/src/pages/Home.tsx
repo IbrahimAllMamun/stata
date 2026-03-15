@@ -208,7 +208,7 @@ function SpeechCarousel({ speeches }: { speeches: Speech[] }) {
         <div className="flex items-end justify-between mb-10 gap-4 flex-wrap">
           <div>
             <span className="text-xs font-bold tracking-widest uppercase text-[#F39C12] mb-3 block">From Our Community</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-white">What Our Members Say</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white">What Others Say</h2>
           </div>
           {/* Prev / Next arrows */}
           {total > perView && (

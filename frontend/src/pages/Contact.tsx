@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Mail, MapPin, Phone, Facebook, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { contactApi, api } from '../lib/api';
 
-const DEFAULT_PHONE = '+880 123 456 789';
+const DEFAULT_PHONE = '01581101890';
 
 export default function Contact() {
   const [formData, setFormData] = useState({

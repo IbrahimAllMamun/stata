@@ -48,6 +48,7 @@ model MemberUpdateRequest {
   organisation_address String?
   notify_events        Boolean?
   blood_group          String?
+  photo_url            String?
   status               MemberUpdateStatus        @default(PENDING)
   admin_note           String?
   created_at           DateTime                  @default(now())
