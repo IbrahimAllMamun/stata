@@ -417,7 +417,7 @@ function InboxSection({ showToast, onReply, folder = 'INBOX', title, subtitle }:
     setError(null);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/admin/email/inbox?folder=${encodeURIComponent(folder)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('stata_token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('stata_member_token') || localStorage.getItem('stata_member_token') || localStorage.getItem('stata_token')}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to load');
@@ -539,7 +539,7 @@ function ComposeIndividualSection({ showToast, defaultTo, defaultSubject, defaul
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/admin/email/send-individual`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('stata_token')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('stata_member_token') || localStorage.getItem('stata_token')}` },
         body: JSON.stringify({ to: to.trim(), subject: subject.trim(), body: body.trim(), reply_to_message_id: defaultReplyToId }),
       });
       const data = await res.json();

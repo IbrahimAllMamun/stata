@@ -20,7 +20,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { method = 'GET', body, isFormData = false } = options;
 
   const headers: Record<string, string> = {};
-  const token = getToken();
+  // Prefer member token (unified auth); fall back to legacy admin token
+  const token = getMemberToken() || getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!isFormData && body) headers['Content-Type'] = 'application/json';
 
@@ -523,7 +524,7 @@ export const adminApi = {
     const qs = new URLSearchParams();
     if (filters.batch !== undefined && filters.batch !== '') qs.set('batch', String(filters.batch));
     if (filters.notify_events !== undefined && filters.notify_events !== '') qs.set('notify_events', String(filters.notify_events));
-    const token = getToken();
+    const token = getMemberToken() || getToken();
     const url = `${BASE_URL}/admin/members/export-csv${qs.toString() ? '?' + qs.toString() : ''}`;
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   },
@@ -619,7 +620,7 @@ const ASPL_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 async function asplRequest<T>(path: string, options: RequestOptions & { isFormData?: boolean; formBody?: FormData } = {}): Promise<T> {
   const { method = 'GET', body, isFormData = false, formBody } = options;
   const headers: Record<string, string> = {};
-  const token = getToken();
+  const token = getMemberToken() || getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!isFormData && body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${ASPL_BASE}/aspl${path}`, {
@@ -773,7 +774,7 @@ export const asplApi = {
   getPendingRegistrationCount: () =>
     asplRequest<{ success: boolean; data: { count: number } }>('/registrations/pending-count'),
   lookupRegistration: async (email: string, seasonId: number) => {
-    const token = getToken();
+    const token = getMemberToken() || getToken();
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${ASPL_BASE}/aspl/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`, { headers });

@@ -70,6 +70,7 @@ export default function Navigation() {
 
     const handle401 = (err: any) => {
       if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('unauthorized') || err?.message?.toLowerCase().includes('no token') || err?.message?.toLowerCase().includes('invalid') || err?.message?.toLowerCase().includes('expired')) {
+        memberLogout();
         logout();
       }
     };
@@ -213,7 +214,7 @@ export default function Navigation() {
                       )}
                     </div>
                     <div className="border-t border-gray-100 px-4 py-2">
-                      <button onClick={logout}
+                      <button onClick={() => { memberLogout(); logout(); }}
                         className="w-full flex items-center gap-2 text-sm text-red-500 hover:text-red-600 py-1.5 transition-colors font-medium">
                         <LogOut className="w-4 h-4" /> Sign out
                       </button>
@@ -363,7 +364,7 @@ export default function Navigation() {
                     </Link>
                   </>
                 )}
-                <button onClick={() => { logout(); setIsOpen(false); }}
+                <button onClick={() => { memberLogout(); logout(); setIsOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors mt-1 border-t border-white/10 pt-3">
                   <LogOut className="w-4 h-4" /> Sign out
                 </button>

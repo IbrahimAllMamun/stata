@@ -25,7 +25,10 @@ const { sendCampaign, getCampaigns, previewRecipients, verifySMTP, sendIndividua
 router.post('/login', validate(loginSchema), login);
 
 // All routes below require authentication (admin OR moderator)
-router.use(authenticate);
+// Uses member table tokens — role field drives access
+router.use(authenticateMember);
+// Compatibility shim: expose req.member as req.admin so existing controllers work
+router.use((req, res, next) => { if (req.member && !req.admin) req.admin = req.member; next(); });
 
 // Dashboard
 router.get('/dashboard', getDashboardStats);
@@ -39,10 +42,10 @@ router.get('/members/batches', getApprovedBatches);
 router.patch('/members/:id/status', updateMemberStatus);
 router.post('/members/:id/photo', upload.single('photo'), adminUpdateMemberPhoto);
 router.post('/members/:id/send-setup-email', adminSendSetupEmail);
-router.patch('/members/:id/role', authenticateMember, requireMemberRole('admin'), updateMemberRole);
+router.patch('/members/:id/role', requireMemberRole('admin'), updateMemberRole);
 
 // Staff management (admins + mods from member table)
-router.get('/staff', authenticateMember, requireMemberRole('admin'), listStaff);
+router.get('/staff', requireMemberRole('admin'), listStaff);
 router.delete('/members/:id', deleteMember);
 
 // Member update requests — admin and moderator
@@ -52,17 +55,17 @@ router.post('/member-updates/:id/approve', approveMemberUpdate);
 router.post('/member-updates/:id/reject', rejectMemberUpdate);
 
 // Moderator management — admin only
-router.post('/moderators', requireRole('admin'), createModerator);
-router.get('/accounts', requireRole('admin'), listAdmins);
-router.post('/accounts', requireRole('admin'), createAccount);
-router.delete('/accounts/:id', requireRole('admin'), deleteAccount);
-router.patch('/accounts/:id/password', requireRole('admin'), changePassword);
+router.post('/moderators', requireMemberRole('admin'), createModerator);
+router.get('/accounts', requireMemberRole('admin'), listAdmins);
+router.post('/accounts', requireMemberRole('admin'), createAccount);
+router.delete('/accounts/:id', requireMemberRole('admin'), deleteAccount);
+router.patch('/accounts/:id/password', requireMemberRole('admin'), changePassword);
 
 // Committee — admin only
-router.post('/committee', requireRole('admin'), validate(committeeSchema), createCommittee);
-router.post('/committee/assign', requireRole('admin'), assignMember);
-router.delete('/committee/member/:id', requireRole('admin'), deleteCommitteeMember);
-router.delete('/committee/:id', requireRole('admin'), deleteCommittee);
+router.post('/committee', requireMemberRole('admin'), validate(committeeSchema), createCommittee);
+router.post('/committee/assign', requireMemberRole('admin'), assignMember);
+router.delete('/committee/member/:id', requireMemberRole('admin'), deleteCommitteeMember);
+router.delete('/committee/:id', requireMemberRole('admin'), deleteCommittee);
 
 // Posts — admin and moderator
 router.get('/posts', getAdminPosts);

@@ -4,14 +4,13 @@ import {
     Users, CheckCircle, Archive, Trash2, Clock,
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
-    Download, Filter, ChevronRight, ArrowRight,
-    AlertCircle, Camera, ZoomIn, Upload, Shield, UserPlus, KeyRound,
+    Download, Filter, ChevronRight, Camera, ZoomIn, Upload,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 
 type MemberStatus = 'PENDING' | 'APPROVED' | 'ARCHIVED';
-type UpdateStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-type ActiveTab = MemberStatus | 'UPDATES';
+
+type ActiveTab = MemberStatus;
 
 interface RawMember {
     id: string; full_name: string; email: string; batch: number;
@@ -20,21 +19,9 @@ interface RawMember {
     notify_events: boolean; status: MemberStatus; created_at: string;
     photo_url?: string | null;
     blood_group?: string | null;
-    has_password?: boolean;
 }
 
-interface MemberUpdateRequest {
-    id: string; member_id: string;
-    batch: number | null; full_name: string | null; phone_number: string | null;
-    alternative_phone: string | null; job_title: string | null;
-    organisation: string | null; organisation_address: string | null;
-    notify_events: boolean | null;
-    blood_group: string | null;
-    photo_url: string | null;
-    status: UpdateStatus; admin_note: string | null;
-    created_at: string; reviewed_at: string | null;
-    member: RawMember;
-}
+
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
@@ -84,111 +71,6 @@ function MemberAvatar({ member, size = 'md' }: { member: RawMember; size?: 'sm' 
     return (
         <div className={`${dims} ${radius} bg-[#2F5BEA] flex items-center justify-center text-white font-bold flex-shrink-0`}>
             {member.full_name.charAt(0).toUpperCase()}
-        </div>
-    );
-}
-
-function DiffRow({ label, oldVal, newVal }: { label: string; oldVal: string; newVal: string | null }) {
-    if (newVal === null) return null;
-    const changed = String(oldVal) !== String(newVal);
-    return (
-        <div className={`grid grid-cols-[120px_1fr_24px_1fr] gap-2 items-center py-2 px-3 rounded-lg text-sm ${changed ? 'bg-amber-50' : 'bg-gray-50'}`}>
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
-            <span className={`truncate ${changed ? 'text-red-500 line-through' : 'text-gray-500'}`}>{oldVal || '-'}</span>
-            {changed ? <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" /> : <span />}
-            <span className={changed ? 'text-green-700 font-semibold' : 'text-gray-500'}>{newVal || '-'}</span>
-        </div>
-    );
-}
-
-function UpdateRequestCard({ req, onApprove, onReject }: {
-    req: MemberUpdateRequest;
-    onApprove: (id: string, note?: string) => Promise<void>;
-    onReject: (id: string, note?: string) => Promise<void>;
-}) {
-    const [loading, setLoading] = useState(false);
-    const [note, setNote] = useState('');
-    const m = req.member;
-    const photoSrc = imageUrl(m.photo_url);
-    const notifyLabel = (v: boolean) => v ? 'Yes - notify me' : "No - don't notify";
-    const handle = async (action: 'approve' | 'reject') => {
-        setLoading(true);
-        try { if (action === 'approve') await onApprove(req.id, note || undefined); else await onReject(req.id, note || undefined); }
-        finally { setLoading(false); }
-    };
-
-    return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 bg-[#F5F7FA] border-b border-gray-100">
-                <MemberAvatar member={m} size="md" />
-                <div className="min-w-0">
-                    <p className="font-semibold text-[#1F2A44] truncate">{m.full_name}</p>
-                    <p className="text-xs text-gray-400">{m.email} · Batch {m.batch}</p>
-                </div>
-                <span className="ml-auto text-xs text-gray-400 flex-shrink-0">
-                    {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-            </div>
-
-            <div className="px-5 py-4 space-y-1.5">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Proposed Changes</p>
-
-                {/* Photo diff — show current vs proposed new photo */}
-                <div className={`flex items-center gap-3 py-2 px-3 rounded-lg ${req.photo_url ? 'bg-amber-50' : 'bg-gray-50'}`}>
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-[120px] flex-shrink-0">Photo</span>
-                    <div className="flex items-center gap-4 flex-wrap">
-                        {/* Current photo */}
-                        <div className="flex flex-col items-center gap-1">
-                            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Current</span>
-                            {photoSrc ? (
-                                <ExpandablePhoto src={photoSrc} alt={m.full_name} className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow ring-1 ring-gray-200" />
-                            ) : (
-                                <div className="w-14 h-14 rounded-xl bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center">
-                                    <Camera className="w-5 h-5 text-gray-300" />
-                                </div>
-                            )}
-                        </div>
-                        {/* Proposed new photo */}
-                        {req.photo_url && (
-                            <>
-                                <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                                <div className="flex flex-col items-center gap-1">
-                                    <span className="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">Proposed</span>
-                                    <ExpandablePhoto src={imageUrl(req.photo_url) || ''} alt="Proposed photo" className="w-14 h-14 rounded-xl object-cover border-2 border-amber-200 shadow ring-2 ring-amber-300" />
-                                </div>
-                            </>
-                        )}
-                        {!req.photo_url && <span className="text-xs text-gray-400 italic">No photo change requested</span>}
-                    </div>
-                </div>
-
-                <DiffRow label="Name" oldVal={m.full_name} newVal={req.full_name} />
-                <DiffRow label="Batch" oldVal={String(m.batch)} newVal={req.batch !== null ? String(req.batch) : null} />
-                <DiffRow label="Phone" oldVal={m.phone_number} newVal={req.phone_number} />
-                <DiffRow label="Alt. Phone" oldVal={m.alternative_phone ?? ''} newVal={req.alternative_phone} />
-                <DiffRow label="Job Title" oldVal={m.job_title ?? ''} newVal={req.job_title} />
-                <DiffRow label="Org" oldVal={m.organisation ?? ''} newVal={req.organisation} />
-                <DiffRow label="Address" oldVal={m.organisation_address ?? ''} newVal={req.organisation_address} />
-                <DiffRow label="Notify" oldVal={notifyLabel(m.notify_events)} newVal={req.notify_events !== null ? notifyLabel(req.notify_events) : null} />
-                <DiffRow label="Blood Group" oldVal={m.blood_group ?? '-'} newVal={req.blood_group} />
-            </div>
-
-            <div className="px-5 pb-4">
-                <input type="text" value={note} onChange={e => setNote(e.target.value)}
-                    placeholder="Admin note (optional)…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none" />
-            </div>
-            <div className="flex gap-2 px-5 pb-5">
-                <button onClick={() => handle('approve')} disabled={loading}
-                    className="flex items-center gap-1.5 bg-[#2ECC71] hover:bg-[#27AE60] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
-                    <CheckCircle className="w-4 h-4" /> Approve & Apply
-                </button>
-                <button onClick={() => handle('reject')} disabled={loading}
-                    className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
-                    <X className="w-4 h-4" /> Reject
-                </button>
-            </div>
         </div>
     );
 }
@@ -338,34 +220,25 @@ function StatusBadge({ status }: { status: MemberStatus }) {
 
 export default function ManageMembers() {
     const [members, setMembers] = useState<RawMember[]>([]);
-    const [updateRequests, setUpdateRequests] = useState<MemberUpdateRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<ActiveTab>('PENDING');
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<RawMember | null>(null);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-    const [pendingUpdateCount, setPendingUpdateCount] = useState(0);
     const [csvOpen, setCsvOpen] = useState(false);
     const [csvBatch, setCsvBatch] = useState('');
     const [csvNotify, setCsvNotify] = useState('');
     const [csvLoading, setCsvLoading] = useState(false);
     const [availableBatches, setAvailableBatches] = useState<number[]>([]);
-    const [modForm, setModForm] = useState({ username: '', password: '' });
-    const [creatingMod, setCreatingMod] = useState(false);
-    const [sendingSetup, setSendingSetup] = useState<string | null>(null);
+
 
     const showToast = (msg: string, ok = true) => {
         setToast({ msg, ok });
         setTimeout(() => setToast(null), 3000);
     };
 
-    const refreshUpdateCount = () => {
-        adminApi.getPendingUpdateCount().then(res => setPendingUpdateCount(res.data.count)).catch(() => { });
-    };
-
     useEffect(() => {
         adminApi.getApprovedBatches().then(res => setAvailableBatches(res.data)).catch(() => { });
-        refreshUpdateCount();
     }, []);
 
     const loadMembers = async (status: MemberStatus) => {
@@ -375,16 +248,8 @@ export default function ManageMembers() {
         finally { setLoading(false); }
     };
 
-    const loadUpdateRequests = async () => {
-        setLoading(true);
-        try { const res = await adminApi.getMemberUpdateRequests('PENDING'); setUpdateRequests(res.data); }
-        catch { showToast('Failed to load update requests', false); }
-        finally { setLoading(false); }
-    };
-
     useEffect(() => {
-        if (tab === 'UPDATES') loadUpdateRequests();
-        else loadMembers(tab as MemberStatus);
+        loadMembers(tab as MemberStatus);
     }, [tab]);
 
     const handleMemberAction = async (id: string, action: 'APPROVED' | 'ARCHIVED' | 'PENDING' | 'DELETE') => {
@@ -393,26 +258,6 @@ export default function ManageMembers() {
             else { await adminApi.updateMemberStatus(id, action); showToast(`Member ${action.toLowerCase()}`); }
             loadMembers(tab as MemberStatus);
         } catch (err: unknown) { showToast(err instanceof Error ? err.message : 'Action failed', false); }
-    };
-
-    const handleApproveUpdate = async (id: string, note?: string) => {
-        try { await adminApi.approveMemberUpdate(id, note); showToast('Update approved and applied!'); loadUpdateRequests(); refreshUpdateCount(); }
-        catch (err: unknown) { showToast(err instanceof Error ? err.message : 'Approve failed', false); }
-    };
-
-    const handleRejectUpdate = async (id: string, note?: string) => {
-        try { await adminApi.rejectMemberUpdate(id, note); showToast('Update request rejected'); loadUpdateRequests(); refreshUpdateCount(); }
-        catch (err: unknown) { showToast(err instanceof Error ? err.message : 'Reject failed', false); }
-    };
-
-    const handleSendSetupEmail = async (id: string) => {
-        setSendingSetup(id);
-        try {
-            const res = await adminApi.sendSetupEmail(id);
-            showToast(res.message || 'Setup email sent!');
-        } catch (err: unknown) {
-            showToast(err instanceof Error ? err.message : 'Failed to send email', false);
-        } finally { setSendingSetup(null); }
     };
 
     const handleExportCSV = async () => {
@@ -442,7 +287,6 @@ export default function ManageMembers() {
         { key: 'PENDING', label: 'Pending', color: 'border-amber-500 text-amber-600' },
         { key: 'APPROVED', label: 'Approved', color: 'border-[#2ECC71] text-[#2ECC71]' },
         { key: 'ARCHIVED', label: 'Archived', color: 'border-gray-400 text-gray-500' },
-        { key: 'UPDATES', label: 'Updates', color: 'border-[#2F5BEA] text-[#2F5BEA]', badge: pendingUpdateCount },
     ];
 
     return (
@@ -517,94 +361,60 @@ export default function ManageMembers() {
                         ))}
                     </div>
 
-                    {tab === 'UPDATES' ? (
-                        <div className="p-5">
-                            {loading ? (
-                                <div className="text-center py-16"><div className="inline-block w-8 h-8 border-4 border-[#2F5BEA] border-t-transparent rounded-full animate-spin" /></div>
-                            ) : updateRequests.length === 0 ? (
-                                <div className="text-center py-16 text-gray-400">
-                                    <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                                    <p className="text-sm font-medium">No pending profile update requests</p>
-                                    <p className="text-xs mt-1">When members submit profile changes, they will appear here for review</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <p className="text-sm text-gray-500">{updateRequests.length} pending update{updateRequests.length !== 1 ? 's' : ''} - review proposed changes below. Highlighted rows show what will change.</p>
-                                    {updateRequests.map(req => (
-                                        <UpdateRequestCard key={req.id} req={req} onApprove={handleApproveUpdate} onReject={handleRejectUpdate} />
-                                    ))}
-                                </div>
-                            )}
+
+                    <div className="p-4 border-b border-gray-50">
+                        <div className="relative max-w-sm">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input type="text" placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none" />
                         </div>
+                    </div>
+                    {loading ? (
+                        <div className="text-center py-16"><div className="inline-block w-8 h-8 border-4 border-[#2F5BEA] border-t-transparent rounded-full animate-spin" /></div>
+                    ) : filtered.length === 0 ? (
+                        <div className="text-center py-16 text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm">No {tab.toLowerCase()} members</p></div>
                     ) : (
-                        <>
-                            <div className="p-4 border-b border-gray-50">
-                                <div className="relative max-w-sm">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <input type="text" placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none" />
-                                </div>
-                            </div>
-                            {loading ? (
-                                <div className="text-center py-16"><div className="inline-block w-8 h-8 border-4 border-[#2F5BEA] border-t-transparent rounded-full animate-spin" /></div>
-                            ) : filtered.length === 0 ? (
-                                <div className="text-center py-16 text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm">No {tab.toLowerCase()} members</p></div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="bg-[#F5F7FA] border-b border-gray-100">
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch</th>
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Email</th>
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {filtered.map((m, idx) => (
-                                                <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-5 py-3.5 text-gray-400 text-xs">{idx + 1}</td>
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex items-center gap-2.5">
-                                                            <MemberAvatar member={m} size="sm" />
-                                                            <span className="font-medium text-[#1F2A44]">{m.full_name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-3.5"><span className="bg-[#1F2A44] text-white text-xs px-2 py-0.5 rounded-full font-medium">{m.batch}</span></td>
-                                                    <td className="px-5 py-3.5 text-gray-500 hidden md:table-cell">{m.email}</td>
-                                                    <td className="px-5 py-3.5 text-gray-400 text-xs hidden lg:table-cell">{new Date(m.created_at).toLocaleDateString()}</td>
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button onClick={() => setSelected(m)} className="p-1.5 rounded-lg text-gray-400 hover:text-[#2F5BEA] hover:bg-blue-50 transition-colors" title="View details"><Eye className="w-4 h-4" /></button>
-                                                            {m.status !== 'APPROVED' && <button onClick={() => handleMemberAction(m.id, 'APPROVED')} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Approve"><CheckCircle className="w-4 h-4" /></button>}
-                                                            {m.status === 'APPROVED' && (
-                                                              <button
-                                                                onClick={() => handleSendSetupEmail(m.id)}
-                                                                disabled={sendingSetup === m.id}
-                                                                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-40"
-                                                                title={m.has_password ? 'Send password reset email' : 'Send first-time setup email'}
-                                                              >
-                                                                {sendingSetup === m.id
-                                                                  ? <span className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin inline-block" />
-                                                                  : <KeyRound className="w-4 h-4" />
-                                                                }
-                                                              </button>
-                                                            )}
-                                                            {m.status !== 'ARCHIVED' && <button onClick={() => handleMemberAction(m.id, 'ARCHIVED')} className="p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-colors" title="Archive"><Archive className="w-4 h-4" /></button>}
-                                                            <button onClick={() => handleMemberAction(m.id, 'DELETE')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <div className="px-5 py-3 bg-[#F5F7FA] border-t border-gray-100 text-xs text-gray-500">{filtered.length} {tab.toLowerCase()} member{filtered.length !== 1 ? 's' : ''}</div>
-                                </div>
-                            )}
-                        </>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-[#F5F7FA] border-b border-gray-100">
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Email</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {filtered.map((m, idx) => (
+                                        <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-5 py-3.5 text-gray-400 text-xs">{idx + 1}</td>
+                                            <td className="px-5 py-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <MemberAvatar member={m} size="sm" />
+                                                    <span className="font-medium text-[#1F2A44]">{m.full_name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5"><span className="bg-[#1F2A44] text-white text-xs px-2 py-0.5 rounded-full font-medium">{m.batch}</span></td>
+                                            <td className="px-5 py-3.5 text-gray-500 hidden md:table-cell">{m.email}</td>
+                                            <td className="px-5 py-3.5 text-gray-400 text-xs hidden lg:table-cell">{new Date(m.created_at).toLocaleDateString()}</td>
+                                            <td className="px-5 py-3.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <button onClick={() => setSelected(m)} className="p-1.5 rounded-lg text-gray-400 hover:text-[#2F5BEA] hover:bg-blue-50 transition-colors" title="View details"><Eye className="w-4 h-4" /></button>
+                                                    {m.status !== 'APPROVED' && <button onClick={() => handleMemberAction(m.id, 'APPROVED')} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Approve"><CheckCircle className="w-4 h-4" /></button>}
+                                                    {m.status !== 'ARCHIVED' && <button onClick={() => handleMemberAction(m.id, 'ARCHIVED')} className="p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-colors" title="Archive"><Archive className="w-4 h-4" /></button>}
+                                                    <button onClick={() => handleMemberAction(m.id, 'DELETE')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <div className="px-5 py-3 bg-[#F5F7FA] border-t border-gray-100 text-xs text-gray-500">{filtered.length} {tab.toLowerCase()} member{filtered.length !== 1 ? 's' : ''}</div>
+                        </div>
                     )}
+
                 </div>
             </div>
 

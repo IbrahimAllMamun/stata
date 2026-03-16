@@ -1,6 +1,8 @@
 // src/aspl/routes/aspl.routes.js
 const express = require('express');
 const { authenticate } = require('../../middlewares/auth');
+const { authenticateMember } = require('../../middlewares/memberAuth');
+
 const upload = require('../../config/upload');
 
 const { getPlayers, getRandomPlayer } = require('../controllers/player.controller');
@@ -15,20 +17,20 @@ const router = express.Router();
 router.get('/seasons/active', getActiveSeason);
 router.get('/seasons/:id', getSeasonById);
 router.get('/seasons', getSeasons);
-router.post('/seasons', authenticate, createSeason);
-router.patch('/seasons/:id', authenticate, updateSeason);
-router.delete('/seasons/:id', authenticate, deleteSeason);
+router.post('/seasons', authenticateMember, createSeason);
+router.patch('/seasons/:id', authenticateMember, updateSeason);
+router.delete('/seasons/:id', authenticateMember, deleteSeason);
 
 // ── Registrations (public submit, admin manage) ───────────────────────────────
 router.post('/registrations', upload.single('photo'), register);
 router.post('/registrations/update-player', upload.single('photo'), updatePlayerDetails);
 router.get('/registrations/lookup', lookupRegistration);
 router.get('/registrations/check', checkRegistration);
-router.get('/registrations/pending-count', authenticate, getPendingRegistrationCount);
-router.get('/registrations', authenticate, getRegistrations);
-router.patch('/registrations/:id/approve', authenticate, approveRegistration);
-router.patch('/registrations/:id/reject', authenticate, rejectRegistration);
-router.delete('/registrations/:id', authenticate, deleteRegistration);
+router.get('/registrations/pending-count', authenticateMember, getPendingRegistrationCount);
+router.get('/registrations', authenticateMember, getRegistrations);
+router.patch('/registrations/:id/approve', authenticateMember, approveRegistration);
+router.patch('/registrations/:id/reject', authenticateMember, rejectRegistration);
+router.delete('/registrations/:id', authenticateMember, deleteRegistration);
 
 // ── Players ───────────────────────────────────────────────────────────────────
 router.get('/players/random', getRandomPlayer);
@@ -39,14 +41,14 @@ router.get('/players', getPlayers);
 router.get('/seasons/:seasonId/teams', getTeamsBySeason);
 router.get('/teams/:id', getTeamById);
 router.get('/teams', getTeams);
-router.post('/teams', authenticate, upload.single('logo'), createTeam);
-router.put('/teams/:id', authenticate, upload.single('logo'), updateTeam);
-router.delete('/teams/:id', authenticate, deleteTeam);
+router.post('/teams', authenticateMember, upload.single('logo'), createTeam);
+router.put('/teams/:id', authenticateMember, upload.single('logo'), updateTeam);
+router.delete('/teams/:id', authenticateMember, deleteTeam);
 
 // ── Team-Players ──────────────────────────────────────────────────────────────
-router.post('/team-players/create', authenticate, createTeamPlayer);
-router.patch('/team-players/:id', authenticate, updateTeamPlayer);
-router.delete('/team-players/:id', authenticate, deleteTeamPlayer);
+router.post('/team-players/create', authenticateMember, createTeamPlayer);
+router.patch('/team-players/:id', authenticateMember, updateTeamPlayer);
+router.delete('/team-players/:id', authenticateMember, deleteTeamPlayer);
 router.get('/team-players/:id', getTeamPlayers);
 router.get('/team-players', getTeamPlayers);
 

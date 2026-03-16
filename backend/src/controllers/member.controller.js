@@ -1,5 +1,6 @@
 // src/controllers/member.controller.js
 const prisma = require('../config/database');
+const bcrypt = require('bcryptjs');
 const { processImage, toUrlPath } = require('../utils/processImage');
 
 async function uploadPhoto(file) {
@@ -16,7 +17,7 @@ const register = async (req, res, next) => {
     const {
       batch, full_name, email, phone_number,
       alternative_phone, job_title, organisation,
-      organisation_address, notify_events, blood_group,
+      organisation_address, notify_events, blood_group, password,
     } = req.body;
 
     const photo_url = await uploadPhoto(req.file);
@@ -44,6 +45,7 @@ const register = async (req, res, next) => {
         photo_url: photo_url || null,
         blood_group: blood_group || null,
         status: 'PENDING',
+        password: password ? await bcrypt.hash(password, 12) : null,
       },
     });
 
@@ -209,19 +211,20 @@ const updateMemberPhoto = async (req, res, next) => {
     const photo_url = await uploadPhoto(req.file);
     if (!photo_url) return res.status(400).json({ success: false, message: 'No photo provided.' });
 
-    // Cancel any existing pending update for this member (superseded)
+    // Approved members: update photo directly
+    if (member.status === 'APPROVED') {
+      await prisma.member.update({ where: { id: member.id }, data: { photo_url } });
+      return res.json({ success: true, message: 'Profile photo updated.', data: { photo_url } });
+    }
+
+    // Pending members: go through approval queue
     await prisma.memberUpdateRequest.updateMany({
       where: { member_id: member.id, status: 'PENDING' },
       data: { status: 'REJECTED', admin_note: 'Superseded by a newer update request.' },
     });
 
-    // Create a pending update request with just the new photo
     await prisma.memberUpdateRequest.create({
-      data: {
-        member_id: member.id,
-        photo_url,
-        status: 'PENDING',
-      },
+      data: { member_id: member.id, photo_url, status: 'PENDING' },
     });
 
     res.json({
@@ -234,9 +237,9 @@ const updateMemberPhoto = async (req, res, next) => {
   }
 };
 
-// ─── Public: PUT /update-member ───────────────────────────────────────────────
-// Creates a pending update request — does NOT touch the member directly.
-// An admin must approve before changes go live.
+// ─── Public: PUT /update-member ──────────────────────────────────────────────
+// APPROVED members: apply changes directly (no approval queue).
+// PENDING members:  create a pending update request for admin review.
 const updateMember = async (req, res, next) => {
   try {
     const {
@@ -254,6 +257,33 @@ const updateMember = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'This account has been archived and cannot be updated.' });
     }
 
+    // ── APPROVED member: update directly ─────────────────────────────────────
+    if (member.status === 'APPROVED') {
+      const updateData = {};
+      if (batch !== undefined) updateData.batch = parseInt(batch);
+      if (full_name !== undefined) updateData.full_name = full_name.trim();
+      if (phone_number !== undefined) updateData.phone_number = phone_number.trim();
+      if (alternative_phone !== undefined) updateData.alternative_phone = alternative_phone?.trim() || null;
+      if (job_title !== undefined) updateData.job_title = job_title?.trim() || null;
+      if (organisation !== undefined) updateData.organisation = organisation?.trim() || null;
+      if (organisation_address !== undefined) updateData.organisation_address = organisation_address?.trim() || null;
+      if (notify_events !== undefined) updateData.notify_events = notify_events;
+      if (blood_group !== undefined) updateData.blood_group = blood_group || null;
+
+      const updated = await prisma.member.update({
+        where: { id: member.id },
+        data: updateData,
+        select: { id: true, full_name: true, status: true },
+      });
+
+      return res.json({
+        success: true,
+        message: 'Your profile has been updated.',
+        data: { id: updated.id, full_name: updated.full_name, status: updated.status },
+      });
+    }
+
+    // ── PENDING member: go through approval queue ─────────────────────────────
     // Cancel any existing pending update for this member (superseded)
     await prisma.memberUpdateRequest.updateMany({
       where: { member_id: member.id, status: 'PENDING' },
@@ -283,7 +313,7 @@ const updateMember = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Your update request has been submitted and is pending admin approval. Changes will be applied once reviewed.',
+      message: 'Your update request has been submitted and is pending admin approval.',
       data: { request_id: request.id },
     });
   } catch (err) {
