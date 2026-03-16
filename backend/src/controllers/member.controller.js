@@ -406,11 +406,19 @@ const getMembersByStatus = async (req, res, next) => {
       prisma.member.findMany({
         where, skip, take: limit,
         orderBy: [{ created_at: 'desc' }],
+        select: {
+          id: true, batch: true, full_name: true, email: true,
+          phone_number: true, alternative_phone: true, job_title: true,
+          organisation: true, organisation_address: true, notify_events: true,
+          photo_url: true, blood_group: true, status: true, created_at: true,
+          password: true,
+        },
       }),
       prisma.member.count({ where }),
     ]);
 
-    res.json({ success: true, ...paginatedResponse(members, total, page, limit) });
+    const mapped = members.map(m => ({ ...m, has_password: !!m.password, password: undefined }));
+    res.json({ success: true, ...paginatedResponse(mapped, total, page, limit) });
   } catch (err) {
     next(err);
   }

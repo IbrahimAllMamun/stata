@@ -7,6 +7,8 @@ const upload = require('../config/upload');
 const { registerSchema, contactSchema, submitPostSchema, updateMemberSchema } = require('../validators');
 
 const { register, getMembers, exportCSV, getApprovedBatches, lookupMember, updateMember, updateMemberPhoto } = require('../controllers/member.controller');
+const { memberLogin, requestSetup, setPassword, changePassword, getMe } = require('../controllers/auth.controller');
+const { authenticateMember } = require('../middlewares/memberAuth');
 const { getCommittees } = require('../controllers/committee.controller');
 const { getPosts, getPostBySlug, submitPost } = require('../controllers/post.controller');
 const { getEvents, getEventBySlug } = require('../controllers/event.controller');
@@ -30,6 +32,13 @@ const contactLimiter = rateLimit({
   message: { success: false, message: 'Too many messages sent. Please try again later.' },
   standardHeaders: true, legacyHeaders: false,
 });
+
+// ── Member Auth ──────────────────────────────────────────────────────────────
+router.post('/auth/login', memberLogin);
+router.post('/auth/request-setup', requestSetup);
+router.post('/auth/set-password', setPassword);
+router.post('/auth/change-password', authenticateMember, changePassword);
+router.get('/auth/me', authenticateMember, getMe);
 
 // Members
 router.post('/register', registerLimiter, upload.single('photo'), validate(registerSchema), register);

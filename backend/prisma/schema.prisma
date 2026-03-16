@@ -26,6 +26,13 @@ model Member {
   status               MemberStatus     @default(PENDING)
   created_at           DateTime         @default(now())
 
+  // ── Member auth & role ───────────────────────────────────────────
+  role                 String           @default("member") // "member" | "mod" | "admin"
+  password             String?          // null = not yet set
+  reset_token          String?          // magic link token
+  reset_token_expires  DateTime?        // token expiry
+  must_change_password Boolean          @default(false)
+
   committee_members    CommitteeMember[]
   update_requests      MemberUpdateRequest[]
 

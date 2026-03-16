@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, requireRole } = require('../middlewares/auth');
+const { authenticateMember, requireMemberRole } = require('../middlewares/memberAuth');
 const validate = require('../middlewares/validate');
 const upload = require('../config/upload');
 
@@ -16,6 +17,7 @@ const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approv
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
 const { getMessages, getUnreadCount, updateMessageStatus, deleteMessage, toggleFeatured } = require('../controllers/contact.controller');
 const { getMembersByStatus, getPendingCount, updateMemberStatus, deleteMember, exportCSV, getApprovedBatches, getMemberUpdateRequests, approveMemberUpdate, rejectMemberUpdate, getPendingUpdateCount, adminUpdateMemberPhoto, debugPhotoStatus } = require('../controllers/member.controller');
+const { adminSendSetupEmail, updateMemberRole, listStaff } = require('../controllers/auth.controller');
 const { uploadPhotos, deletePhoto, getAdminGallery, getSubjectsByDate } = require('../controllers/gallery.controller');
 const { sendCampaign, getCampaigns, previewRecipients, verifySMTP, sendIndividual, getInbox, getInboxUnreadCount } = require('../controllers/email.controller');
 
@@ -36,6 +38,11 @@ router.get('/members/export-csv', exportCSV);
 router.get('/members/batches', getApprovedBatches);
 router.patch('/members/:id/status', updateMemberStatus);
 router.post('/members/:id/photo', upload.single('photo'), adminUpdateMemberPhoto);
+router.post('/members/:id/send-setup-email', adminSendSetupEmail);
+router.patch('/members/:id/role', authenticateMember, requireMemberRole('admin'), updateMemberRole);
+
+// Staff management (admins + mods from member table)
+router.get('/staff', authenticateMember, requireMemberRole('admin'), listStaff);
 router.delete('/members/:id', deleteMember);
 
 // Member update requests — admin and moderator

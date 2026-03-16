@@ -5,6 +5,11 @@ export const getToken = (): string | null => localStorage.getItem('stata_token')
 export const setToken = (token: string) => localStorage.setItem('stata_token', token);
 export const removeToken = () => localStorage.removeItem('stata_token');
 
+// Member auth tokens stored separately
+export const getMemberToken = (): string | null => localStorage.getItem('stata_member_token');
+export const setMemberToken = (token: string) => localStorage.setItem('stata_member_token', token);
+export const removeMemberToken = () => localStorage.removeItem('stata_member_token');
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -312,6 +317,45 @@ export const api = {
 
 };
 
+export const memberAuthApi = {
+  login: (email: string, password: string) =>
+    fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).then(r => r.json()),
+
+  requestSetup: (email: string) =>
+    fetch(`${BASE_URL}/auth/request-setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).then(r => r.json()),
+
+  setPassword: (token: string, password: string) =>
+    fetch(`${BASE_URL}/auth/set-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    }).then(r => r.json()),
+
+  changePassword: (current_password: string | undefined, new_password: string) => {
+    const token = getMemberToken();
+    return fetch(`${BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ current_password, new_password }),
+    }).then(r => r.json());
+  },
+
+  me: () => {
+    const token = getMemberToken();
+    return fetch(`${BASE_URL}/auth/me`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(r => r.json());
+  },
+};
+
 export const adminApi = {
   login: (username: string, password: string) =>
     request<{
@@ -391,6 +435,13 @@ export const adminApi = {
   getMembersByStatus: (status: string) =>
     request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?status=${status}`),
 
+  getMembers: (params?: { limit?: number; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.search) qs.set('search', params.search);
+    return request<{ success: boolean; data: any[] }>(`/members${qs.toString() ? '?' + qs.toString() : ''}`);
+  },
+
   updateMemberStatus: (id: string, status: string) =>
     request<{ success: boolean }>(`/admin/members/${id}/status`, {
       method: 'PATCH',
@@ -399,6 +450,15 @@ export const adminApi = {
 
   deleteMember: (id: string) =>
     request<{ success: boolean }>(`/admin/members/${id}`, { method: 'DELETE' }),
+
+  sendSetupEmail: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/members/${id}/send-setup-email`, { method: 'POST' }),
+
+  updateMemberRole: (id: string, role: 'member' | 'mod' | 'admin') =>
+    request<{ success: boolean; message: string; data: any }>(`/admin/members/${id}/role`, { method: 'PATCH', body: { role } }),
+
+  listStaff: () =>
+    request<{ success: boolean; data: any[] }>('/admin/staff'),
 
   uploadMemberPhoto: (id: string, photo: File) => {
     const fd = new FormData();

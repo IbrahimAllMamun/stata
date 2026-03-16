@@ -5,7 +5,7 @@ import {
     Search, ChevronDown, Eye, X, Mail, Phone,
     Building2, MapPin, Briefcase, RefreshCw,
     Download, Filter, ChevronRight, ArrowRight,
-    AlertCircle, Camera, ZoomIn, Upload, Shield, UserPlus,
+    AlertCircle, Camera, ZoomIn, Upload, Shield, UserPlus, KeyRound,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 
@@ -20,6 +20,7 @@ interface RawMember {
     notify_events: boolean; status: MemberStatus; created_at: string;
     photo_url?: string | null;
     blood_group?: string | null;
+    has_password?: boolean;
 }
 
 interface MemberUpdateRequest {
@@ -351,6 +352,7 @@ export default function ManageMembers() {
     const [availableBatches, setAvailableBatches] = useState<number[]>([]);
     const [modForm, setModForm] = useState({ username: '', password: '' });
     const [creatingMod, setCreatingMod] = useState(false);
+    const [sendingSetup, setSendingSetup] = useState<string | null>(null);
 
     const showToast = (msg: string, ok = true) => {
         setToast({ msg, ok });
@@ -401,6 +403,16 @@ export default function ManageMembers() {
     const handleRejectUpdate = async (id: string, note?: string) => {
         try { await adminApi.rejectMemberUpdate(id, note); showToast('Update request rejected'); loadUpdateRequests(); refreshUpdateCount(); }
         catch (err: unknown) { showToast(err instanceof Error ? err.message : 'Reject failed', false); }
+    };
+
+    const handleSendSetupEmail = async (id: string) => {
+        setSendingSetup(id);
+        try {
+            const res = await adminApi.sendSetupEmail(id);
+            showToast(res.message || 'Setup email sent!');
+        } catch (err: unknown) {
+            showToast(err instanceof Error ? err.message : 'Failed to send email', false);
+        } finally { setSendingSetup(null); }
     };
 
     const handleExportCSV = async () => {
@@ -567,6 +579,19 @@ export default function ManageMembers() {
                                                         <div className="flex items-center gap-1.5">
                                                             <button onClick={() => setSelected(m)} className="p-1.5 rounded-lg text-gray-400 hover:text-[#2F5BEA] hover:bg-blue-50 transition-colors" title="View details"><Eye className="w-4 h-4" /></button>
                                                             {m.status !== 'APPROVED' && <button onClick={() => handleMemberAction(m.id, 'APPROVED')} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Approve"><CheckCircle className="w-4 h-4" /></button>}
+                                                            {m.status === 'APPROVED' && (
+                                                              <button
+                                                                onClick={() => handleSendSetupEmail(m.id)}
+                                                                disabled={sendingSetup === m.id}
+                                                                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-40"
+                                                                title={m.has_password ? 'Send password reset email' : 'Send first-time setup email'}
+                                                              >
+                                                                {sendingSetup === m.id
+                                                                  ? <span className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin inline-block" />
+                                                                  : <KeyRound className="w-4 h-4" />
+                                                                }
+                                                              </button>
+                                                            )}
                                                             {m.status !== 'ARCHIVED' && <button onClick={() => handleMemberAction(m.id, 'ARCHIVED')} className="p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-colors" title="Archive"><Archive className="w-4 h-4" /></button>}
                                                             <button onClick={() => handleMemberAction(m.id, 'DELETE')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                                                         </div>

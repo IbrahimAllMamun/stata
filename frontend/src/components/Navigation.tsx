@@ -1,9 +1,9 @@
 // src/components/Navigation.tsx
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine, Trophy, Shield } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine, Trophy, Shield, User } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { adminApi, asplApi } from '../lib/api';
+import { adminApi, asplApi, imageUrl } from '../lib/api';
 import LogoLoaderFull from './LogoLoaderFull';
 
 function Badge({ count }: { count: number }) {
@@ -28,7 +28,7 @@ export default function Navigation() {
   const [asplVisible, setAsplVisible] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { isAdmin, isFullAdmin, isModerator, logout, admin, loading: authLoading } = useAuth();
+  const { isAdmin, isFullAdmin, isModerator, logout, admin, loading: authLoading, member, isMember, isStaff, memberLogout } = useAuth();
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -145,7 +145,7 @@ export default function Navigation() {
                     : 'text-[#F39C12] hover:bg-white/10'
                     }`}>
                   <LayoutDashboard className="w-4 h-4" />
-                  <span>{admin?.username}</span>
+                  <span>{member?.full_name?.split(' ')[0] || admin?.username}</span>
                   {isModerator && (
                     <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded">mod</span>
                   )}
@@ -160,7 +160,7 @@ export default function Navigation() {
                   <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in">
                     <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-4 py-3">
                       <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">Admin Panel</p>
-                      <p className="text-white font-bold text-sm mt-0.5">{admin?.username}</p>
+                      <p className="text-white font-bold text-sm mt-0.5 truncate">{member?.full_name || admin?.username}</p>
                     </div>
                     <div className="py-1.5">
                       <Link to="/admin"
@@ -221,6 +221,40 @@ export default function Navigation() {
                   </div>
                 )}
               </div>
+            ) : isMember ? (
+              // Member logged in
+              <div ref={dropdownRef} className="relative">
+                <button
+                  onClick={() => setDropdownOpen(v => !v)}
+                  className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${dropdownOpen ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10'}`}>
+                  {member?.photo_url
+                    ? <img src={imageUrl(member.photo_url) || ''} alt="" className="w-7 h-7 rounded-full object-cover border border-white/30" />
+                    : <div className="w-7 h-7 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold">{member?.full_name.charAt(0).toUpperCase()}</div>
+                  }
+                  <span className="max-w-[100px] truncate">{member?.full_name.split(' ')[0]}</span>
+                </button>
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+                    <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-4 py-3">
+                      <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">Member</p>
+                      <p className="text-white font-bold text-sm mt-0.5 truncate">{member?.full_name}</p>
+                    </div>
+                    <div className="py-1.5">
+                      <Link to="/account" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                        <User className="w-4 h-4 text-[#2F5BEA]" /> My Account
+                      </Link>
+                      <Link to="/update-profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                        <UserCheck className="w-4 h-4 text-[#2ECC71]" /> Update Profile
+                      </Link>
+                    </div>
+                    <div className="border-t border-gray-100 px-4 py-2">
+                      <button onClick={memberLogout} className="w-full flex items-center gap-2 text-sm text-red-500 hover:text-red-600 py-1.5 transition-colors font-medium">
+                        <LogOut className="w-4 h-4" /> Sign out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Link to="/posts/submit"
@@ -233,9 +267,13 @@ export default function Navigation() {
                     <Trophy className="w-3.5 h-3.5" /> ASPL
                   </Link>
                 )}
-                <Link to="/register"
+                <Link to="/login"
+                  className="flex items-center gap-2 border border-white/20 hover:border-white/40 text-gray-300 hover:text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+                  Sign In
+                </Link>
+                <Link to="/signup"
                   className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-[#2F5BEA]/30">
-                  Register
+                  Sign Up
                 </Link>
               </div>
             )}
@@ -342,9 +380,13 @@ export default function Navigation() {
                     <Trophy className="w-4 h-4" /> ASPL
                   </Link>
                 )}
-                <Link to="/register"
+                <Link to="/login"
+                  className="flex items-center justify-center gap-2 border border-white/20 text-gray-300 hover:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                  Sign In
+                </Link>
+                <Link to="/signup"
                   className="flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                  Register
+                  Sign Up
                 </Link>
               </div>
             )}

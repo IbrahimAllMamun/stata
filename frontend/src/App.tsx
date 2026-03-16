@@ -14,6 +14,8 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import SetPassword from './pages/SetPassword';
+import MemberAccount from './pages/MemberAccount';
 import UpdateProfile from './pages/UpdateProfile';
 import SubmitPost from './pages/SubmitPost';
 
@@ -58,6 +60,9 @@ function AppRoutes() {
         <Route path="contact" element={<Contact />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Signup />} />
+        <Route path="signup" element={<Signup />} />
+        <Route path="set-password" element={<SetPassword />} />
+        <Route path="account" element={<MemberAccount />} />
         <Route path="update-profile" element={<UpdateProfile />} />
         <Route path="posts/submit" element={<SubmitPost />} />
         <Route path="aspl" element={<AsplPage />} />
