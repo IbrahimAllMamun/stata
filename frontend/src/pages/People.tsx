@@ -123,8 +123,13 @@ function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
   person: CommitteeMemberDetail | null; role: string; isCurrent: boolean;
   color: string; icon: React.ReactNode; onSelect: () => void;
 }) {
+  const isPresident = color === 'bg-amber-500';
+  const accent = isPresident
+    ? { badge: 'bg-amber-500 text-white', footer: 'bg-amber-50', link: 'text-amber-600', ring: 'ring-amber-200', border: 'border-amber-200' }
+    : { badge: 'bg-[#2F5BEA] text-white', footer: 'bg-blue-50', link: 'text-[#2F5BEA]', ring: 'ring-blue-200', border: 'border-blue-100' };
+
   if (!person) return (
-    <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 flex flex-col items-center justify-center min-h-[260px]">
+    <div className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center min-h-[260px] ${isPresident ? 'border-amber-200 text-amber-300' : 'border-blue-100 text-blue-300'}`}>
       <p className="text-sm">No {role} assigned</p>
     </div>
   );
@@ -132,24 +137,31 @@ function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
   return (
     <button
       onClick={onSelect}
-      className={`w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left flex flex-col ${isCurrent ? 'border-amber-200' : 'border-gray-100'}`}
+      className={`group w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left flex flex-col ${isCurrent ? accent.border : 'border-gray-100'}`}
     >
-      <div className={`${color} px-4 py-2.5 flex items-center gap-2`}>
+      {/* Coloured role header */}
+      <div className={`${color} px-4 py-3 flex items-center gap-2`}>
         {icon}
-        <span className="text-sm font-semibold text-white">{role}</span>
+        <span className="text-sm font-bold text-white tracking-wide">{role}</span>
       </div>
-      <div className="flex flex-col items-center pt-6 pb-5 px-4 flex-1">
-        {photoSrc
-          ? <img src={photoSrc} alt={person.full_name} className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-sm mb-4" />
-          : <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2F5BEA] to-[#1F2A44] flex items-center justify-center text-white text-3xl font-bold border-4 border-gray-100 shadow-sm mb-4">
-            {person.full_name.charAt(0).toUpperCase()}
-          </div>
-        }
-        <p className="font-bold text-[#1F2A44] text-center text-base leading-tight mb-1">{person.full_name}</p>
-        <span className="bg-[#1F2A44] text-white text-xs px-2.5 py-0.5 rounded-full font-medium mb-2">Batch {person.batch}</span>
-        {person.job_title && <p className="text-xs text-gray-500 text-center truncate w-full">{person.job_title}</p>}
-        {person.organisation && <p className="text-xs text-gray-400 text-center truncate w-full">{person.organisation}</p>}
-        <p className="text-xs text-[#2F5BEA] mt-3 opacity-60">View details →</p>
+      {/* Square full-width image */}
+      <div className="w-full px-3 pt-3">
+        <div className={`w-full aspect-square rounded-xl overflow-hidden ring-2 ${accent.ring}`}>
+          {photoSrc
+            ? <img src={photoSrc} alt={person.full_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            : <div className={`w-full h-full ${color} flex items-center justify-center text-white text-5xl font-bold`}>
+              {person.full_name.charAt(0).toUpperCase()}
+            </div>
+          }
+        </div>
+      </div>
+      {/* Info footer — tinted to match card colour */}
+      <div className={`flex flex-col items-center pt-4 pb-5 px-4 flex-1 ${accent.footer} mt-3 border-t ${accent.border}`}>
+        <p className="font-bold text-[#1F2A44] text-center text-base leading-tight mb-2">{person.full_name}</p>
+        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold mb-2 ${accent.badge}`}>Batch {person.batch}</span>
+        {person.job_title && <p className="text-xs text-gray-600 text-center truncate w-full">{person.job_title}</p>}
+        {person.organisation && <p className="text-xs text-gray-500 text-center truncate w-full mt-0.5">{person.organisation}</p>}
+        <p className={`text-xs mt-3 font-semibold ${accent.link}`}>View details →</p>
       </div>
     </button>
   );
@@ -406,7 +418,7 @@ export default function People() {
                         </div>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
-                      <div className="grid grid-cols-2 gap-6 max-w-2xl">
+                      <div className="grid grid-cols-2 gap-6 max-w-3xl">
                         <CommitteeCard
                           person={committee.president} role="President"
                           isCurrent={isCurrent}
