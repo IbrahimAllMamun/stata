@@ -26,11 +26,11 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
       onClick={onClose}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className={`h-20 ${isLeader ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA]'}`} />
-        <div className="px-6 -mt-10 flex justify-between items-end mb-4">
+        <div className={`h-24 ${isLeader ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA]'}`} />
+        <div className="px-6 -mt-14 flex justify-between items-end mb-4">
           {photoSrc
-            ? <img src={photoSrc} alt={member.full_name} className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
-            : <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isLeader ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
+            ? <img src={photoSrc} alt={member.full_name} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-md" />
+            : <div className={`w-28 h-28 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isLeader ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
               {member.full_name.charAt(0).toUpperCase()}
             </div>
           }
@@ -82,11 +82,11 @@ function LeaderModal({ person, role, year, onClose }: {
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Same banner gradient as MemberModal, colour-coded by role */}
-        <div className={`h-20 ${isPresident ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#2F5BEA] to-[#1F2A44]'}`} />
-        <div className="px-6 -mt-10 flex justify-between items-end mb-4">
+        <div className={`h-24 ${isPresident ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#2F5BEA] to-[#1F2A44]'}`} />
+        <div className="px-6 -mt-14 flex justify-between items-end mb-4">
           {photoSrc
-            ? <img src={photoSrc} alt={person.full_name} className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
-            : <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isPresident ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
+            ? <img src={photoSrc} alt={person.full_name} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-md" />
+            : <div className={`w-28 h-28 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isPresident ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
               {person.full_name.charAt(0).toUpperCase()}
             </div>
           }
@@ -272,12 +272,19 @@ export default function People() {
             </div>
 
             {loadingMembers ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50">
-                    <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
-                    <div className="flex-1 space-y-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-32" /></div>
-                    <Skeleton className="h-5 w-16 rounded-full" />
+              <div className="space-y-10">
+                {[1, 2].map(s => (
+                  <div key={s}>
+                    <Skeleton className="h-6 w-32 mb-5 rounded-full" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-2xl p-4 flex flex-col items-center gap-3 border border-gray-100">
+                          <div className="w-full px-3 pt-3"><Skeleton className="w-full aspect-square rounded-xl" /></div>
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -286,55 +293,91 @@ export default function People() {
                 <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                 <p className="text-gray-400 font-medium">No members found</p>
               </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[#F5F7FA] border-b border-gray-100">
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider w-10">#</th>
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Name</th>
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Batch</th>
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Email</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {filtered.map((member, idx) => {
-                        const photoSrc = imageUrl(member.photo_url);
-                        const bgColor = member.is_president_or_secretary ? 'bg-amber-500' : member.is_committee_member ? 'bg-[#2F5BEA]' : 'bg-[#1F2A44]';
-                        return (
-                          <tr key={member.id} onClick={() => setSelectedMember(member)}
-                            className={`cursor-pointer transition-colors ${member.is_president_or_secretary ? 'bg-amber-50/50 hover:bg-amber-50' : member.is_committee_member ? 'bg-blue-50/30 hover:bg-blue-50' : 'hover:bg-gray-50'}`}>
-                            <td className="px-5 py-4 text-gray-300 text-xs font-medium">{idx + 1}</td>
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
-                                {photoSrc
-                                  ? <img src={photoSrc} alt={member.full_name} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0 ring-1 ring-gray-100" />
-                                  : <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${bgColor}`}>{member.full_name.charAt(0).toUpperCase()}</div>
-                                }
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-[#1F2A44]">{member.full_name}</span>
+            ) : (() => {
+              // Group filtered members by batch (already sorted asc by batch then name)
+              const byBatch: Record<number, Member[]> = {};
+              for (const m of filtered) {
+                if (!byBatch[m.batch]) byBatch[m.batch] = [];
+                byBatch[m.batch].push(m);
+              }
+              const batchNums = Object.keys(byBatch).map(Number).sort((a, b) => a - b);
+              return (
+                <div className="space-y-10">
+                  {batchNums.map(batch => (
+                    <div key={batch}>
+                      {/* Batch header */}
+                      <div className="flex items-center gap-3 mb-5">
+                        <span className="bg-[#1F2A44] text-white text-sm font-bold px-4 py-1.5 rounded-full">
+                          Batch {batch}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">{byBatch[batch].length} member{byBatch[batch].length !== 1 ? 's' : ''}</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                      {/* Member cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                        {byBatch[batch].map(member => {
+                          const photoSrc = imageUrl(member.photo_url);
+                          const avatarBg = member.is_president_or_secretary
+                            ? 'bg-amber-500'
+                            : member.is_committee_member
+                              ? 'bg-[#2F5BEA]'
+                              : 'bg-[#1F2A44]';
+                          return (
+                            <button
+                              key={member.id}
+                              onClick={() => setSelectedMember(member)}
+                              className="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2F5BEA]/40 hover:-translate-y-1 transition-all duration-200 p-5 flex flex-col items-center text-center cursor-pointer w-full"
+                            >
+                              {/* Photo */}
+                              <div className="relative w-full px-3 pt-3 mb-3">
+                                <div className="relative w-full aspect-square rounded-xl overflow-hidden">
+                                  {photoSrc
+                                    ? <img src={photoSrc} alt={member.full_name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    : <div className={`w-full h-full flex items-center justify-center text-white text-4xl font-bold ${avatarBg}`}>
+                                      {member.full_name.charAt(0).toUpperCase()}
+                                    </div>
+                                  }
                                   {member.is_president_or_secretary && (
-                                    <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full border border-amber-200 font-semibold">
-                                      <Crown className="w-2.5 h-2.5" />
+                                    <span className="absolute top-2 right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center shadow">
+                                      <Crown className="w-3 h-3 text-white" />
+                                    </span>
+                                  )}
+                                  {!member.is_president_or_secretary && member.is_committee_member && (
+                                    <span className="absolute top-2 right-2 w-6 h-6 bg-[#2F5BEA] rounded-full flex items-center justify-center shadow">
+                                      <Star className="w-3 h-3 text-white" />
                                     </span>
                                   )}
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-5 py-4"><span className="bg-[#1F2A44] text-white text-xs px-2.5 py-0.5 rounded-full font-medium">{member.batch}</span></td>
-                            <td className="px-5 py-4 text-gray-400 text-sm hidden md:table-cell">{member.email}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              {/* Name */}
+                              <p className="text-sm font-bold text-[#1F2A44] leading-tight line-clamp-2 mb-1 group-hover:text-[#2F5BEA] transition-colors">
+                                {member.full_name}
+                              </p>
+                              {/* Job title */}
+                              {member.job_title && (
+                                <p className="text-xs text-gray-600 line-clamp-1 leading-tight">
+                                  {member.job_title}
+                                </p>
+                              )}
+                              {/* Organisation */}
+                              {member.organisation && (
+                                <p className="text-[10px] text-gray-500 line-clamp-1 leading-tight mt-0.5">
+                                  {member.organisation}
+                                </p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-400 font-medium text-right pt-2">
+                    Showing {filtered.length} of {members.length} members
+                  </p>
                 </div>
-                <div className="px-5 py-3.5 bg-[#F5F7FA] border-t border-gray-100 text-xs text-gray-400 font-medium">
-                  Showing {filtered.length} of {members.length} members
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
