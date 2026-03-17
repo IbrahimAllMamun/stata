@@ -33,4 +33,17 @@ const requireMemberRole = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { authenticateMember, requireMemberRole };
+// Optional auth — sets req.member if token present, but never blocks the request
+const optionalMemberAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+  const token = authHeader.split(' ')[1];
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.email) req.member = decoded;
+  } catch { /* ignore invalid tokens */ }
+  next();
+};
+
+module.exports = { authenticateMember, requireMemberRole, optionalMemberAuth };

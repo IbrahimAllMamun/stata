@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Users, ArrowRight, X, Loader2, Download } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { asplApi, AsplTeam, AsplTeamPlayer, AsplSeason } from '../../lib/api';
 import RegistrationForm from '../../components/aspl/RegistrationForm';
 import './aspl.css';
@@ -240,11 +241,13 @@ function TeamCard({ team, startingBalance, onClick }: { team: AsplTeam; starting
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AsplPage() {
+  const { isMember, isLoggedIn } = useAuth();
   const [season, setSeason] = useState<AsplSeason | null>(null);
   const [teams, setTeams] = useState<AsplTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [showRegister, setShowRegister] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
     asplApi.getActiveSeason()
@@ -316,7 +319,7 @@ export default function AsplPage() {
             <div>
               <span className="text-xs font-bold tracking-widest uppercase block mb-2" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>{seasonName}</span>
               <h2 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--white)', fontFamily: 'kanit' }}>Teams</h2>
-              <p className="mt-2 text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>Click a team to view their squad and bids</p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>{isLoggedIn ? 'Click a team to view their squad and bids' : 'Sign in to view team squads'}</p>
             </div>
             {!loading && teams.length > 0 && (
               <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--muted)' }}>
@@ -356,7 +359,7 @@ export default function AsplPage() {
                   <TeamCard
                     team={team}
                     startingBalance={season?.starting_balance ?? 1000}
-                    onClick={() => setExpanded(expanded === team.id ? null : team.id)}
+                    onClick={() => isLoggedIn ? setExpanded(expanded === team.id ? null : team.id) : setShowLoginPrompt(true)}
                   />
                 </div>
               ))}
@@ -368,6 +371,25 @@ export default function AsplPage() {
       {expanded && <PlayerDrawer teamId={expanded} onClose={() => setExpanded(null)} />}
       {showRegister && season?.registration_open && (
         <RegistrationForm season={season} onClose={() => setShowRegister(false)} />
+      )}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(6,12,26,0.85)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setShowLoginPrompt(false)}>
+          <div className="w-full max-w-sm rounded-2xl p-8 text-center"
+            style={{ background: 'var(--pitch-mid)', border: '1px solid rgba(255,255,255,0.1)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-full bg-[#2F5BEA]/20 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-7 h-7 text-[#2F5BEA]" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>Members Only</h3>
+            <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>Sign in to view team squads and player details.</p>
+            <div className="flex gap-3">
+              <a href="/login" className="flex-1 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold transition-colors text-center">Sign In</a>
+              <button onClick={() => setShowLoginPrompt(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors text-center" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

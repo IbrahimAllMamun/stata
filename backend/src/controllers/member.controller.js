@@ -441,7 +441,7 @@ const getMembersByStatus = async (req, res, next) => {
           phone_number: true, alternative_phone: true, job_title: true,
           organisation: true, organisation_address: true, notify_events: true,
           photo_url: true, blood_group: true, status: true, created_at: true,
-          password: true,
+          password: true, role: true,
         },
       }),
       prisma.member.count({ where }),

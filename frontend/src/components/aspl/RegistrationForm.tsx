@@ -1,7 +1,8 @@
 // src/components/aspl/RegistrationForm.tsx
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Upload, CheckCircle2, ChevronDown, User, Search, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
 import { api, asplApi, AsplSeason, AsplRegistration, imageUrl } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Props {
   season: AsplSeason;
@@ -21,18 +22,35 @@ interface FoundMember {
 }
 
 export default function RegistrationForm({ season, onClose }: Props) {
-  const [step, setStep] = useState<Step>('email');
+  const { member: loggedInMember, isMember } = useAuth();
+  const [step, setStep] = useState<Step>(isMember ? 'form' : 'email');
+
+  // Check existing reg on mount for logged-in members
+  // (handled in handleLookup which is auto-called via useEffect below)
 
   // Email lookup
   const [email, setEmail] = useState('');
   const [looking, setLooking] = useState(false);
   const [lookupErr, setLookupErr] = useState('');
-  const [member, setMember] = useState<FoundMember | null>(null);
+  const [member, setMember] = useState<FoundMember | null>(
+    isMember && loggedInMember ? {
+      id: loggedInMember.id,
+      full_name: loggedInMember.full_name,
+      email: loggedInMember.email,
+      batch: loggedInMember.batch,
+      phone_number: loggedInMember.phone_number || '',
+      job_title: loggedInMember.job_title,
+      organisation: loggedInMember.organisation,
+      status: loggedInMember.status,
+      photo_url: loggedInMember.photo_url,
+    } : null
+  );
+
+  // Pre-load photo from logged-in member
+  const [memberHasPhoto, setMemberHasPhoto] = useState(!!(isMember && loggedInMember?.photo_url));
 
   // Whether this member already has a registration this season
   const [existingReg, setExistingReg] = useState<AsplRegistration | null>(null);
-  // Whether the member already has a profile photo
-  const [memberHasPhoto, setMemberHasPhoto] = useState(false);
 
   // Photo + position
   const [position, setPosition] = useState('');
@@ -44,6 +62,22 @@ export default function RegistrationForm({ season, onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const positions = asplApi.getPositions(season.sport);
+
+  // Auto-load existing registration for logged-in members
+  useEffect(() => {
+    if (!isMember || !loggedInMember) return;
+    const memberEmail = loggedInMember.email;
+    // Set photo preview from profile
+    const src = imageUrl(loggedInMember.photo_url);
+    if (src) setPhotoPreview(src);
+    // Check existing registration
+    asplApi.lookupRegistration(memberEmail, season.id).then(res => {
+      if (res.found && res.data) {
+        setExistingReg(res.data);
+        if (res.data.playing_position) setPosition(res.data.playing_position);
+      }
+    }).catch(() => {});
+  }, []);
   const isUpdate = !!existingReg;
 
   const resetToEmail = () => {
@@ -116,7 +150,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
     try {
       const fd = new FormData();
       fd.append('season_id', String(season.id));
-      fd.append('email', member!.email);
+      fd.append('email', (isMember && loggedInMember ? loggedInMember.email : member!.email));
       fd.append('playing_position', position);
       if (photo) fd.append('photo', photo);
 

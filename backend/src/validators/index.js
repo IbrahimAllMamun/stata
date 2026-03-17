@@ -64,6 +64,7 @@ const submitPostSchema = Joi.object({
   content: Joi.string().min(10).required(),
   author_name: Joi.string().trim().min(2).max(100).required(),
   author_batch: Joi.number().integer().min(1).max(3000).required(),
+  author_designation: Joi.string().trim().max(200).optional().allow('', null),
 });
 
 const eventSchema = Joi.object({

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Shield, Trash2, KeyRound, Crown, Users, RefreshCw,
-  AlertTriangle, X, CheckCircle, ChevronDown, Search,
+  AlertTriangle, X, CheckCircle, ChevronDown,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 import { useAuth, MemberUser } from '../../contexts/AuthContext';
@@ -111,38 +111,41 @@ function RoleModal({ member, onClose, onChanged, showToast }: {
   );
 }
 
-// ── Promote member modal (search + promote) ───────────────────────────────────
+// ── Promote member modal (dropdown) ──────────────────────────────────────────
 function PromoteModal({ onClose, onPromoted, showToast }: {
   onClose: () => void; onPromoted: () => void;
   showToast: (m: string, ok?: boolean) => void;
 }) {
-  const [search, setSearch] = useState('');
-  const [results, setResults] = useState<any[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [selectedId, setSelectedId] = useState('');
   const [selectedRole, setSelectedRole] = useState<'mod' | 'admin'>('mod');
-  const [promoting, setPromoting] = useState<string | null>(null);
+  const [promoting, setPromoting] = useState(false);
 
-  const doSearch = async () => {
-    if (!search.trim()) return;
-    setSearching(true);
-    try {
-      const res = await adminApi.getMembers({ limit: 10, search });
-      // Filter out already-staff members
-      setResults((res.data || []).filter((m: any) => m.role === 'member'));
-    } catch { showToast('Search failed', false); }
-    finally { setSearching(false); }
-  };
+  useEffect(() => {
+    adminApi.getMembersByStatus('APPROVED').then(res => {
+      // Only regular members (not already staff), sorted by batch asc then name asc
+      const eligible = (res.data || [])
+        .filter((m: any) => !m.role || m.role === 'member')
+        .sort((a: any, b: any) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name));
+      setMembers(eligible);
+    }).catch(() => showToast('Failed to load members', false))
+      .finally(() => setLoadingMembers(false));
+  }, []);
 
-  const promote = async (memberId: string) => {
-    setPromoting(memberId);
+  const promote = async () => {
+    if (!selectedId) return;
+    setPromoting(true);
     try {
-      await adminApi.updateMemberRole(memberId, selectedRole);
-      showToast(`Promoted to ${selectedRole}`);
+      await adminApi.updateMemberRole(selectedId, selectedRole);
+      showToast(`Promoted to ${selectedRole === 'mod' ? 'Moderator' : 'Admin'}`);
       onPromoted(); onClose();
     } catch (err: any) {
       showToast(err.message || 'Failed to promote', false);
-    } finally { setPromoting(null); }
+    } finally { setPromoting(false); }
   };
+
+  const selectedMember = members.find(m => m.id === selectedId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -152,69 +155,77 @@ function PromoteModal({ onClose, onPromoted, showToast }: {
         <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-6 py-5 flex items-center justify-between">
           <div>
             <h3 className="text-white font-bold text-base">Promote a Member</h3>
-            <p className="text-blue-200 text-xs mt-0.5">Search and assign a role</p>
+            <p className="text-blue-200 text-xs mt-0.5">Select a member and assign a role</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
             <X className="w-4 h-4 text-white" />
           </button>
         </div>
-        <div className="p-6 space-y-4">
-          {/* Role select */}
+        <div className="p-6 space-y-5">
+
+          {/* Role picker */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Role to assign</label>
             <div className="grid grid-cols-2 gap-3">
               {(['mod', 'admin'] as const).map(r => (
                 <button key={r} onClick={() => setSelectedRole(r)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${selectedRole === r ? (r === 'admin' ? 'border-amber-400 bg-amber-50' : 'border-purple-400 bg-purple-50') : 'border-gray-200'}`}>
-                  {r === 'admin' ? <Crown className={`w-4 h-4 ${selectedRole === r ? 'text-amber-500' : 'text-gray-400'}`} /> : <Shield className={`w-4 h-4 ${selectedRole === r ? 'text-purple-500' : 'text-gray-400'}`} />}
-                  <span className={`text-sm font-semibold capitalize ${selectedRole === r ? (r === 'admin' ? 'text-amber-700' : 'text-purple-700') : 'text-gray-500'}`}>{r === 'mod' ? 'Moderator' : 'Admin'}</span>
+                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${selectedRole === r ? (r === 'admin' ? 'border-amber-400 bg-amber-50' : 'border-purple-400 bg-purple-50') : 'border-gray-200 hover:border-gray-300'}`}>
+                  {r === 'admin'
+                    ? <Crown className={`w-4 h-4 ${selectedRole === r ? 'text-amber-500' : 'text-gray-400'}`} />
+                    : <Shield className={`w-4 h-4 ${selectedRole === r ? 'text-purple-500' : 'text-gray-400'}`} />}
+                  <span className={`text-sm font-semibold ${selectedRole === r ? (r === 'admin' ? 'text-amber-700' : 'text-purple-700') : 'text-gray-500'}`}>
+                    {r === 'mod' ? 'Moderator' : 'Admin'}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
-          {/* Search */}
+
+          {/* Member dropdown */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Search member</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && doSearch()}
-                  placeholder="Name or email…" className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none" />
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Select Member
+              <span className="ml-1 font-normal text-gray-400 normal-case">(sorted by batch, then name)</span>
+            </label>
+            {loadingMembers ? (
+              <div className="flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-400">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-[#2F5BEA] rounded-full animate-spin" /> Loading members…
               </div>
-              <button onClick={doSearch} disabled={searching}
-                className="px-4 py-2 bg-[#2F5BEA] text-white rounded-xl text-sm font-semibold disabled:opacity-50 hover:bg-[#1a3fc7] transition-colors">
-                {searching ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Search'}
-              </button>
-            </div>
+            ) : (
+              <select value={selectedId} onChange={e => setSelectedId(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white appearance-none">
+                <option value="">— Choose a member —</option>
+                {members.map(m => (
+                  <option key={m.id} value={m.id}>
+                    Batch {m.batch} · {m.full_name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-          {/* Results */}
-          {results.length > 0 && (
-            <div className="space-y-2 max-h-52 overflow-y-auto">
-              {results.map(m => {
-                const photoSrc = imageUrl(m.photo_url);
-                return (
-                  <div key={m.id} className="flex items-center gap-3 p-3 bg-[#F5F7FA] rounded-xl">
-                    {photoSrc
-                      ? <img src={photoSrc} alt={m.full_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                      : <div className="w-9 h-9 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{m.full_name.charAt(0)}</div>
-                    }
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#1F2A44] text-sm truncate">{m.full_name}</p>
-                      <p className="text-xs text-gray-400 truncate">{m.email} · Batch {m.batch}</p>
-                    </div>
-                    <button onClick={() => promote(m.id)} disabled={promoting === m.id}
-                      className="text-xs font-semibold bg-[#2F5BEA] text-white px-3 py-1.5 rounded-lg hover:bg-[#1a3fc7] disabled:opacity-50 flex-shrink-0">
-                      {promoting === m.id ? '…' : 'Promote'}
-                    </button>
-                  </div>
-                );
-              })}
+
+          {/* Selected member preview */}
+          {selectedMember && (
+            <div className="flex items-center gap-3 p-3 bg-[#F5F7FA] rounded-xl">
+              {imageUrl(selectedMember.photo_url)
+                ? <img src={imageUrl(selectedMember.photo_url)!} alt={selectedMember.full_name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                : <div className="w-10 h-10 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{selectedMember.full_name.charAt(0)}</div>
+              }
+              <div className="min-w-0">
+                <p className="font-semibold text-[#1F2A44] text-sm truncate">{selectedMember.full_name}</p>
+                <p className="text-xs text-gray-400 truncate">{selectedMember.email} · Batch {selectedMember.batch}</p>
+              </div>
             </div>
           )}
-          {results.length === 0 && search && !searching && (
-            <p className="text-sm text-gray-400 text-center py-3">No eligible members found</p>
-          )}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={promote} disabled={!selectedId || promoting}
+              className="flex-1 flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-colors">
+              {promoting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Crown className="w-4 h-4" />}
+              {promoting ? 'Promoting…' : 'Promote'}
+            </button>
+            <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
@@ -371,8 +382,8 @@ function StaffRow({ member, currentId, onChangeRole }: {
       {photoSrc
         ? <img src={photoSrc} alt={member.full_name} className="w-10 h-10 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
         : <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${member.role === 'admin' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
-            {member.full_name.charAt(0).toUpperCase()}
-          </div>
+          {member.full_name.charAt(0).toUpperCase()}
+        </div>
       }
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">

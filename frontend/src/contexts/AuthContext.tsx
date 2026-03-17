@@ -16,6 +16,14 @@ export interface MemberUser {
   role: 'member' | 'mod' | 'admin';
   must_change_password: boolean;
   has_password: boolean;
+  phone_number?: string;
+  alternative_phone?: string | null;
+  job_title?: string | null;
+  organisation?: string | null;
+  organisation_address?: string | null;
+  notify_events?: boolean;
+  blood_group?: string | null;
+  created_at?: string;
 }
 
 interface AuthContextType {

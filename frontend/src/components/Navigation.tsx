@@ -22,7 +22,6 @@ export default function Navigation() {
   const [pendingPosts, setPendingPosts] = useState(0);
   const [unreadCommunications, setUnreadCommunications] = useState(0);
   const [unreadInbox, setUnreadInbox] = useState(0);
-  const [pendingAspl, setPendingAspl] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoKey, setLogoKey] = useState(0);
   const [asplVisible, setAsplVisible] = useState(false);
@@ -40,7 +39,7 @@ export default function Navigation() {
     { name: 'Contact', href: '/contact' },
   ];
 
-  const totalBadge = pendingMembers + pendingPosts + unreadCommunications + unreadInbox + pendingAspl;
+  const totalBadge = pendingMembers + pendingPosts + unreadCommunications + unreadInbox;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -84,8 +83,6 @@ export default function Navigation() {
         adminApi.getUnreadMessageCount().then(r => setUnreadCommunications(r.data.count)).catch(handle401);
         adminApi.getInboxUnreadCount().then(r => setUnreadInbox(r.data.count)).catch(handle401);
       }
-      if (!location.pathname.startsWith('/admin/aspl'))
-        asplApi.getPendingRegistrationCount().then(r => setPendingAspl(r.data.count)).catch(handle401);
     };
 
     fetchAll();
@@ -98,7 +95,6 @@ export default function Navigation() {
     if (location.pathname.startsWith('/admin/members')) setPendingMembers(0);
     if (location.pathname.startsWith('/admin/posts')) setPendingPosts(0);
     if (location.pathname.startsWith('/admin/communications')) { setUnreadCommunications(0); setUnreadInbox(0); }
-    if (location.pathname.startsWith('/admin/aspl')) setPendingAspl(0);
   }, [location.pathname]);
 
   const isActive = (href: string) =>
@@ -136,16 +132,30 @@ export default function Navigation() {
           </div>
 
           {/* Right side */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
+            {/* Post + ASPL — always visible */}
+            <Link to="/posts/submit"
+              className="flex items-center gap-1.5 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+              <PenLine className="w-3.5 h-3.5" /> Post
+            </Link>
+            {asplVisible && (
+              <Link to="/aspl"
+                className="flex items-center gap-1.5 border border-yellow-400/30 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+                <Trophy className="w-3.5 h-3.5" /> ASPL
+              </Link>
+            )}
             {isAdmin ? (
               <div ref={dropdownRef} className="relative">
                 <button
                   onClick={() => setDropdownOpen(v => !v)}
-                  className={`relative flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${dropdownOpen
+                  className={`relative flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${dropdownOpen
                     ? 'bg-white/15 text-white'
                     : 'text-[#F39C12] hover:bg-white/10'
                     }`}>
-                  <LayoutDashboard className="w-4 h-4" />
+                  {member?.photo_url
+                    ? <img src={imageUrl(member.photo_url) || ''} alt="" className="w-7 h-7 rounded-full object-cover border border-white/30 flex-shrink-0" />
+                    : <div className="w-7 h-7 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{(member?.full_name || admin?.username || '?').charAt(0).toUpperCase()}</div>
+                  }
                   <span>{member?.full_name?.split(' ')[0] || admin?.username}</span>
                   {isModerator && (
                     <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded">mod</span>
@@ -186,13 +196,6 @@ export default function Navigation() {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
                         <Calendar className="w-4 h-4 text-[#2ECC71]" /> Manage Events
                       </Link>
-                      <Link to="/admin/aspl"
-                        className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
-                        <span className="flex items-center gap-3">
-                          <Trophy className="w-4 h-4 text-yellow-500" /> ASPL
-                        </span>
-                        <Badge count={pendingAspl} />
-                      </Link>
                       <Link to="/admin/communications"
                         className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
                         <span className="flex items-center gap-3">
@@ -212,6 +215,16 @@ export default function Navigation() {
                           </Link>
                         </>
                       )}
+                    </div>
+                    <div className="border-t border-gray-100 py-1.5">
+                      <Link to="/account"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                        <User className="w-4 h-4 text-[#2F5BEA]" /> My Profile
+                      </Link>
+                      <Link to="/update-profile"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F7FA] transition-colors">
+                        <UserCheck className="w-4 h-4 text-[#2ECC71]" /> Update Profile
+                      </Link>
                     </div>
                     <div className="border-t border-gray-100 px-4 py-2">
                       <button onClick={() => { memberLogout(); logout(); }}
@@ -258,16 +271,6 @@ export default function Navigation() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/posts/submit"
-                  className="flex items-center gap-1.5 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-                  <PenLine className="w-3.5 h-3.5" /> Post
-                </Link>
-                {asplVisible && (
-                  <Link to="/aspl"
-                    className="flex items-center gap-1.5 border border-yellow-400/30 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-                    <Trophy className="w-3.5 h-3.5" /> ASPL
-                  </Link>
-                )}
                 <Link to="/login"
                   className="flex items-center gap-2 border border-white/20 hover:border-white/40 text-gray-300 hover:text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
                   Sign In
@@ -283,7 +286,7 @@ export default function Navigation() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setIsOpen(v => !v)}
-            className="md:hidden relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-all">
+            className="lg:hidden relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-all">
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             {isAdmin && totalBadge > 0 && !isOpen && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -296,8 +299,8 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-white/10 bg-[#1a2338]">
-          <div className="px-3 py-3 space-y-0.5">
+        <div className="lg:hidden border-t border-white/10 bg-[#1a2338]">
+          <div className="px-3 py-3 space-y-0.5 md:hidden">
             {navLinks.map(item => (
               <Link key={item.name} to={item.href}
                 className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive(item.href)
@@ -313,15 +316,32 @@ export default function Navigation() {
           </div>
 
           <div className="border-t border-white/10 px-3 py-3 space-y-0.5">
+            {/* Post + ASPL — always visible in mobile */}
+            <Link to="/posts/submit"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+              <PenLine className="w-4 h-4 text-[#F39C12]" /> Write a Post
+            </Link>
+            {asplVisible && (
+              <Link to="/aspl"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-yellow-400 hover:text-yellow-300 hover:bg-white/5 transition-colors">
+                <Trophy className="w-4 h-4" /> ASPL
+              </Link>
+            )}
             {isAdmin ? (
               <>
-                <div className="flex items-center gap-2 px-4 py-2 mb-1">
-                  <div className="w-7 h-7 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold">
-                    {admin?.username?.[0]?.toUpperCase()}
+                <div className="flex items-center gap-3 px-4 py-3 mb-1">
+                  {member?.photo_url
+                    ? <img src={imageUrl(member.photo_url) || ''} alt="" className="w-9 h-9 rounded-full object-cover border border-white/20 flex-shrink-0" />
+                    : <div className="w-9 h-9 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                      {(member?.full_name || admin?.username || '?').charAt(0).toUpperCase()}
+                    </div>
+                  }
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-sm font-semibold truncate">{member?.full_name || admin?.username}</p>
+                    <p className="text-gray-400 text-xs truncate">{member?.email || (isFullAdmin ? 'Admin' : 'Moderator')}</p>
                   </div>
-                  <span className="text-white text-sm font-semibold">{admin?.username}</span>
-                  {isModerator && (
-                    <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded ml-auto">mod</span>
+                  {isModerator && !isFullAdmin && (
+                    <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0">mod</span>
                   )}
                 </div>
                 <Link to="/admin"
@@ -342,11 +362,6 @@ export default function Navigation() {
                   className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                   <Calendar className="w-4 h-4 text-[#2ECC71]" /> Manage Events
                 </Link>
-                <Link to="/admin/aspl"
-                  className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-3"><Trophy className="w-4 h-4 text-yellow-400" /> ASPL</span>
-                  <Badge count={pendingAspl} />
-                </Link>
                 <Link to="/admin/communications"
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                   <span className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-[#9B59B6]" /> Communications</span>
@@ -364,23 +379,53 @@ export default function Navigation() {
                     </Link>
                   </>
                 )}
+                <div className="border-t border-white/10 mt-1 pt-2 space-y-0.5">
+                  <Link to="/account"
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                    <User className="w-4 h-4 text-[#2F5BEA]" /> My Profile
+                  </Link>
+                  <Link to="/update-profile"
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                    <UserCheck className="w-4 h-4 text-[#2ECC71]" /> Update Profile
+                  </Link>
+                </div>
                 <button onClick={() => { memberLogout(); logout(); setIsOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors mt-1 border-t border-white/10 pt-3">
+                  <LogOut className="w-4 h-4" /> Sign out
+                </button>
+              </>
+            ) : isMember ? (
+              <>
+                {/* Member profile header */}
+                <div className="flex items-center gap-3 px-4 py-3 mb-1">
+                  {member?.photo_url
+                    ? <img src={imageUrl(member.photo_url) || ''} alt="" className="w-9 h-9 rounded-full object-cover border border-white/20 flex-shrink-0" />
+                    : <div className="w-9 h-9 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{member?.full_name.charAt(0).toUpperCase()}</div>
+                  }
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-semibold truncate">{member?.full_name}</p>
+                    <p className="text-gray-400 text-xs truncate">{member?.email}</p>
+                  </div>
+                </div>
+                <Link to="/account"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <User className="w-4 h-4 text-[#2F5BEA]" /> My Account
+                </Link>
+                <Link to="/update-profile"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <UserCheck className="w-4 h-4 text-[#2ECC71]" /> Update Profile
+                </Link>
+                <Link to="/change-password"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <Settings className="w-4 h-4 text-gray-400" /> Change Password
+                </Link>
+                <button onClick={() => { memberLogout(); setIsOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors mt-1 border-t border-white/10 pt-3">
                   <LogOut className="w-4 h-4" /> Sign out
                 </button>
               </>
             ) : (
               <div className="flex flex-col gap-2 mx-1">
-                <Link to="/posts/submit"
-                  className="flex items-center justify-center gap-2 border border-white/20 hover:border-[#F39C12] text-gray-300 hover:text-[#F39C12] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                  <PenLine className="w-4 h-4" /> Write a Post
-                </Link>
-                {asplVisible && (
-                  <Link to="/aspl"
-                    className="flex items-center justify-center gap-2 border border-yellow-400/30 hover:border-yellow-400 text-yellow-400 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                    <Trophy className="w-4 h-4" /> ASPL
-                  </Link>
-                )}
                 <Link to="/login"
                   className="flex items-center justify-center gap-2 border border-white/20 text-gray-300 hover:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
                   Sign In

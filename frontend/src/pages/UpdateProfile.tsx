@@ -1,9 +1,8 @@
 // src/pages/UpdateProfile.tsx
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, Briefcase, Bell, CheckCircle, Home, ArrowLeft, AlertCircle, RefreshCw, Camera, X } from 'lucide-react';
 import { api, imageUrl, Member } from '../lib/api';
-import { useAuth } from '../contexts/AuthContext';
 
 type Step = 'lookup' | 'edit' | 'success';
 
@@ -42,7 +41,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 
 export default function UpdateProfile() {
   const navigate = useNavigate();
-  const { member: loggedInMember } = useAuth();
   const [step, setStep] = useState<Step>('lookup');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,27 +70,6 @@ export default function UpdateProfile() {
       setForm(f => ({ ...f, [field]: e.target.value }));
       setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
     };
-
-  // Auto-fill from logged-in member — skip lookup step
-  useEffect(() => {
-    if (!loggedInMember) return;
-    // Fetch full member data via lookup
-    api.lookupMember(loggedInMember.email).then(res => {
-      if (!res.data) return;
-      const m = res.data as FullMember;
-      setMember(m);
-      const existingSrc = imageUrl(m.photo_url);
-      if (existingSrc) setPhotoPreview(existingSrc);
-      setForm({
-        batch: String(m.batch), full_name: m.full_name, phone_number: m.phone_number,
-        alternative_phone: m.alternative_phone ?? '', job_title: m.job_title ?? '',
-        organisation: m.organisation ?? '', organisation_address: m.organisation_address ?? '',
-        notify_events: m.notify_events ? 'true' : 'false',
-        blood_group: m.blood_group ?? '',
-      });
-      setStep('edit');
-    }).catch(() => { /* fall through to manual lookup */ });
-  }, [loggedInMember]);
 
   // ── Lookup ──────────────────────────────────────────────────────────────────
   const handleLookup = async () => {
@@ -138,7 +115,6 @@ export default function UpdateProfile() {
     if (!photo || !member) return;
     setPhotoSaving(true);
     try {
-      // Photo goes through approval queue — does NOT update member immediately
       await api.updateMemberPhoto(member.email, photo);
       setPhotoSaved(true);
       setPhoto(null);
@@ -189,7 +165,7 @@ export default function UpdateProfile() {
             <CheckCircle className="w-10 h-10 text-[#2ECC71]" />
           </div>
           <h2 className="text-2xl font-extrabold text-[#1F2A44] mb-2">Profile Updated!</h2>
-          <p className="text-gray-500 text-sm mb-6">{member?.status === 'APPROVED' ? 'Your information has been updated successfully.' : 'Your update request has been submitted for review.'}</p>
+          <p className="text-gray-500 text-sm mb-6">Your information has been submitted for review.</p>
           <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
             {[['Name', saveResult.full_name], ['Email', member!.email], ['Status', STATUS_STYLES[saveResult.status]?.label ?? saveResult.status]].map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm">
@@ -220,7 +196,7 @@ export default function UpdateProfile() {
         </div>
 
         {/* ── Lookup ── */}
-        {step === 'lookup' && !loggedInMember && (
+        {step === 'lookup' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 bg-[#2F5BEA] text-white">
               <Search className="w-5 h-5" />
@@ -312,7 +288,7 @@ export default function UpdateProfile() {
                       </button>
                     )}
 
-                    {photoSaved && <p className="text-sm text-amber-600 font-medium flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Photo submitted — pending admin approval.</p>}
+                    {photoSaved && <p className="text-sm text-green-600 font-medium flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Photo updated successfully.</p>}
                     {errors.photo && <p className="text-xs text-red-500">{errors.photo}</p>}
 
                     <p className="text-xs text-gray-400">JPG, PNG, WEBP or HEIC · Max 15MB · Changes apply immediately</p>

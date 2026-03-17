@@ -1,7 +1,8 @@
 // src/pages/People.tsx
 import { useEffect, useState } from 'react';
-import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase, Droplets } from 'lucide-react';
+import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase, Droplets, LogIn } from 'lucide-react';
 import { api, Member, Committee, CommitteeMemberDetail, imageUrl } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -16,7 +17,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 }
 
 /* ── Member popup (All Members tab) ──────────────────────────────── */
-function MemberModal({ member, onClose }: { member: Member; onClose: () => void }) {
+function MemberModal({ member, onClose, isMember }: { member: Member; onClose: () => void; isMember: boolean }) {
   const photoSrc = imageUrl(member.photo_url);
   const isLeader = member.is_president_or_secretary;
   return (
@@ -56,12 +57,18 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
         </div>
         <div className="px-6 pb-6 space-y-3">
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={member.email} />
-          {/* <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} /> */}
-          {/* {member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />} */}
+          {isMember && member.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} />}
+          {isMember && member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />}
           {member.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={member.blood_group} />}
           {member.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={member.job_title} />}
           {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
           {member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
+          {!isMember && (
+            <a href="/login"
+              className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors border-2 border-dashed border-[#2F5BEA]/30 text-[#2F5BEA] hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA]">
+              <LogIn className="w-4 h-4" /> Sign in to see full information
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -69,8 +76,8 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
 }
 
 /* ── Leader popup (Leaders tab) - identical layout to MemberModal ── */
-function LeaderModal({ person, role, year, onClose }: {
-  person: CommitteeMemberDetail; role: string; year: number; onClose: () => void;
+function LeaderModal({ person, role, year, onClose, isMember }: {
+  person: CommitteeMemberDetail; role: string; year: number; onClose: () => void; isMember: boolean;
 }) {
   const photoSrc = imageUrl(person.photo_url);
   const isPresident = role === 'President';
@@ -106,12 +113,18 @@ function LeaderModal({ person, role, year, onClose }: {
         </div>
         <div className="px-6 pb-6 space-y-3">
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={person.email} />
-          {/* {person.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={person.phone_number} />} */}
-          {/* {person.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={person.alternative_phone} />} */}
+          {isMember && person.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={person.phone_number} />}
+          {isMember && person.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={person.alternative_phone} />}
           {person.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={person.blood_group} />}
           {person.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={person.job_title} />}
           {person.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={person.organisation} />}
           {person.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={person.organisation_address} />}
+          {!isMember && (
+            <a href="/login"
+              className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors border-2 border-dashed border-[#2F5BEA]/30 text-[#2F5BEA] hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA]">
+              <LogIn className="w-4 h-4" /> Sign in to see full information
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -173,6 +186,7 @@ function Skeleton({ className }: { className?: string }) {
 
 /* ── Page ────────────────────────────────────────────────────────── */
 export default function People() {
+  const { isMember } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [committees, setCommittees] = useState<Committee[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -445,12 +459,13 @@ export default function People() {
         )}
       </div>
 
-      {selectedMember && <MemberModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
+      {selectedMember && <MemberModal member={selectedMember} onClose={() => setSelectedMember(null)} isMember={isMember} />}
       {selectedLeader && (
         <LeaderModal
           person={selectedLeader.person}
           role={selectedLeader.role}
           year={selectedLeader.year}
+          isMember={isMember}
           onClose={() => setSelectedLeader(null)}
         />
       )}

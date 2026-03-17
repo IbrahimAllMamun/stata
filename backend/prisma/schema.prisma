@@ -158,9 +158,10 @@ model Post {
   cover_image  String?
   status       PostStatus @default(PENDING)
   published    Boolean    @default(false)
-  author_name  String
-  author_batch Int
-  created_by   String?
+  author_name        String
+  author_batch       Int
+  author_designation String?
+  created_by         String?
   created_at   DateTime   @default(now())
   updated_at   DateTime   @updatedAt
 

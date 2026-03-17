@@ -8,7 +8,7 @@ const { registerSchema, contactSchema, submitPostSchema, updateMemberSchema } = 
 
 const { register, getMembers, exportCSV, getApprovedBatches, lookupMember, updateMember, updateMemberPhoto } = require('../controllers/member.controller');
 const { memberLogin, requestSetup, setPassword, changePassword, getMe } = require('../controllers/auth.controller');
-const { authenticateMember } = require('../middlewares/memberAuth');
+const { authenticateMember, optionalMemberAuth } = require('../middlewares/memberAuth');
 const { getCommittees } = require('../controllers/committee.controller');
 const { getPosts, getPostBySlug, submitPost } = require('../controllers/post.controller');
 const { getEvents, getEventBySlug } = require('../controllers/event.controller');
@@ -52,7 +52,7 @@ router.post('/update-member-photo', upload.single('photo'), updateMemberPhoto);
 // Posts (public)
 router.get('/posts', getPosts);
 router.get('/posts/:slug', getPostBySlug);
-router.post('/posts', postSubmitLimiter, upload.single('cover_image'), validate(submitPostSchema), submitPost);
+router.post('/posts', postSubmitLimiter, upload.single('cover_image'), optionalMemberAuth, validate(submitPostSchema), submitPost);
 
 // Events
 router.get('/events', getEvents);
