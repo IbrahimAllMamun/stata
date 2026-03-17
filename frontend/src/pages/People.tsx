@@ -62,7 +62,7 @@ function MemberModal({ member, onClose, isMember }: { member: Member; onClose: (
           {member.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={member.blood_group} />}
           {member.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={member.job_title} />}
           {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
-          {member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
+          {isMember && member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
           {!isMember && (
             <a href="/login"
               className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors border-2 border-dashed border-[#2F5BEA]/30 text-[#2F5BEA] hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA]">
@@ -118,7 +118,7 @@ function LeaderModal({ person, role, year, onClose, isMember }: {
           {person.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={person.blood_group} />}
           {person.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={person.job_title} />}
           {person.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={person.organisation} />}
-          {person.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={person.organisation_address} />}
+          {isMember && person.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={person.organisation_address} />}
           {!isMember && (
             <a href="/login"
               className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors border-2 border-dashed border-[#2F5BEA]/30 text-[#2F5BEA] hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA]">

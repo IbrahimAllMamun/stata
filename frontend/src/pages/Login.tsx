@@ -45,11 +45,20 @@ export default function Login() {
 
   const handleRequestSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSetupError(''); setSetupLoading(true);
-    const res = await memberAuthApi.requestSetup(setupEmail.trim().toLowerCase());
+    setSetupError('');
+    const emailToCheck = setupEmail.trim().toLowerCase();
+
+    // Show success screen immediately (regardless of whether email exists)
+    // This prevents email enumeration attacks
+    setSetupLoading(true);
+    setSetupSent(true);
+
+    // Send the request in background (no need to wait)
+    memberAuthApi.requestSetup(emailToCheck).catch(err => {
+      console.error('Setup request failed:', err);
+    });
+
     setSetupLoading(false);
-    if (res.success) setSetupSent(true);
-    else setSetupError(res.message || 'Something went wrong.');
   };
 
   const inputCls = 'w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none transition-all bg-white';
@@ -140,11 +149,14 @@ export default function Login() {
                       <CheckCircle className="w-7 h-7 text-[#2ECC71]" />
                     </div>
                     <h3 className="font-bold text-[#1F2A44] mb-2">Check your email</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 mb-3">
                       If <strong>{setupEmail}</strong> is a registered approved member, you'll receive a setup link shortly. It expires in 24 hours.
                     </p>
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5">
+                      💡 <strong>Didn't receive it?</strong> Check your spam or junk folder. If still not found, please contact us.
+                    </p>
                     <button onClick={() => { setSetupSent(false); setScreen('login'); }}
-                      className="mt-5 text-sm text-[#2F5BEA] hover:underline font-medium">
+                      className="mt-4 text-sm text-[#2F5BEA] hover:underline font-medium">
                       Back to sign in
                     </button>
                   </div>

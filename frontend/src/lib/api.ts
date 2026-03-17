@@ -152,6 +152,7 @@ export interface ContactMessage {
 export interface Speech {
   id: string;
   name: string;
+  email: string;
   designation?: string | null;
   batch?: number | null;
   message: string;
