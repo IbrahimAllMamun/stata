@@ -38,64 +38,54 @@ export default function MemberAccount() {
       : 'bg-gray-100 text-gray-500 border-gray-200';
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#EEF2FF] py-8 px-4">
-      <div className="max-w-lg mx-auto space-y-4">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#EEF2FF] py-6 sm:py-8 px-3 sm:px-4">
+      <div className="max-w-4xl mx-auto space-y-4">
 
-        {/* ── Hero card ── */}
-        <div className="rounded-3xl overflow-hidden shadow-md">
-          {/* Banner */}
-          <div className="relative h-36 bg-gradient-to-br from-[#1F2A44] via-[#2F5BEA] to-[#6B8EF5]">
-            <div className="absolute inset-0 opacity-20"
-              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Ccircle cx=\'7\' cy=\'7\' r=\'1\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
-            {/* Top-right actions */}
-            <div className="absolute top-3 right-3 flex gap-2">
-              <Link to="/update-profile"
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/15 hover:bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-colors">
-                <Edit2 className="w-3 h-3" /> Edit
-              </Link>
-              <button onClick={() => { memberLogout(); navigate('/'); }}
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/10 hover:bg-red-500/70 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-colors">
-                <LogOut className="w-3 h-3" /> Sign Out
-              </button>
-            </div>
+        <div className="rounded-3xl bg-[#1F2A44] overflow-hidden relative">
+
+          {/* Subtle pattern ON TOP of gradient */}
+          <div className="absolute inset-0 opacity-40 pointer-events-none">
+            <div className="absolute top-0 left-0 w-[280px] h-[280px] bg-[#F39C12] rounded-full -translate-x-1/2 -translate-y-1/2 blur-xl" />
+            <div className="absolute bottom-0 right-0 w-[280px] h-[280px] bg-[#2F5BEA] rounded-full translate-x-1/2 translate-y-1/2 blur-xl" />
           </div>
 
-          {/* White body */}
-          <div className="bg-white px-6 pb-6">
-            {/* Avatar + name row */}
-            <div className="flex items-end gap-4 -mt-12 mb-5">
+          {/* Content */}
+          <div className="relative px-5 sm:px-6 md:px-8 py-6 sm:py-8">
+
+            <div className="flex flex-col sm:flex-row sm:items-end items-center gap-6 sm:gap-8 text-center sm:text-left">
+
               {/* Avatar */}
               <div className="flex-shrink-0">
-                {photoSrc
-                  ? <img src={photoSrc} alt={member.full_name}
-                    className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-xl ring-2 ring-[#2F5BEA]/20" />
-                  : <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#2F5BEA] to-[#1F2A44] flex items-center justify-center text-white text-3xl font-black border-4 border-white shadow-xl">
+                {photoSrc ? (
+                  <img
+                    src={photoSrc}
+                    alt={member.full_name}
+                    className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-3xl object-cover border-4 border-white shadow-2xl"
+                  />
+                ) : (
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-3xl bg-gradient-to-br from-[#2F5BEA] to-[#1F2A44] flex items-center justify-center text-white text-5xl font-black border-4 border-white shadow-2xl">
                     {initials}
                   </div>
-                }
+                )}
               </div>
-              {/* Badges */}
-              <div className="pb-1 flex flex-wrap gap-1.5">
-                <span className="text-xs font-bold bg-[#1F2A44] text-white px-2.5 py-1 rounded-full">
-                  Batch {member.batch}
-                </span>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusStyle}`}>
-                  {member.status.charAt(0) + member.status.slice(1).toLowerCase()}
-                </span>
-              </div>
-            </div>
 
-            {/* Name block */}
-            <div className="mb-1">
-              <h1 className="text-2xl font-black text-[#1F2A44] leading-tight tracking-tight">
-                {member.full_name}
-              </h1>
-              {member.job_title && (
-                <p className="text-sm font-semibold text-[#2F5BEA] mt-0.5">{member.job_title}</p>
-              )}
-              {member.organisation && (
-                <p className="text-sm text-gray-500 mt-0.5">{member.organisation}</p>
-              )}
+              {/* Info */}
+              <div className="flex-1 flex flex-col justify-end items-center sm:items-start">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white mb-4">
+                  {member.full_name}
+                </h1>
+
+                <div className="flex gap-3 flex-wrap justify-center sm:justify-start">
+                  <span className="text-xs bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold px-3 py-2 rounded-full">
+                    Batch {member.batch}
+                  </span>
+
+                  <span className={`text-xs font-semibold px-3 py-2 rounded-full border ${statusStyle}`}>
+                    {member.status.charAt(0) + member.status.slice(1).toLowerCase()}
+                  </span>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -188,7 +178,7 @@ export default function MemberAccount() {
         </div>
 
         {/* ── Action cards ── */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link to="/update-profile"
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 hover:border-[#2F5BEA] hover:shadow-md transition-all group">
             <div className="w-10 h-10 rounded-xl bg-[#2F5BEA]/10 flex items-center justify-center group-hover:bg-[#2F5BEA] transition-colors flex-shrink-0">

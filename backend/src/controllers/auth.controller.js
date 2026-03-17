@@ -24,13 +24,27 @@ function signToken(member) {
   );
 }
 
+// FIXED: Added missing fields that frontend expects
 function memberPublic(m) {
   return {
-    id: m.id, email: m.email, full_name: m.full_name,
-    batch: m.batch, photo_url: m.photo_url, status: m.status,
+    id: m.id,
+    email: m.email,
+    full_name: m.full_name,
+    batch: m.batch,
+    photo_url: m.photo_url,
+    status: m.status,
     role: m.role,
     must_change_password: m.must_change_password,
     has_password: !!m.password,
+    // ── Profile fields (for MemberAccount.tsx) ────
+    phone_number: m.phone_number,
+    alternative_phone: m.alternative_phone,
+    job_title: m.job_title,
+    organisation: m.organisation,
+    organisation_address: m.organisation_address,
+    notify_events: m.notify_events,
+    blood_group: m.blood_group,
+    created_at: m.created_at,
   };
 }
 
