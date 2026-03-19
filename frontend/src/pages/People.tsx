@@ -1,5 +1,5 @@
 // src/pages/People.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase, Droplets } from 'lucide-react';
 import { api, Member, Committee, CommitteeMemberDetail, imageUrl } from '../lib/api';
 
@@ -26,11 +26,11 @@ function MemberModal({ member, onClose }: { member: Member; onClose: () => void 
       onClick={onClose}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className={`h-20 ${isLeader ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA]'}`} />
-        <div className="px-6 -mt-10 flex justify-between items-end mb-4">
+        <div className={`h-24 ${isLeader ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA]'}`} />
+        <div className="px-6 -mt-14 flex justify-between items-end mb-4">
           {photoSrc
-            ? <img src={photoSrc} alt={member.full_name} className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
-            : <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isLeader ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
+            ? <img src={photoSrc} alt={member.full_name} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-md" />
+            : <div className={`w-28 h-28 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isLeader ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
               {member.full_name.charAt(0).toUpperCase()}
             </div>
           }
@@ -82,11 +82,11 @@ function LeaderModal({ person, role, year, onClose }: {
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Same banner gradient as MemberModal, colour-coded by role */}
-        <div className={`h-20 ${isPresident ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#2F5BEA] to-[#1F2A44]'}`} />
-        <div className="px-6 -mt-10 flex justify-between items-end mb-4">
+        <div className={`h-24 ${isPresident ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#2F5BEA] to-[#1F2A44]'}`} />
+        <div className="px-6 -mt-14 flex justify-between items-end mb-4">
           {photoSrc
-            ? <img src={photoSrc} alt={person.full_name} className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
-            : <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isPresident ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
+            ? <img src={photoSrc} alt={person.full_name} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-md" />
+            : <div className={`w-28 h-28 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-md ${isPresident ? 'bg-amber-500' : 'bg-[#2F5BEA]'}`}>
               {person.full_name.charAt(0).toUpperCase()}
             </div>
           }
@@ -123,8 +123,13 @@ function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
   person: CommitteeMemberDetail | null; role: string; isCurrent: boolean;
   color: string; icon: React.ReactNode; onSelect: () => void;
 }) {
+  const isPresident = color === 'bg-amber-500';
+  const accent = isPresident
+    ? { badge: 'bg-amber-500 text-white', footer: 'bg-amber-50', link: 'text-amber-600', ring: 'ring-amber-200', border: 'border-amber-200' }
+    : { badge: 'bg-[#2F5BEA] text-white', footer: 'bg-blue-50', link: 'text-[#2F5BEA]', ring: 'ring-blue-200', border: 'border-blue-100' };
+
   if (!person) return (
-    <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 flex flex-col items-center justify-center min-h-[260px]">
+    <div className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center min-h-[260px] ${isPresident ? 'border-amber-200 text-amber-300' : 'border-blue-100 text-blue-300'}`}>
       <p className="text-sm">No {role} assigned</p>
     </div>
   );
@@ -132,24 +137,31 @@ function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
   return (
     <button
       onClick={onSelect}
-      className={`w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left flex flex-col ${isCurrent ? 'border-amber-200' : 'border-gray-100'}`}
+      className={`group w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left flex flex-col ${isCurrent ? accent.border : 'border-gray-100'}`}
     >
-      <div className={`${color} px-4 py-2.5 flex items-center gap-2`}>
+      {/* Coloured role header */}
+      <div className={`${color} px-4 py-3 flex items-center gap-2`}>
         {icon}
-        <span className="text-sm font-semibold text-white">{role}</span>
+        <span className="text-sm font-bold text-white tracking-wide">{role}</span>
       </div>
-      <div className="flex flex-col items-center pt-6 pb-5 px-4 flex-1">
-        {photoSrc
-          ? <img src={photoSrc} alt={person.full_name} className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-sm mb-4" />
-          : <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2F5BEA] to-[#1F2A44] flex items-center justify-center text-white text-3xl font-bold border-4 border-gray-100 shadow-sm mb-4">
-            {person.full_name.charAt(0).toUpperCase()}
-          </div>
-        }
-        <p className="font-bold text-[#1F2A44] text-center text-base leading-tight mb-1">{person.full_name}</p>
-        <span className="bg-[#1F2A44] text-white text-xs px-2.5 py-0.5 rounded-full font-medium mb-2">Batch {person.batch}</span>
-        {person.job_title && <p className="text-xs text-gray-500 text-center truncate w-full">{person.job_title}</p>}
-        {person.organisation && <p className="text-xs text-gray-400 text-center truncate w-full">{person.organisation}</p>}
-        <p className="text-xs text-[#2F5BEA] mt-3 opacity-60">View details →</p>
+      {/* Square full-width image */}
+      <div className="w-full px-3 pt-3">
+        <div className={`w-full aspect-square rounded-xl overflow-hidden ring-2 ${accent.ring}`}>
+          {photoSrc
+            ? <img src={photoSrc} alt={person.full_name} className="w-full h-full object-cover" />
+            : <div className={`w-full h-full flex items-center justify-center text-white text-5xl font-bold ${color}`}>
+              {person.full_name.charAt(0).toUpperCase()}
+            </div>
+          }
+        </div>
+      </div>
+      {/* Name section in subtle footer */}
+      <div className={`px-3 pt-3 pb-2 text-left ${accent.footer}`}>
+        <p className="font-bold text-[#1F2A44] text-sm mb-0.5 line-clamp-1">{person.full_name}</p>
+        <p className="text-xs text-gray-600">Batch {person.batch}</p>
+        {person.job_title && (
+          <p className={`text-xs leading-tight line-clamp-1 mt-1 ${accent.link}`}>{person.job_title}</p>
+        )}
       </div>
     </button>
   );
@@ -165,6 +177,7 @@ export default function People() {
   const [committees, setCommittees] = useState<Committee[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [loadingCommittees, setLoadingCommittees] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [batchFilter, setBatchFilter] = useState('');
   const [bloodGroupFilter, setBloodGroupFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,16 +185,92 @@ export default function People() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<{ person: CommitteeMemberDetail; role: string; year: number } | null>(null);
 
+  // Pagination states for infinite scroll
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [hasMoreMembers, setHasMoreMembers] = useState(true);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  const ITEMS_PER_PAGE = 100;
+
+  // Load initial members
   useEffect(() => {
-    api.getMembers({ limit: 500 })
-      .then(res => setMembers(res.data))
+    setLoadingMembers(true);
+    setMembers([]);
+    setCurrentPage(1);
+    api.getMembers({ page: 1, limit: ITEMS_PER_PAGE })
+      .then(res => {
+        setMembers(res.data);
+        setTotalMembers(res.pagination?.total || res.data.length);
+        setHasMoreMembers(res.data.length >= ITEMS_PER_PAGE);
+      })
       .catch(console.error)
       .finally(() => setLoadingMembers(false));
+
     api.getCommittees()
       .then(res => setCommittees(res.data))
       .catch(console.error)
       .finally(() => setLoadingCommittees(false));
   }, []);
+
+  // Load more members when scrolling
+  const loadMoreMembers = useCallback(async () => {
+    if (loadingMore || !hasMoreMembers) return;
+
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const res = await api.getMembers({ page: nextPage, limit: ITEMS_PER_PAGE });
+
+      if (res.data && res.data.length > 0) {
+        setMembers(prev => [...prev, ...res.data]);
+        setCurrentPage(nextPage);
+        setHasMoreMembers(res.data.length >= ITEMS_PER_PAGE);
+        setTotalMembers(res.pagination?.total || totalMembers);
+      } else {
+        setHasMoreMembers(false);
+      }
+    } catch (error) {
+      console.error('Error loading more members:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [currentPage, hasMoreMembers, loadingMore, totalMembers]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMoreMembers && !loadingMore && activeTab === 'members') {
+          loadMoreMembers();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMoreMembers, hasMoreMembers, loadingMore, activeTab]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setMembers([]);
+    setCurrentPage(1);
+    setHasMoreMembers(true);
+    setLoadingMembers(true);
+
+    api.getMembers({ page: 1, limit: ITEMS_PER_PAGE })
+      .then(res => {
+        setMembers(res.data);
+        setTotalMembers(res.pagination?.total || res.data.length);
+        setHasMoreMembers(res.data.length >= ITEMS_PER_PAGE);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingMembers(false));
+  }, [batchFilter, bloodGroupFilter, searchQuery]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -231,7 +320,7 @@ export default function People() {
             className={`px-6 py-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'members' ? 'border-[#2F5BEA] text-[#2F5BEA]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
             <Users className="w-4 h-4" />
             All Members
-            {!loadingMembers && <span className="bg-[#2F5BEA] text-white text-xs px-2 py-0.5 rounded-full">{members.length}</span>}
+            {!loadingMembers && <span className="bg-[#2F5BEA] text-white text-xs px-2 py-0.5 rounded-full">{totalMembers}</span>}
           </button>
           <button onClick={() => setActiveTab('committees')}
             className={`px-6 py-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'committees' ? 'border-[#F39C12] text-[#F39C12]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
@@ -272,12 +361,19 @@ export default function People() {
             </div>
 
             {loadingMembers ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50">
-                    <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
-                    <div className="flex-1 space-y-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-32" /></div>
-                    <Skeleton className="h-5 w-16 rounded-full" />
+              <div className="space-y-10">
+                {[1, 2].map(s => (
+                  <div key={s}>
+                    <Skeleton className="h-6 w-32 mb-5 rounded-full" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-2xl p-4 flex flex-col items-center gap-3 border border-gray-100">
+                          <div className="w-full px-3 pt-3"><Skeleton className="w-full aspect-square rounded-xl" /></div>
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -286,55 +382,103 @@ export default function People() {
                 <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                 <p className="text-gray-400 font-medium">No members found</p>
               </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[#F5F7FA] border-b border-gray-100">
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider w-10">#</th>
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Name</th>
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Batch</th>
-                        <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Email</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {filtered.map((member, idx) => {
-                        const photoSrc = imageUrl(member.photo_url);
-                        const bgColor = member.is_president_or_secretary ? 'bg-amber-500' : member.is_committee_member ? 'bg-[#2F5BEA]' : 'bg-[#1F2A44]';
-                        return (
-                          <tr key={member.id} onClick={() => setSelectedMember(member)}
-                            className={`cursor-pointer transition-colors ${member.is_president_or_secretary ? 'bg-amber-50/50 hover:bg-amber-50' : member.is_committee_member ? 'bg-blue-50/30 hover:bg-blue-50' : 'hover:bg-gray-50'}`}>
-                            <td className="px-5 py-4 text-gray-300 text-xs font-medium">{idx + 1}</td>
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
-                                {photoSrc
-                                  ? <img src={photoSrc} alt={member.full_name} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0 ring-1 ring-gray-100" />
-                                  : <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${bgColor}`}>{member.full_name.charAt(0).toUpperCase()}</div>
-                                }
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-[#1F2A44]">{member.full_name}</span>
+            ) : (() => {
+              // Group filtered members by batch (already sorted asc by batch then name)
+              const byBatch: Record<number, Member[]> = {};
+              for (const m of filtered) {
+                if (!byBatch[m.batch]) byBatch[m.batch] = [];
+                byBatch[m.batch].push(m);
+              }
+              const batchNums = Object.keys(byBatch).map(Number).sort((a, b) => a - b);
+              return (
+                <div className="space-y-10">
+                  {batchNums.map(batch => (
+                    <div key={batch}>
+                      {/* Batch header */}
+                      <div className="flex items-center gap-3 mb-5">
+                        <span className="bg-[#1F2A44] text-white text-sm font-bold px-4 py-1.5 rounded-full">
+                          Batch {batch}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">{byBatch[batch].length} member{byBatch[batch].length !== 1 ? 's' : ''}</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                      {/* Member cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                        {byBatch[batch].map(member => {
+                          const photoSrc = imageUrl(member.photo_url);
+                          const avatarBg = member.is_president_or_secretary
+                            ? 'bg-amber-500'
+                            : member.is_committee_member
+                              ? 'bg-[#2F5BEA]'
+                              : 'bg-[#1F2A44]';
+                          return (
+                            <button
+                              key={member.id}
+                              onClick={() => setSelectedMember(member)}
+                              className="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2F5BEA]/40 hover:-translate-y-1 transition-all duration-200 p-5 flex flex-col items-center text-center cursor-pointer w-full"
+                            >
+                              {/* Photo */}
+                              <div className="relative w-full px-3 pt-3 mb-3">
+                                <div className="relative w-full aspect-square rounded-xl overflow-hidden">
+                                  {photoSrc
+                                    ? <img src={photoSrc} alt={member.full_name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    : <div className={`w-full h-full flex items-center justify-center text-white text-4xl font-bold ${avatarBg}`}>
+                                      {member.full_name.charAt(0).toUpperCase()}
+                                    </div>
+                                  }
                                   {member.is_president_or_secretary && (
-                                    <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full border border-amber-200 font-semibold">
-                                      <Crown className="w-2.5 h-2.5" />
+                                    <span className="absolute top-2 right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center shadow">
+                                      <Crown className="w-3 h-3 text-white" />
+                                    </span>
+                                  )}
+                                  {!member.is_president_or_secretary && member.is_committee_member && (
+                                    <span className="absolute top-2 right-2 w-6 h-6 bg-[#2F5BEA] rounded-full flex items-center justify-center shadow">
+                                      <Star className="w-3 h-3 text-white" />
                                     </span>
                                   )}
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-5 py-4"><span className="bg-[#1F2A44] text-white text-xs px-2.5 py-0.5 rounded-full font-medium">{member.batch}</span></td>
-                            <td className="px-5 py-4 text-gray-400 text-sm hidden md:table-cell">{member.email}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              {/* Name */}
+                              <p className="text-sm font-bold text-[#1F2A44] leading-tight line-clamp-2 mb-1 group-hover:text-[#2F5BEA] transition-colors">
+                                {member.full_name}
+                              </p>
+                              {/* Job title */}
+                              {member.job_title && (
+                                <p className="text-xs text-gray-600 line-clamp-1 leading-tight">
+                                  {member.job_title}
+                                </p>
+                              )}
+                              {/* Organisation */}
+                              {member.organisation && (
+                                <p className="text-[10px] text-gray-500 line-clamp-1 leading-tight mt-0.5">
+                                  {member.organisation}
+                                </p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Load more observer target */}
+                  <div ref={observerTarget} className="py-8">
+                    {loadingMore && (
+                      <div className="flex justify-center items-center gap-3">
+                        <div className="inline-block w-6 h-6 border-3 border-[#2F5BEA] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-gray-500 font-medium">Loading more members...</span>
+                      </div>
+                    )}
+                    {!hasMoreMembers && filtered.length > 0 && (
+                      <p className="text-xs text-gray-400 font-medium text-center">
+                        Showing {filtered.length} of {totalMembers} members
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="px-5 py-3.5 bg-[#F5F7FA] border-t border-gray-100 text-xs text-gray-400 font-medium">
-                  Showing {filtered.length} of {members.length} members
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
@@ -363,7 +507,7 @@ export default function People() {
                         </div>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
-                      <div className="grid grid-cols-2 gap-6 max-w-2xl">
+                      <div className="grid grid-cols-2 gap-6 max-w-3xl">
                         <CommitteeCard
                           person={committee.president} role="President"
                           isCurrent={isCurrent}
