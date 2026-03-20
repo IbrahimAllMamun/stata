@@ -1,4 +1,4 @@
-// src/pages/Login.tsx - Unified login for all roles (member / mod / admin)
+// src/pages/Login.tsx — Unified login for all roles (member / mod / admin)
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Lock, Mail, AlertCircle, KeyRound, CheckCircle } from 'lucide-react';
@@ -116,13 +116,13 @@ export default function Login() {
                   </div>
                   <p className="mt-1.5 text-xs text-amber-600 flex items-start gap-1">
                     <span className="mt-px">📬</span>
-                    <span>First time? Your initial password was sent to your registered email - check your <strong>inbox and spam/junk folder</strong>.</span>
+                    <span>First time? Your initial password was sent to your registered email — check your <strong>inbox and spam/junk folder</strong>.</span>
                   </p>
                 </div>
 
                 <button type="button" onClick={() => setScreen('forgot')}
                   className="text-xs text-[#2F5BEA] hover:underline font-medium">
-                  Forgot password?
+                  Forgot password / First time login?
                 </button>
 
                 <button type="submit" disabled={loading}
