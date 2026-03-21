@@ -111,7 +111,13 @@ const approvePost = async (req, res, next) => {
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
     const updated = await prisma.post.update({
       where: { id: req.params.id },
-      data: { status: 'APPROVED', published: true, created_by: req.admin.id },
+      data: {
+        status: 'APPROVED',
+        published: true,
+        // Do NOT overwrite created_by — it belongs to the original author/submitter.
+        // Setting it here causes a FK violation when the post was submitted by a
+        // non-admin (member or guest), because created_by references the Admin table.
+      },
     });
     res.json({ success: true, message: 'Post approved and published', data: updated });
   } catch (err) { next(err); }
