@@ -1,233 +1,238 @@
 // src/pages/admin/ManageAdmins.tsx
-// Manage admin/mod roles — all from the Member table
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import {
-  Shield, Trash2, KeyRound, Crown, Users, RefreshCw,
-  AlertTriangle, X, CheckCircle, ChevronDown,
+  Shield, Trash2, Crown, Users, RefreshCw,
+  X, CheckCircle, ChevronDown, Search,
+  SortAsc, SortDesc, Filter, AlertTriangle,
 } from 'lucide-react';
 import { adminApi, imageUrl } from '../../lib/api';
 import { useAuth, MemberUser } from '../../contexts/AuthContext';
 
-type StaffMember = MemberUser & { created_at: string };
+type Role = 'member' | 'mod' | 'admin';
+type AnyMember = MemberUser & { created_at: string };
 
-type Modal =
-  | { type: 'role'; member: StaffMember }
-  | { type: 'demote'; member: StaffMember }
-  | null;
-
+// ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({ toast }: { toast: { msg: string; ok: boolean } | null }) {
   if (!toast) return null;
   return (
-    <div className={`fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-lg text-sm font-semibold text-white ${toast.ok ? 'bg-[#2ECC71]' : 'bg-[#E74C3C]'}`}>
+    <div className={`fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-lg text-sm font-semibold text-white transition-all ${toast.ok ? 'bg-[#2ECC71]' : 'bg-[#E74C3C]'}`}>
       {toast.ok ? <CheckCircle className="w-4 h-4" /> : <X className="w-4 h-4" />}
       {toast.msg}
     </div>
   );
 }
 
-function RoleBadge({ role }: { role: string }) {
+// ── Role badge (display only) ─────────────────────────────────────────────────
+function RoleBadge({ role }: { role: Role }) {
   if (role === 'admin')
     return <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs px-2.5 py-0.5 rounded-full font-semibold"><Crown className="w-3 h-3" /> Admin</span>;
-  return <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 border border-purple-200 text-xs px-2.5 py-0.5 rounded-full font-semibold"><Shield className="w-3 h-3" /> Moderator</span>;
+  if (role === 'mod')
+    return <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 border border-purple-200 text-xs px-2.5 py-0.5 rounded-full font-semibold"><Shield className="w-3 h-3" /> Mod</span>;
+  return <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 text-xs px-2.5 py-0.5 rounded-full font-semibold"><Users className="w-3 h-3" /> Member</span>;
 }
 
-// ── Role change modal ─────────────────────────────────────────────────────────
-function RoleModal({ member, onClose, onChanged, showToast }: {
-  member: StaffMember; onClose: () => void;
-  onChanged: () => void; showToast: (m: string, ok?: boolean) => void;
+// ── Inline role dropdown (portal-based to escape overflow-hidden) ─────────────
+function RoleDropdown({ memberId, current, isSelf, onChange }: {
+  memberId: string;
+  current: Role;
+  isSelf: boolean;
+  onChange: (id: string, role: Role) => Promise<void>;
 }) {
-  const [role, setRole] = useState<'member' | 'mod' | 'admin'>(member.role as any);
-  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const submit = async () => {
-    if (role === member.role) { onClose(); return; }
-    setLoading(true);
-    try {
-      await adminApi.updateMemberRole(member.id, role);
-      showToast(`Role updated to ${role}`);
-      onChanged(); onClose();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to update role', false);
-    } finally { setLoading(false); }
+  // Position the portal menu relative to the button, flipping up if near bottom
+  const openMenu = () => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    const menuH = 120; // approx height of 3 options
+    const spaceBelow = window.innerHeight - r.bottom;
+    const showAbove = spaceBelow < menuH + 8;
+    setMenuStyle({
+      position: 'fixed',
+      right: window.innerWidth - r.right,
+      ...(showAbove ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+      width: 160,
+      zIndex: 9999,
+    });
+    setOpen(true);
   };
 
-  const photoSrc = imageUrl(member.photo_url);
+  // Close on outside click or scroll
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    const onScroll = () => setOpen(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('scroll', onScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+
+  const roles: { value: Role; label: string; icon: React.ReactNode; color: string; bg: string }[] = [
+    { value: 'member', label: 'Member', icon: <Users className="w-3.5 h-3.5" />, color: 'text-blue-600', bg: 'hover:bg-blue-50' },
+    { value: 'mod', label: 'Moderator', icon: <Shield className="w-3.5 h-3.5" />, color: 'text-purple-600', bg: 'hover:bg-purple-50' },
+    { value: 'admin', label: 'Admin', icon: <Crown className="w-3.5 h-3.5" />, color: 'text-amber-600', bg: 'hover:bg-amber-50' },
+  ];
+
+  const select = async (role: Role) => {
+    if (role === current) { setOpen(false); return; }
+    setOpen(false);
+    setSaving(true);
+    await onChange(memberId, role);
+    setSaving(false);
+  };
+
+  if (isSelf) return <RoleBadge role={current} />;
+
+  const menu = open ? ReactDOM.createPortal(
+    <div
+      ref={menuRef}
+      style={menuStyle}
+      className="bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+    >
+      {roles.map(r => (
+        <button
+          key={r.value}
+          onClick={() => select(r.value)}
+          className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-semibold transition-colors ${r.color} ${r.bg} ${r.value === current ? 'bg-gray-50' : ''}`}
+        >
+          {r.icon} {r.label}
+          {r.value === current && <CheckCircle className="w-3 h-3 ml-auto opacity-50" />}
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
-      onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-6 py-5 flex items-center justify-between">
-          <div>
-            <h3 className="text-white font-bold text-base">Change Role</h3>
-            <p className="text-blue-200 text-xs mt-0.5">Update access level for this member</p>
-          </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
-            <X className="w-4 h-4 text-white" />
-          </button>
-        </div>
+    <>
+      <button
+        ref={btnRef}
+        onClick={openMenu}
+        disabled={saving}
+        className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:border-[#2F5BEA] hover:text-[#2F5BEA] bg-white transition-colors disabled:opacity-50"
+      >
+        {saving
+          ? <><span className="w-3 h-3 border-2 border-gray-300 border-t-[#2F5BEA] rounded-full animate-spin" /> Saving…</>
+          : <><RoleBadge role={current} /><ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} /></>
+        }
+      </button>
+      {menu}
+    </>
+  );
+}
 
-        {/* Member info */}
-        <div className="flex items-center gap-3 px-6 pt-5 pb-3">
-          {photoSrc
-            ? <img src={photoSrc} alt={member.full_name} className="w-10 h-10 rounded-xl object-cover border border-gray-100" />
-            : <div className="w-10 h-10 rounded-xl bg-[#2F5BEA] flex items-center justify-center text-white font-bold">{member.full_name.charAt(0)}</div>
-          }
-          <div>
-            <p className="font-semibold text-[#1F2A44] text-sm">{member.full_name}</p>
-            <p className="text-xs text-gray-400">{member.email} · Batch {member.batch}</p>
-          </div>
-        </div>
+// ── Delete confirm button (two-click safety) ──────────────────────────────────
+function DeleteButton({ memberId, memberName, onDelete }: {
+  memberId: string;
+  memberName: string;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [confirm, setConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-        <div className="px-6 pb-4">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Select Role</label>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              { value: 'member', label: 'Member', icon: <Users className="w-4 h-4" />, color: 'border-blue-200 bg-blue-50', active: 'border-[#2F5BEA] bg-blue-50', text: 'text-[#2F5BEA]', desc: 'Regular member access' },
-              { value: 'mod', label: 'Moderator', icon: <Shield className="w-4 h-4" />, color: 'border-gray-200', active: 'border-purple-400 bg-purple-50', text: 'text-purple-700', desc: 'Manage content' },
-              { value: 'admin', label: 'Admin', icon: <Crown className="w-4 h-4" />, color: 'border-gray-200', active: 'border-amber-400 bg-amber-50', text: 'text-amber-700', desc: 'Full access' },
-            ] as const).map(opt => (
-              <button key={opt.value} onClick={() => setRole(opt.value)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${role === opt.value ? opt.active : 'border-gray-200 hover:border-gray-300'}`}>
-                <span className={role === opt.value ? opt.text : 'text-gray-400'}>{opt.icon}</span>
-                <span className={`text-xs font-bold ${role === opt.value ? opt.text : 'text-gray-500'}`}>{opt.label}</span>
-                <span className="text-[10px] text-gray-400 text-center leading-tight">{opt.desc}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+  const handleFirst = () => {
+    setConfirm(true);
+    timerRef.current = setTimeout(() => setConfirm(false), 3000);
+  };
 
-        <div className="px-6 pb-6 flex gap-3">
-          <button onClick={submit} disabled={loading || role === member.role}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-colors">
-            {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <KeyRound className="w-4 h-4" />}
-            {loading ? 'Saving…' : 'Save Role'}
-          </button>
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+  const handleConfirm = async () => {
+    clearTimeout(timerRef.current);
+    setDeleting(true);
+    await onDelete(memberId);
+    setDeleting(false);
+    setConfirm(false);
+  };
+
+  if (deleting)
+    return <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />;
+
+  if (confirm)
+    return (
+      <button
+        onClick={handleConfirm}
+        className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
+        title={`Confirm permanent delete of ${memberName}`}
+      >
+        <AlertTriangle className="w-3 h-3" /> Confirm
+      </button>
+    );
+
+  return (
+    <button
+      onClick={handleFirst}
+      className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+      title={`Delete ${memberName}`}
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  );
+}
+
+// ── Shared member row ─────────────────────────────────────────────────────────
+function MemberRow({ member, currentId, onRoleChange, onDelete }: {
+  member: AnyMember;
+  currentId: string;
+  onRoleChange: (id: string, role: Role) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const isSelf = member.id === currentId;
+  const photo = imageUrl(member.photo_url);
+  const avatarBg =
+    member.role === 'admin' ? 'bg-amber-100 text-amber-700'
+      : member.role === 'mod' ? 'bg-purple-100 text-purple-700'
+        : 'bg-[#2F5BEA] text-white';
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
+      {photo
+        ? <img src={photo} alt={member.full_name} className="w-9 h-9 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
+        : <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarBg}`}>
+          {member.full_name.charAt(0).toUpperCase()}
         </div>
+      }
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold text-[#1F2A44] text-sm truncate">{member.full_name}</span>
+          {isSelf && <span className="text-[10px] bg-[#2F5BEA]/10 text-[#2F5BEA] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">You</span>}
+        </div>
+        <p className="text-xs text-gray-400 truncate">{member.email} · Batch {member.batch}</p>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <RoleDropdown memberId={member.id} current={(member.role || 'member') as Role} isSelf={isSelf} onChange={onRoleChange} />
+        {!isSelf && <DeleteButton memberId={member.id} memberName={member.full_name} onDelete={onDelete} />}
       </div>
     </div>
   );
 }
 
-// ── Promote member modal (dropdown) ──────────────────────────────────────────
-function PromoteModal({ onClose, onPromoted, showToast }: {
-  onClose: () => void; onPromoted: () => void;
-  showToast: (m: string, ok?: boolean) => void;
+// ── Section wrapper ───────────────────────────────────────────────────────────
+function Section({ icon, title, subtitle, children }: {
+  icon: React.ReactNode; title: string; subtitle: string; children: React.ReactNode;
 }) {
-  const [members, setMembers] = useState<any[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
-  const [selectedId, setSelectedId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'mod' | 'admin'>('mod');
-  const [promoting, setPromoting] = useState(false);
-
-  useEffect(() => {
-    adminApi.getMembersByStatus('APPROVED').then(res => {
-      // Only regular members (not already staff), sorted by batch asc then name asc
-      const eligible = (res.data || [])
-        .filter((m: any) => !m.role || m.role === 'member')
-        .sort((a: any, b: any) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name));
-      setMembers(eligible);
-    }).catch(() => showToast('Failed to load members', false))
-      .finally(() => setLoadingMembers(false));
-  }, []);
-
-  const promote = async () => {
-    if (!selectedId) return;
-    setPromoting(true);
-    try {
-      await adminApi.updateMemberRole(selectedId, selectedRole);
-      showToast(`Promoted to ${selectedRole === 'mod' ? 'Moderator' : 'Admin'}`);
-      onPromoted(); onClose();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to promote', false);
-    } finally { setPromoting(false); }
-  };
-
-  const selectedMember = members.find(m => m.id === selectedId);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
-      onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-6 py-5 flex items-center justify-between">
-          <div>
-            <h3 className="text-white font-bold text-base">Promote a Member</h3>
-            <p className="text-blue-200 text-xs mt-0.5">Select a member and assign a role</p>
-          </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
-            <X className="w-4 h-4 text-white" />
-          </button>
-        </div>
-        <div className="p-6 space-y-5">
-
-          {/* Role picker */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Role to assign</label>
-            <div className="grid grid-cols-2 gap-3">
-              {(['mod', 'admin'] as const).map(r => (
-                <button key={r} onClick={() => setSelectedRole(r)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${selectedRole === r ? (r === 'admin' ? 'border-amber-400 bg-amber-50' : 'border-purple-400 bg-purple-50') : 'border-gray-200 hover:border-gray-300'}`}>
-                  {r === 'admin'
-                    ? <Crown className={`w-4 h-4 ${selectedRole === r ? 'text-amber-500' : 'text-gray-400'}`} />
-                    : <Shield className={`w-4 h-4 ${selectedRole === r ? 'text-purple-500' : 'text-gray-400'}`} />}
-                  <span className={`text-sm font-semibold ${selectedRole === r ? (r === 'admin' ? 'text-amber-700' : 'text-purple-700') : 'text-gray-500'}`}>
-                    {r === 'mod' ? 'Moderator' : 'Admin'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Member dropdown */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-              Select Member
-              <span className="ml-1 font-normal text-gray-400 normal-case">(sorted by batch, then name)</span>
-            </label>
-            {loadingMembers ? (
-              <div className="flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-400">
-                <div className="w-4 h-4 border-2 border-gray-300 border-t-[#2F5BEA] rounded-full animate-spin" /> Loading members…
-              </div>
-            ) : (
-              <select value={selectedId} onChange={e => setSelectedId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white appearance-none">
-                <option value="">— Choose a member —</option>
-                {members.map(m => (
-                  <option key={m.id} value={m.id}>
-                    Batch {m.batch} · {m.full_name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Selected member preview */}
-          {selectedMember && (
-            <div className="flex items-center gap-3 p-3 bg-[#F5F7FA] rounded-xl">
-              {imageUrl(selectedMember.photo_url)
-                ? <img src={imageUrl(selectedMember.photo_url)!} alt={selectedMember.full_name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                : <div className="w-10 h-10 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{selectedMember.full_name.charAt(0)}</div>
-              }
-              <div className="min-w-0">
-                <p className="font-semibold text-[#1F2A44] text-sm truncate">{selectedMember.full_name}</p>
-                <p className="text-xs text-gray-400 truncate">{selectedMember.email} · Batch {selectedMember.batch}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-1">
-            <button onClick={promote} disabled={!selectedId || promoting}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-colors">
-              {promoting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Crown className="w-4 h-4" />}
-              {promoting ? 'Promoting…' : 'Promote'}
-            </button>
-            <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-          </div>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">{icon}</div>
+        <div>
+          <h2 className="text-sm font-bold text-[#1F2A44]">{title}</h2>
+          <p className="text-xs text-gray-400">{subtitle}</p>
         </div>
       </div>
+      {children}
     </div>
   );
 }
@@ -235,27 +240,63 @@ function PromoteModal({ onClose, onPromoted, showToast }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ManageAdmins() {
   const { isFullAdmin, member: currentMember, loading: authLoading } = useAuth();
-  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [allMembers, setAllMembers] = useState<AnyMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<Modal | { type: 'promote' } | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberBatch, setMemberBatch] = useState('');
+  const [memberSort, setMemberSort] = useState<'asc' | 'desc'>('asc');
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);
   }, []);
 
-  const load = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminApi.listStaff();
-      setStaff(res.data as StaffMember[]);
+      let page = 1;
+      let all: AnyMember[] = [];
+      while (true) {
+        const res = await adminApi.getMembersByStatus('APPROVED', { limit: 100, page });
+        all = [...all, ...(res.data || [])];
+        if (!res.pagination?.hasNext) break;
+        page++;
+      }
+      setAllMembers(all as AnyMember[]);
     } catch (err: any) {
-      showToast(err.message || 'Failed to load staff', false);
+      showToast(err.message || 'Failed to load members', false);
     } finally { setLoading(false); }
   }, [showToast]);
 
-  useEffect(() => { if (!authLoading && isFullAdmin) load(); }, [authLoading, isFullAdmin, load]);
+  useEffect(() => { if (!authLoading && isFullAdmin) loadAll(); }, [authLoading, isFullAdmin, loadAll]);
+
+  // Optimistic role update — update UI immediately, revert on error
+  const handleRoleChange = useCallback(async (id: string, role: Role) => {
+    const prev = allMembers.find(m => m.id === id)?.role as Role | undefined;
+    setAllMembers(ms => ms.map(m => m.id === id ? { ...m, role } : m));
+    try {
+      await adminApi.updateMemberRole(id, role);
+      showToast(`Role updated to ${role}`);
+    } catch (err: any) {
+      if (prev) setAllMembers(ms => ms.map(m => m.id === id ? { ...m, role: prev } : m));
+      showToast(err.message || 'Failed to update role', false);
+    }
+  }, [allMembers, showToast]);
+
+  // Optimistic delete
+  const handleDelete = useCallback(async (id: string) => {
+    const backup = allMembers.find(m => m.id === id);
+    setAllMembers(ms => ms.filter(m => m.id !== id));
+    try {
+      await adminApi.deleteMember(id);
+      showToast('Member permanently deleted');
+    } catch (err: any) {
+      if (backup) setAllMembers(ms => [...ms, backup]);
+      showToast(err.message || 'Failed to delete', false);
+    }
+  }, [allMembers, showToast]);
 
   if (!isFullAdmin) return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[#F5F7FA]">
@@ -266,8 +307,32 @@ export default function ManageAdmins() {
     </div>
   );
 
-  const admins = staff.filter(s => s.role === 'admin');
-  const mods = staff.filter(s => s.role === 'mod');
+  const admins = allMembers.filter(m => m.role === 'admin');
+  const mods = allMembers.filter(m => m.role === 'mod');
+  const members = allMembers.filter(m => !m.role || m.role === 'member');
+
+  const memberBatches = useMemo(
+    () => [...new Set(members.map(m => m.batch))].sort((a, b) => a - b),
+    [members]
+  );
+
+  const visibleMembers = useMemo(() => {
+    let list = [...members];
+    if (memberBatch) list = list.filter(m => String(m.batch) === memberBatch);
+    if (memberSearch.trim()) {
+      const q = memberSearch.toLowerCase();
+      list = list.filter(m =>
+        m.full_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => {
+      const cmp = a.full_name.localeCompare(b.full_name);
+      return memberSort === 'asc' ? cmp : -cmp;
+    });
+    return list;
+  }, [members, memberBatch, memberSearch, memberSort]);
+
+  const currentId = currentMember?.id || '';
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] py-8 px-4">
@@ -278,17 +343,14 @@ export default function ManageAdmins() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#1F2A44]">Staff Management</h1>
-            <p className="text-gray-400 text-sm mt-0.5">{admins.length} admin{admins.length !== 1 ? 's' : ''} · {mods.length} moderator{mods.length !== 1 ? 's' : ''}</p>
+            <p className="text-gray-400 text-sm mt-0.5">
+              {admins.length} admin{admins.length !== 1 ? 's' : ''} · {mods.length} moderator{mods.length !== 1 ? 's' : ''} · {members.length} member{members.length !== 1 ? 's' : ''}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={load} disabled={loading} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-[#2F5BEA] border border-gray-200 rounded-xl px-3 py-2 bg-white transition-colors">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <button onClick={() => setModal({ type: 'promote' })}
-              className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm">
-              <Crown className="w-4 h-4" /> Promote Member
-            </button>
-          </div>
+          <button onClick={loadAll} disabled={loading}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#2F5BEA] border border-gray-200 rounded-xl px-3 py-2 bg-white transition-colors shadow-sm">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
         </div>
 
         {/* Info banner */}
@@ -297,7 +359,7 @@ export default function ManageAdmins() {
           <div className="text-sm text-blue-700 space-y-1">
             <p><span className="font-semibold">Admins</span> have full access — members, posts, events, gallery, committee, email campaigns, and staff management.</p>
             <p><span className="font-semibold">Moderators</span> can manage posts, events, members, gallery, and messages — but cannot access settings or staff management.</p>
-            <p className="text-xs text-blue-500 mt-1">Roles are assigned per member. Changing a role to "Member" removes their staff access immediately.</p>
+            <p className="text-xs text-blue-500 mt-1">Use the role dropdown on any row to change roles instantly. Changes take effect immediately. The <span className="font-semibold">delete button</span> permanently removes a member from the database.</p>
           </div>
         </div>
 
@@ -307,98 +369,129 @@ export default function ManageAdmins() {
           </div>
         ) : (
           <>
-            {/* Admins */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
-                  <Crown className="w-4 h-4 text-amber-600" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-[#1F2A44]">Admins</h2>
-                  <p className="text-xs text-gray-400">Full system access</p>
-                </div>
-              </div>
-              {admins.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">No admins found</p>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {admins.map(s => (
-                    <StaffRow key={s.id} member={s} currentId={currentMember?.id || ''}
-                      onChangeRole={() => setModal({ type: 'role', member: s })} />
+            {/* ── Admins ── */}
+            <Section
+              icon={<Crown className="w-4 h-4 text-amber-600" />}
+              title={`Admins (${admins.length})`}
+              subtitle="Full system access"
+            >
+              {admins.length === 0
+                ? <p className="text-gray-400 text-sm text-center py-8">No admins — promote a member below</p>
+                : <div className="divide-y divide-gray-50">
+                  {admins.map(m => (
+                    <MemberRow key={m.id} member={m} currentId={currentId}
+                      onRoleChange={handleRoleChange} onDelete={handleDelete} />
                   ))}
                 </div>
-              )}
-            </div>
+              }
+            </Section>
 
-            {/* Moderators */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Users className="w-4 h-4 text-purple-600" />
+            {/* ── Moderators ── */}
+            <Section
+              icon={<Shield className="w-4 h-4 text-purple-600" />}
+              title={`Moderators (${mods.length})`}
+              subtitle="Limited access"
+            >
+              {mods.length === 0
+                ? <p className="text-gray-400 text-sm text-center py-8">No moderators — promote a member below</p>
+                : <div className="divide-y divide-gray-50">
+                  {mods.map(m => (
+                    <MemberRow key={m.id} member={m} currentId={currentId}
+                      onRoleChange={handleRoleChange} onDelete={handleDelete} />
+                  ))}
                 </div>
-                <div>
-                  <h2 className="text-sm font-bold text-[#1F2A44]">Moderators</h2>
-                  <p className="text-xs text-gray-400">Limited access</p>
+              }
+            </Section>
+
+            {/* ── All Members ── */}
+            <Section
+              icon={<Users className="w-4 h-4 text-[#2F5BEA]" />}
+              title={`Members (${members.length})`}
+              subtitle="Regular access — use the role dropdown to promote any member"
+            >
+              {/* Toolbar */}
+              <div className="px-5 py-3 border-b border-gray-50 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by name or email…"
+                    value={memberSearch}
+                    onChange={e => setMemberSearch(e.target.value)}
+                    className="w-full pl-8 pr-8 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none"
+                  />
+                  {memberSearch && (
+                    <button onClick={() => setMemberSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
-              </div>
-              {mods.length === 0 ? (
-                <div className="text-center py-10">
-                  <Shield className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No moderators yet</p>
-                  <button onClick={() => setModal({ type: 'promote' })} className="mt-3 text-[#2F5BEA] text-sm font-semibold hover:underline">
-                    + Promote a member
+
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                    <select
+                      value={memberBatch}
+                      onChange={e => setMemberBatch(e.target.value)}
+                      className="w-full appearance-none pl-7 pr-6 py-2 border border-gray-200 rounded-xl text-xs font-medium text-gray-600 focus:ring-2 focus:ring-[#2F5BEA] outline-none bg-white"
+                    >
+                      <option value="">All Batches</option>
+                      {memberBatches.map(b => <option key={b} value={String(b)}>Batch {b}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                  </div>
+
+                  <button
+                    onClick={() => setMemberSort(d => d === 'asc' ? 'desc' : 'asc')}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:border-[#2F5BEA] hover:text-[#2F5BEA] bg-white transition-colors whitespace-nowrap"
+                  >
+                    {memberSort === 'asc'
+                      ? <><SortAsc className="w-3.5 h-3.5" /> A → Z</>
+                      : <><SortDesc className="w-3.5 h-3.5" /> Z → A</>}
                   </button>
                 </div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {mods.map(s => (
-                    <StaffRow key={s.id} member={s} currentId={currentMember?.id || ''}
-                      onChangeRole={() => setModal({ type: 'role', member: s })} />
-                  ))}
+
+                {(memberBatch || memberSearch) && (
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[10px] text-gray-400 font-medium">Filtered:</span>
+                    {memberBatch && (
+                      <span className="flex items-center gap-1 bg-[#2F5BEA]/10 text-[#2F5BEA] text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                        Batch {memberBatch}
+                        <button onClick={() => setMemberBatch('')}><X className="w-2.5 h-2.5" /></button>
+                      </span>
+                    )}
+                    {memberSearch && (
+                      <span className="flex items-center gap-1 bg-[#2F5BEA]/10 text-[#2F5BEA] text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                        "{memberSearch}"
+                        <button onClick={() => setMemberSearch('')}><X className="w-2.5 h-2.5" /></button>
+                      </span>
+                    )}
+                    <button onClick={() => { setMemberBatch(''); setMemberSearch(''); }} className="text-[11px] text-gray-400 hover:text-gray-600 underline">Clear all</button>
+                  </div>
+                )}
+              </div>
+
+              {visibleMembers.length === 0
+                ? <div className="py-10 text-center text-gray-400">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No members match your filters</p>
                 </div>
-              )}
-            </div>
+                : <>
+                  <div className="divide-y divide-gray-50">
+                    {visibleMembers.map(m => (
+                      <MemberRow key={m.id} member={m} currentId={currentId}
+                        onRoleChange={handleRoleChange} onDelete={handleDelete} />
+                    ))}
+                  </div>
+                  <div className="px-5 py-2.5 bg-[#F5F7FA] border-t border-gray-100 text-xs text-gray-400 font-medium">
+                    {visibleMembers.length} of {members.length} member{members.length !== 1 ? 's' : ''} shown
+                  </div>
+                </>
+              }
+            </Section>
           </>
         )}
       </div>
-
-      {modal?.type === 'role' && (
-        <RoleModal member={(modal as any).member} onClose={() => setModal(null)} onChanged={load} showToast={showToast} />
-      )}
-      {modal?.type === 'promote' && (
-        <PromoteModal onClose={() => setModal(null)} onPromoted={load} showToast={showToast} />
-      )}
-    </div>
-  );
-}
-
-function StaffRow({ member, currentId, onChangeRole }: {
-  member: StaffMember; currentId: string; onChangeRole: () => void;
-}) {
-  const isSelf = member.id === currentId;
-  const photoSrc = imageUrl(member.photo_url);
-  return (
-    <div className="flex items-center gap-4 px-6 py-4">
-      {photoSrc
-        ? <img src={photoSrc} alt={member.full_name} className="w-10 h-10 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
-        : <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${member.role === 'admin' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
-          {member.full_name.charAt(0).toUpperCase()}
-        </div>
-      }
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-[#1F2A44] text-sm">{member.full_name}</span>
-          <RoleBadge role={member.role} />
-          {isSelf && <span className="text-xs bg-[#2F5BEA]/10 text-[#2F5BEA] px-2 py-0.5 rounded-full font-medium">You</span>}
-        </div>
-        <p className="text-xs text-gray-400 mt-0.5">{member.email} · Batch {member.batch}</p>
-      </div>
-      {!isSelf && (
-        <button onClick={onChangeRole} title="Change role"
-          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#2F5BEA] border border-gray-200 hover:border-[#2F5BEA] px-3 py-1.5 rounded-lg transition-colors">
-          <ChevronDown className="w-3.5 h-3.5" /> Role
-        </button>
-      )}
     </div>
   );
 }

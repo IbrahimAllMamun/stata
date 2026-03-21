@@ -243,7 +243,18 @@ export default function ManageMembers() {
 
     const loadMembers = async (status: MemberStatus) => {
         setLoading(true);
-        try { const res = await adminApi.getMembersByStatus(status); setMembers(res.data); }
+        try {
+            // Fetch all pages (backend caps at 100/page)
+            let page = 1;
+            let all: RawMember[] = [];
+            while (true) {
+                const res = await adminApi.getMembersByStatus(status, { limit: 100, page });
+                all = [...all, ...(res.data || [])];
+                if (!res.pagination?.hasNext) break;
+                page++;
+            }
+            setMembers(all);
+        }
         catch { showToast('Failed to load members', false); }
         finally { setLoading(false); }
     };

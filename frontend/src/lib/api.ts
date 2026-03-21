@@ -448,8 +448,12 @@ export const adminApi = {
   assignCommitteeMember: (data: { committee_id: string; member_id: string; position: string }) =>
     request('/admin/committee/assign', { method: 'POST', body: data }),
 
-  getMembersByStatus: (status: string) =>
-    request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?status=${status}`),
+  getMembersByStatus: (status: string, params?: { limit?: number; page?: number }) => {
+    const qs = new URLSearchParams({ status });
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.page) qs.set('page', String(params.page));
+    return request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?${qs}`);
+  },
 
   getMembers: (params?: { limit?: number; search?: string }) => {
     const qs = new URLSearchParams();
