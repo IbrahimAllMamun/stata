@@ -1,40 +1,49 @@
 // src/components/aspl/RegistrationForm.tsx
-import { useState, useRef } from 'react';
-import { X, Upload, CheckCircle2, ChevronDown, User, Search, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
-import { api, asplApi, AsplSeason, AsplRegistration, imageUrl } from '../../lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { X, Upload, CheckCircle2, ChevronDown, User, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
+import { asplApi, AsplSeason, AsplRegistration, imageUrl } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Props {
   season: AsplSeason;
   onClose: () => void;
 }
 
-type Step = 'email' | 'form' | 'not-found' | 'success';
+type Step = 'form' | 'success';
 
 const INPUT = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30 transition-all';
 const LABEL = 'block text-[11px] tracking-widest text-white/40 mb-1.5 uppercase';
 
-interface FoundMember {
-  id: string; full_name: string; email: string; batch: number;
-  phone_number: string; job_title?: string | null;
-  organisation?: string | null; status: string;
-  photo_url?: string | null;
-}
-
 export default function RegistrationForm({ season, onClose }: Props) {
-  const [step, setStep] = useState<Step>('email');
+  const { member: loggedInMember, isMember } = useAuth();
 
-  // Email lookup
-  const [email, setEmail] = useState('');
-  const [looking, setLooking] = useState(false);
-  const [lookupErr, setLookupErr] = useState('');
-  const [member, setMember] = useState<FoundMember | null>(null);
+  // If not logged in, show login prompt
+  if (!isMember || !loggedInMember) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: 'rgba(6,12,26,0.85)', backdropFilter: 'blur(8px)' }}
+        onClick={onClose}>
+        <div className="w-full max-w-sm rounded-2xl p-8 text-center"
+          style={{ background: 'var(--pitch-mid)', border: '1px solid rgba(255,255,255,0.1)' }}
+          onClick={e => e.stopPropagation()}>
+          <div className="w-14 h-14 rounded-full bg-[#2F5BEA]/20 flex items-center justify-center mx-auto mb-4">
+            <UserPlus className="w-7 h-7 text-[#2F5BEA]" />
+          </div>
+          <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>Sign In Required</h3>
+          <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>You must be a logged-in STATA member to register for ASPL.</p>
+          <div className="flex gap-3">
+            <a href="/login" className="flex-1 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold transition-colors text-center">Sign In</a>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors text-center" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)' }}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // Whether this member already has a registration this season
-  const [existingReg, setExistingReg] = useState<AsplRegistration | null>(null);
-  // Whether the member already has a profile photo
-  const [memberHasPhoto, setMemberHasPhoto] = useState(false);
+  // Logged-in member flow
+  const [step, setStep] = useState<Step>('form');
 
-  // Photo + position
+  // Check existing reg on mount for logged-in members
   const [position, setPosition] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -43,72 +52,45 @@ export default function RegistrationForm({ season, onClose }: Props) {
   const [result, setResult] = useState<{ message: string; registration: AsplRegistration; member: { full_name: string; batch: number }; updated: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Member info from logged-in user
+  const [existingReg, setExistingReg] = useState<AsplRegistration | null>(null);
+
   const positions = asplApi.getPositions(season.sport);
+
+  // Auto-load existing registration and member photo
+  useEffect(() => {
+    if (!loggedInMember) return;
+
+    // Set photo preview from profile
+    const src = imageUrl(loggedInMember.photo_url);
+    if (src) setPhotoPreview(src);
+
+    // Check existing registration
+    asplApi.lookupRegistration(loggedInMember.email, season.id).then(res => {
+      if (res.found && res.data) {
+        setExistingReg(res.data);
+        if (res.data.playing_position) setPosition(res.data.playing_position);
+      }
+    }).catch(() => { });
+  }, [loggedInMember]);
   const isUpdate = !!existingReg;
 
-  const resetToEmail = () => {
-    setStep('email');
-    setMember(null);
-    setExistingReg(null);
-    setMemberHasPhoto(false);
+  const resetForm = () => {
     setPosition('');
     setPhoto(null);
-    setPhotoPreview(null);
+    if (loggedInMember?.photo_url) {
+      const src = imageUrl(loggedInMember.photo_url);
+      if (src) setPhotoPreview(src);
+    } else {
+      setPhotoPreview(null);
+    }
     setFormError('');
-    setLookupErr('');
-  };
-
-  // ── Step 1: look up email ──────────────────────────────────────────────────
-  const handleLookup = async () => {
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) { setLookupErr('Please enter your email address.'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { setLookupErr('Please enter a valid email address.'); return; }
-    setLooking(true); setLookupErr('');
-    try {
-      const res = await api.lookupMember(trimmed);
-
-      // Not a STATA member → show not-found step
-      if (res.notFound || !res.data) {
-        setStep('not-found');
-        return;
-      }
-
-      const m = res.data;
-      if (m.status === 'ARCHIVED') {
-        setLookupErr('Your account has been archived. Please contact an admin.');
-        return;
-      }
-      setMember(m);
-      // Track if member already has a photo
-      setMemberHasPhoto(!!m.photo_url);
-
-      // Pre-fill photo preview from member's profile photo
-      const memberPhotoSrc = imageUrl(m.photo_url);
-      if (memberPhotoSrc) setPhotoPreview(memberPhotoSrc);
-
-      // Check if already registered for this season
-      let existing: AsplRegistration | null = null;
-      try {
-        const regRes = await asplApi.lookupRegistration(trimmed, season.id);
-        if (regRes.found && regRes.data) {
-          existing = regRes.data;
-          if (existing?.playing_position) setPosition(existing.playing_position);
-        }
-      } catch {
-        // No existing registration - that's fine
-        existing = null;
-      }
-      setExistingReg(existing);
-      setStep('form');
-    } catch (err: unknown) {
-      setLookupErr((err instanceof Error ? err.message : '') || 'Something went wrong. Please try again.');
-    } finally { setLooking(false); }
   };
 
   // ── Step 2: submit ─────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!position) { setFormError('Please select your playing position.'); return; }
-    if (!memberHasPhoto && !photo) {
+    if (!loggedInMember?.photo_url && !photo) {
       setFormError('A profile photo is required for ASPL registration. Please upload a photo.');
       return;
     }
@@ -116,7 +98,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
     try {
       const fd = new FormData();
       fd.append('season_id', String(season.id));
-      fd.append('email', member!.email);
+      fd.append('email', loggedInMember!.email);
       fd.append('playing_position', position);
       if (photo) fd.append('photo', photo);
 
@@ -124,10 +106,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
       if (isUpdate) {
         // Use update endpoint - only sends position/photo changes
         res = await asplApi.updatePlayerDetails(fd);
-        setResult({ ...res, member: { full_name: member!.full_name, batch: member!.batch }, updated: true });
+        setResult({ ...res, member: { full_name: loggedInMember!.full_name, batch: loggedInMember!.batch }, updated: true });
       } else {
         res = await asplApi.register(fd);
-        setResult({ ...res, updated: false });
+        setResult({ ...res, member: { full_name: loggedInMember!.full_name, batch: loggedInMember!.batch }, updated: false });
       }
       setStep('success');
     } catch (err: unknown) {
@@ -154,10 +136,8 @@ export default function RegistrationForm({ season, onClose }: Props) {
               {season.name} · {season.sport}
             </p>
             <h2 className="text-lg font-bold text-white" style={{ fontFamily: 'fredoka' }}>
-              {step === 'email' ? 'Player Registration' :
-                step === 'form' ? (isUpdate ? 'Update Registration' : 'Confirm & Register') :
-                  step === 'not-found' ? 'Member Not Found' :
-                    isUpdate ? 'Registration Updated' : 'Registration Received'}
+              {step === 'form' ? (isUpdate ? 'Update Registration' : 'Confirm & Register') :
+                isUpdate ? 'Registration Updated' : 'Registration Received'}
             </h2>
           </div>
           <button onClick={onClose}
@@ -167,47 +147,8 @@ export default function RegistrationForm({ season, onClose }: Props) {
           </button>
         </div>
 
-        {/* ── Step 1: Email lookup ─────────────────────────────────────────── */}
-        {step === 'email' && (
-          <div className="px-6 py-6 space-y-5">
-            <div className="rounded-xl px-4 py-3 text-xs leading-relaxed"
-              style={{ background: 'rgba(47,91,234,0.12)', border: '1px solid rgba(47,91,234,0.2)', color: 'rgba(200,215,255,0.7)' }}>
-              Enter your STATA email to register or update your existing registration.
-            </div>
-
-            {lookupErr && (
-              <div className="rounded-xl px-4 py-3 text-xs flex items-start gap-2"
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5' }}>
-                <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />{lookupErr}
-              </div>
-            )}
-
-            <div>
-              <label className={LABEL}>STATA Member Email *</label>
-              <input type="email" value={email}
-                onChange={e => { setEmail(e.target.value); setLookupErr(''); }}
-                onKeyDown={e => e.key === 'Enter' && handleLookup()}
-                placeholder="example@isrt.ac.bd" className={INPUT} autoFocus />
-            </div>
-
-            <button onClick={handleLookup} disabled={looking}
-              className="w-full py-3.5 rounded-xl text-sm font-bold tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ background: 'var(--accent)', color: 'var(--pitch)', fontFamily: 'kanit' }}>
-              {looking
-                ? <><div className="w-4 h-4 border-2 border-[var(--pitch)]/40 border-t-[var(--pitch)] rounded-full animate-spin" /> LOOKING UP…</>
-                : <><Search className="w-4 h-4" /> CONTINUE</>}
-            </button>
-
-            <p className="text-[10px] text-center text-white/25 pb-1">
-              Not a STATA member yet?{' '}
-              <a href="/register" target="_blank" rel="noopener noreferrer"
-                className="underline text-white/50 hover:text-white/80">Register here first</a>
-            </p>
-          </div>
-        )}
-
-        {/* ── Step 2: Form (register or update) ───────────────────────────── */}
-        {step === 'form' && member && (
+        {/* ── Step 1: Form (register or update) ───────────────────────────── */}
+        {step === 'form' && (
           <div className="px-6 py-5 space-y-4">
 
             {/* Existing registration banner */}
@@ -225,30 +166,22 @@ export default function RegistrationForm({ season, onClose }: Props) {
               <div className="px-4 py-2.5 flex items-center gap-2"
                 style={{ background: 'rgba(47,91,234,0.15)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="w-6 h-6 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                  {member.full_name.charAt(0).toUpperCase()}
+                  {loggedInMember!.full_name.charAt(0).toUpperCase()}
                 </div>
                 <span className="text-xs font-bold text-white/80 tracking-wide" style={{ fontFamily: 'kanit' }}>
                   STATA MEMBER VERIFIED
                 </span>
-                <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${member.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                  {member.status}
+                <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${loggedInMember!.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                  {loggedInMember!.status}
                 </span>
               </div>
               <div className="px-4 py-3 space-y-2.5">
-                <InfoRow icon={<User className="w-3.5 h-3.5" />} label="Name" value={member.full_name} />
-                <InfoRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={member.email} />
-                <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Batch" value={`Batch ${member.batch}`} />
-                <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={member.phone_number} />
-                {member.job_title && <InfoRow icon={<Briefcase className="w-3.5 h-3.5" />} label="Title" value={member.job_title} />}
-                {member.organisation && <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Org" value={member.organisation} />}
-              </div>
-              <div className="px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p className="text-[10px] text-white/25">
-                  Wrong account?{' '}
-                  <button onClick={resetToEmail} className="underline text-white/40 hover:text-white/60">
-                    Use a different email
-                  </button>
-                </p>
+                <InfoRow icon={<User className="w-3.5 h-3.5" />} label="Name" value={loggedInMember!.full_name} />
+                <InfoRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={loggedInMember!.email} />
+                <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Batch" value={`Batch ${loggedInMember!.batch}`} />
+                <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={loggedInMember!.phone_number || '-'} />
+                {loggedInMember!.job_title && <InfoRow icon={<Briefcase className="w-3.5 h-3.5" />} label="Title" value={loggedInMember!.job_title} />}
+                {loggedInMember!.organisation && <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Org" value={loggedInMember!.organisation} />}
               </div>
             </div>
 
@@ -263,7 +196,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
             <div>
               <label className={LABEL}>
                 Profile Photo{' '}
-                {memberHasPhoto
+                {loggedInMember?.photo_url
                   ? <span className="text-white/20 normal-case">· shown during auction · current photo loaded</span>
                   : <span className="text-red-400/80 normal-case">· required for ASPL registration</span>}
               </label>
@@ -284,10 +217,10 @@ export default function RegistrationForm({ season, onClose }: Props) {
                 <p className="text-xs text-white/30 leading-relaxed">
                   JPG, PNG, or WebP<br />
                   Square crop works best
-                  {memberHasPhoto && !photo && (
+                  {loggedInMember?.photo_url && !photo && (
                     <><br /><span className="text-white/20">Leave empty to keep current photo</span></>
                   )}
-                  {!memberHasPhoto && (
+                  {!loggedInMember?.photo_url && (
                     <><br /><span className="text-red-400/60">Photo is required to register</span></>
                   )}
                 </p>
@@ -323,43 +256,7 @@ export default function RegistrationForm({ season, onClose }: Props) {
           </div>
         )}
 
-        {/* ── Step 3: Not a member ─────────────────────────────────────────── */}
-        {step === 'not-found' && (
-          <div className="px-6 py-8 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}>
-              <AlertCircle className="w-7 h-7 text-red-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>
-              Not a STATA Member
-            </h3>
-            <p className="text-sm text-white/50 mb-2 leading-relaxed">No STATA membership found for</p>
-            <p className="text-sm font-semibold mb-6 px-4 py-2 rounded-xl inline-block"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--accent)' }}>
-              {email}
-            </p>
-            <p className="text-sm text-white/50 mb-6 leading-relaxed">
-              ASPL registration is only open to registered STATA members.
-            </p>
-            <div className="space-y-3">
-              <a href="/register" target="_blank" rel="noopener noreferrer"
-                className="w-full py-3.5 rounded-xl text-sm font-bold tracking-wider flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                style={{ background: 'var(--accent)', color: 'var(--pitch)', fontFamily: 'kanit' }}>
-                <UserPlus className="w-4 h-4" /> JOIN STATA NOW <ArrowRight className="w-4 h-4" />
-              </a>
-              <button onClick={resetToEmail}
-                className="w-full py-3 rounded-xl text-sm font-semibold transition-colors"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
-                Try a different email
-              </button>
-            </div>
-            <p className="text-[10px] text-white/25 mt-4">
-              Already registered? Your membership may still be pending approval.
-            </p>
-          </div>
-        )}
-
-        {/* ── Step 4: Success ──────────────────────────────────────────────── */}
+        {/* ── Step 2: Success ──────────────────────────────────────────────── */}
         {step === 'success' && result && (
           <div className="px-6 py-8 text-center">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"

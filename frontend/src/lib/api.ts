@@ -5,6 +5,11 @@ export const getToken = (): string | null => localStorage.getItem('stata_token')
 export const setToken = (token: string) => localStorage.setItem('stata_token', token);
 export const removeToken = () => localStorage.removeItem('stata_token');
 
+// Member auth tokens stored separately
+export const getMemberToken = (): string | null => localStorage.getItem('stata_member_token');
+export const setMemberToken = (token: string) => localStorage.setItem('stata_member_token', token);
+export const removeMemberToken = () => localStorage.removeItem('stata_member_token');
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -15,7 +20,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { method = 'GET', body, isFormData = false } = options;
 
   const headers: Record<string, string> = {};
-  const token = getToken();
+  // Prefer member token (unified auth); fall back to legacy admin token
+  const token = getMemberToken() || getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!isFormData && body) headers['Content-Type'] = 'application/json';
 
@@ -143,9 +149,24 @@ export interface ContactMessage {
   created_at: string;
 }
 
+export interface InitialPasswordMember {
+  id: string;
+  full_name: string;
+  email: string;
+  batch: number;
+  created_at: string;
+  dispatch: {
+    sent_at: string | null;
+    delivered: boolean;
+    last_error: string | null;
+    updated_at: string;
+  } | null;
+}
+
 export interface Speech {
   id: string;
   name: string;
+  email: string;
   designation?: string | null;
   batch?: number | null;
   message: string;
@@ -312,6 +333,45 @@ export const api = {
 
 };
 
+export const memberAuthApi = {
+  login: (email: string, password: string) =>
+    fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).then(r => r.json()),
+
+  requestSetup: (email: string) =>
+    fetch(`${BASE_URL}/auth/request-setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).then(r => r.json()),
+
+  setPassword: (token: string, password: string) =>
+    fetch(`${BASE_URL}/auth/set-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    }).then(r => r.json()),
+
+  changePassword: (current_password: string | undefined, new_password: string) => {
+    const token = getMemberToken();
+    return fetch(`${BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ current_password, new_password }),
+    }).then(r => r.json());
+  },
+
+  me: () => {
+    const token = getMemberToken();
+    return fetch(`${BASE_URL}/auth/me`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(r => r.json());
+  },
+};
+
 export const adminApi = {
   login: (username: string, password: string) =>
     request<{
@@ -388,8 +448,19 @@ export const adminApi = {
   assignCommitteeMember: (data: { committee_id: string; member_id: string; position: string }) =>
     request('/admin/committee/assign', { method: 'POST', body: data }),
 
-  getMembersByStatus: (status: string) =>
-    request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?status=${status}`),
+  getMembersByStatus: (status: string, params?: { limit?: number; page?: number }) => {
+    const qs = new URLSearchParams({ status });
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.page) qs.set('page', String(params.page));
+    return request<{ success: boolean; data: any[]; pagination: Pagination }>(`/admin/members?${qs}`);
+  },
+
+  getMembers: (params?: { limit?: number; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.search) qs.set('search', params.search);
+    return request<{ success: boolean; data: any[] }>(`/members${qs.toString() ? '?' + qs.toString() : ''}`);
+  },
 
   updateMemberStatus: (id: string, status: string) =>
     request<{ success: boolean }>(`/admin/members/${id}/status`, {
@@ -399,6 +470,37 @@ export const adminApi = {
 
   deleteMember: (id: string) =>
     request<{ success: boolean }>(`/admin/members/${id}`, { method: 'DELETE' }),
+
+  sendSetupEmail: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/members/${id}/send-setup-email`, { method: 'POST' }),
+
+  // ── Initial password dispatch (legacy members) ──────────────────────────
+  getInitialPasswordStatus: () =>
+    request<{
+      success: boolean;
+      data: {
+        members: InitialPasswordMember[];
+        summary: { total: number; sent: number; failed: number; pending: number };
+      };
+    }>('/admin/initial-passwords/status'),
+
+  sendInitialPasswordAll: () =>
+    request<{ success: boolean; message: string; data: { queued: number } }>(
+      '/admin/initial-passwords/send-all',
+      { method: 'POST' }
+    ),
+
+  sendInitialPasswordOne: (memberId: string) =>
+    request<{ success: boolean; message: string }>(
+      `/admin/initial-passwords/send/${memberId}`,
+      { method: 'POST' }
+    ),
+
+  updateMemberRole: (id: string, role: 'member' | 'mod' | 'admin') =>
+    request<{ success: boolean; message: string; data: any }>(`/admin/members/${id}/role`, { method: 'PATCH', body: { role } }),
+
+  listStaff: () =>
+    request<{ success: boolean; data: any[] }>('/admin/staff'),
 
   uploadMemberPhoto: (id: string, photo: File) => {
     const fd = new FormData();
@@ -463,7 +565,7 @@ export const adminApi = {
     const qs = new URLSearchParams();
     if (filters.batch !== undefined && filters.batch !== '') qs.set('batch', String(filters.batch));
     if (filters.notify_events !== undefined && filters.notify_events !== '') qs.set('notify_events', String(filters.notify_events));
-    const token = getToken();
+    const token = getMemberToken() || getToken();
     const url = `${BASE_URL}/admin/members/export-csv${qs.toString() ? '?' + qs.toString() : ''}`;
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   },
@@ -559,7 +661,7 @@ const ASPL_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 async function asplRequest<T>(path: string, options: RequestOptions & { isFormData?: boolean; formBody?: FormData } = {}): Promise<T> {
   const { method = 'GET', body, isFormData = false, formBody } = options;
   const headers: Record<string, string> = {};
-  const token = getToken();
+  const token = getMemberToken() || getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!isFormData && body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${ASPL_BASE}/aspl${path}`, {
@@ -713,7 +815,7 @@ export const asplApi = {
   getPendingRegistrationCount: () =>
     asplRequest<{ success: boolean; data: { count: number } }>('/registrations/pending-count'),
   lookupRegistration: async (email: string, seasonId: number) => {
-    const token = getToken();
+    const token = getMemberToken() || getToken();
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${ASPL_BASE}/aspl/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`, { headers });

@@ -16,7 +16,7 @@ const getPosts = async (req, res, next) => {
         orderBy: { created_at: 'desc' },
         select: {
           id: true, title: true, slug: true, cover_image: true,
-          status: true, published: true, author_name: true, author_batch: true,
+          status: true, published: true, author_name: true, author_batch: true, author_designation: true,
           created_at: true, updated_at: true,
           admin: { select: { id: true, username: true } },
         },
@@ -43,7 +43,7 @@ const getPostBySlug = async (req, res, next) => {
 const submitPost = async (req, res, next) => {
   let savedPath = null;
   try {
-    const { title, content, author_name, author_batch } = req.body;
+    const { title, content, author_name, author_batch, author_designation } = req.body;
     const slug = generateSlug(title);
 
     if (req.file) {
@@ -51,17 +51,28 @@ const submitPost = async (req, res, next) => {
     }
     const cover_image = savedPath ? toUrlPath(savedPath) : null;
 
+    // If submitted by a logged-in member, auto-approve
+    const isMember = !!(req.member && req.member.email);
+    const status = isMember ? 'APPROVED' : 'PENDING';
+    const published = isMember;
+
     const post = await prisma.post.create({
       data: {
         title, slug, content, cover_image,
         author_name: author_name.trim(),
         author_batch: parseInt(author_batch),
-        status: 'PENDING',
-        published: false,
+        author_designation: author_designation?.trim() || null,
+        status,
+        published,
         created_by: null,
       },
     });
-    res.status(201).json({ success: true, message: 'Post submitted for review', data: { id: post.id } });
+
+    res.status(201).json({
+      success: true,
+      message: isMember ? 'Post published successfully.' : 'Post submitted for review',
+      data: { id: post.id, is_published: published },
+    });
   } catch (err) {
     if (savedPath) try { fs.unlinkSync(savedPath); } catch { }
     next(err);
@@ -83,7 +94,7 @@ const getAdminPosts = async (req, res, next) => {
         orderBy: { created_at: 'desc' },
         select: {
           id: true, title: true, slug: true, content: true, cover_image: true,
-          status: true, published: true, author_name: true, author_batch: true,
+          status: true, published: true, author_name: true, author_batch: true, author_designation: true,
           created_at: true, updated_at: true,
           admin: { select: { id: true, username: true } },
         },

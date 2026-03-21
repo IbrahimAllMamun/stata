@@ -8,14 +8,39 @@ const { paginate, paginatedResponse } = require('../utils/helpers');
 const submitMessage = async (req, res, next) => {
   try {
     const { name, email, subject, message, batch, designation } = req.body;
+    const emailLower = email.trim().toLowerCase();
+
+    // Try to find member by email to auto-fill missing data
+    let finalBatch = batch ? parseInt(batch) : null;
+    let finalDesignation = designation?.trim() || null;
+
+    try {
+      const member = await prisma.member.findUnique({
+        where: { email: emailLower },
+        select: { batch: true, job_title: true },
+      });
+
+      // Auto-fill missing batch and designation from member data
+      if (member) {
+        if (!finalBatch && member.batch) {
+          finalBatch = member.batch;
+        }
+        if (!finalDesignation && member.job_title) {
+          finalDesignation = member.job_title;
+        }
+      }
+    } catch {
+      // Member lookup failed, use provided data as-is
+    }
+
     const msg = await prisma.contactMessage.create({
       data: {
-        name:        name.trim(),
-        email:       email.trim().toLowerCase(),
-        subject:     subject.trim(),
-        message:     message.trim(),
-        batch:       batch ? parseInt(batch) : null,
-        designation: designation?.trim() || null,
+        name: name.trim(),
+        email: emailLower,
+        subject: subject.trim(),
+        message: message.trim(),
+        batch: finalBatch,
+        designation: finalDesignation,
       },
     });
     res.status(201).json({ success: true, message: 'Message sent successfully', data: { id: msg.id } });
@@ -28,7 +53,7 @@ const getSpeeches = async (req, res, next) => {
     const speeches = await prisma.contactMessage.findMany({
       where: { featured: true },
       orderBy: { created_at: 'desc' },
-      select: { id: true, name: true, designation: true, batch: true, message: true, created_at: true },
+      select: { id: true, name: true, email: true, designation: true, batch: true, message: true, created_at: true },
     });
     res.json({ success: true, data: speeches });
   } catch (err) { next(err); }

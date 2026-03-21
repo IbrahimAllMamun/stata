@@ -1,5 +1,5 @@
 // src/pages/admin/Communications.tsx
-// Unified page: Contact Messages + Email Campaigns + Individual Email + Inbox
+// Unified page: Contact Messages + Email Campaigns + Individual Email + Inbox + Initial Passwords
 
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -7,13 +7,13 @@ import {
   Inbox, Clock, Star, Hash, Briefcase, Send, Users,
   CheckCircle2, XCircle, ChevronDown, Eye, AlertCircle,
   Wifi, WifiOff, Filter, MessageSquare, Megaphone,
-  AtSign, Reply, ChevronRight, Loader2,
+  AtSign, Reply, ChevronRight, Loader2, KeyRound, ShieldAlert,
 } from 'lucide-react';
-import { adminApi, ContactMessage } from '../../lib/api';
+import { adminApi, ContactMessage, InitialPasswordMember } from '../../lib/api';
 import MarkdownEditor from '../../components/MarkdownEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = 'messages' | 'inbox' | 'sent' | 'compose_individual' | 'campaigns' | 'compose_bulk';
+type Section = 'messages' | 'inbox' | 'sent' | 'compose_individual' | 'campaigns' | 'compose_bulk' | 'initial_passwords';
 type TabStatus = 'UNREAD' | 'READ' | 'ARCHIVED';
 type RecipientFilter = 'ALL_NOTIFIABLE' | 'ALL_APPROVED';
 type CampaignStatus = 'DRAFT' | 'SENT' | 'FAILED';
@@ -206,6 +206,7 @@ export default function Communications() {
     { key: 'compose_individual', label: 'Send Email', icon: AtSign, color: 'text-[#1F2A44]' },
     { key: 'campaigns', label: 'Campaigns', icon: Megaphone, color: 'text-[#F39C12]' },
     { key: 'compose_bulk', label: 'New Campaign', icon: Mail, color: 'text-[#E74C3C]' },
+    { key: 'initial_passwords', label: 'Initial Passwords', icon: KeyRound, color: 'text-[#8B5CF6]' },
   ];
 
   return (
@@ -260,6 +261,7 @@ export default function Communications() {
           {section === 'compose_individual' && <ComposeIndividualSection showToast={showToast} defaultTo={replyTo} defaultSubject={replySubject} defaultReplyToId={replyToMessageId} />}
           {section === 'campaigns' && <CampaignsSection showToast={showToast} />}
           {section === 'compose_bulk' && <ComposeBulkSection showToast={showToast} />}
+          {section === 'initial_passwords' && <InitialPasswordsSection showToast={showToast} />}
         </div>
       </div>
       <Toast toast={toast} />
@@ -417,7 +419,7 @@ function InboxSection({ showToast, onReply, folder = 'INBOX', title, subtitle }:
     setError(null);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/admin/email/inbox?folder=${encodeURIComponent(folder)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('stata_token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('stata_member_token') || localStorage.getItem('stata_member_token') || localStorage.getItem('stata_token')}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to load');
@@ -539,7 +541,7 @@ function ComposeIndividualSection({ showToast, defaultTo, defaultSubject, defaul
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/admin/email/send-individual`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('stata_token')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('stata_member_token') || localStorage.getItem('stata_token')}` },
         body: JSON.stringify({ to: to.trim(), subject: subject.trim(), body: body.trim(), reply_to_message_id: defaultReplyToId }),
       });
       const data = await res.json();
@@ -783,6 +785,293 @@ function ComposeBulkSection({ showToast }: { showToast: (m: string, ok?: boolean
                 <Send className="w-4 h-4" /> Yes, send
               </button>
               <button onClick={() => setConfirm(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+// ─── Initial Passwords Section ────────────────────────────────────────────────
+function InitialPasswordsSection({ showToast }: { showToast: (m: string, ok?: boolean) => void }) {
+  const [members, setMembers] = useState<InitialPasswordMember[]>([]);
+  const [summary, setSummary] = useState({ total: 0, sent: 0, failed: 0, pending: 0 });
+  const [loading, setLoading] = useState(true);
+  const [sendingAll, setSendingAll] = useState(false);
+  const [sendingOne, setSendingOne] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'failed' | 'sent'>('all');
+  const [search, setSearch] = useState('');
+  const [confirmSendAll, setConfirmSendAll] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminApi.getInitialPasswordStatus();
+      setMembers(res.data.members);
+      setSummary(res.data.summary);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load', false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSendAll = async () => {
+    setConfirmSendAll(false);
+    setSendingAll(true);
+    try {
+      const res = await adminApi.sendInitialPasswordAll();
+      showToast(res.message || 'Sending in progress…');
+      setTimeout(() => load(), 5000);
+    } catch (err: any) {
+      showToast(err.message || 'Send failed', false);
+    } finally {
+      setSendingAll(false);
+    }
+  };
+
+  const handleSendOne = async (memberId: string, email: string) => {
+    setSendingOne(memberId);
+    try {
+      const res = await adminApi.sendInitialPasswordOne(memberId);
+      showToast(res.message || `Sent to ${email}`);
+      await load();
+    } catch (err: any) {
+      showToast(err.message || 'Send failed', false);
+    } finally {
+      setSendingOne(null);
+    }
+  };
+
+  const filtered = members.filter(m => {
+    const matchFilter =
+      filter === 'all' ||
+      (filter === 'pending' && !m.dispatch) ||
+      (filter === 'failed' && m.dispatch && !m.dispatch.delivered) ||
+      (filter === 'sent' && m.dispatch?.delivered);
+    const q = search.toLowerCase();
+    const matchSearch = !q || m.full_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || String(m.batch).includes(q);
+    return matchFilter && matchSearch;
+  });
+
+  const pendingCount = summary.pending + summary.failed;
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-[#1F2A44] flex items-center gap-2">
+            <KeyRound className="w-5 h-5 text-[#8B5CF6]" />
+            Initial Password Distribution
+          </h2>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Legacy members who registered before the password system — send them a generated initial password.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          {pendingCount > 0 && (
+            <button onClick={() => setConfirmSendAll(true)} disabled={sendingAll}
+              className="flex items-center gap-2 bg-[#8B5CF6] hover:bg-[#7c3aed] text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 shadow-sm">
+              {sendingAll
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                : <><Send className="w-3.5 h-3.5" /> Send All ({pendingCount})</>}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: 'Total Legacy', value: summary.total, color: 'text-[#1F2A44]', bg: 'bg-gray-50', border: 'border-gray-200' },
+          { label: 'Delivered', value: summary.sent, color: 'text-[#2ECC71]', bg: 'bg-green-50', border: 'border-green-100' },
+          { label: 'Failed / Retry', value: summary.failed, color: 'text-[#E74C3C]', bg: 'bg-red-50', border: 'border-red-100' },
+          { label: 'Not Sent Yet', value: summary.pending, color: 'text-[#F39C12]', bg: 'bg-amber-50', border: 'border-amber-100' },
+        ].map(s => (
+          <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-3 text-center`}>
+            <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Info banner */}
+      <div className="flex items-start gap-3 bg-violet-50 border border-violet-100 rounded-xl p-3.5 mb-5">
+        <ShieldAlert className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-violet-700 leading-relaxed">
+          Passwords follow the pattern <code className="bg-violet-100 px-1.5 py-0.5 rounded font-mono font-bold">Isrt@XXXX</code> (4 random digits).
+          The password is saved to the member's account when the email is sent. Members are encouraged to change it after first login.
+          Re-sending uses the <strong>same password</strong> so the member isn't confused by a different one.
+        </p>
+      </div>
+
+      {/* Filters + search */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search name, email, batch…"
+              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent outline-none" />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {(['all', 'pending', 'failed', 'sent'] as const).map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  filter === f
+                    ? f === 'sent'    ? 'bg-green-100 text-green-700'
+                    : f === 'failed'  ? 'bg-red-100 text-red-700'
+                    : f === 'pending' ? 'bg-amber-100 text-amber-700'
+                    : 'bg-[#8B5CF6] text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>
+                {f === 'all'     ? `All (${summary.total})`
+                : f === 'pending' ? `Not Sent (${summary.pending})`
+                : f === 'failed'  ? `Failed (${summary.failed})`
+                :                   `Delivered (${summary.sent})`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Loading members…</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+            <CheckCircle2 className="w-10 h-10 text-[#2ECC71] mb-3" />
+            <p className="text-sm font-semibold text-gray-600">
+              {members.length === 0
+                ? 'No legacy members — all members have passwords set!'
+                : 'No members match your current filter.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Member</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Batch</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Last Attempt</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map(m => {
+                  const isSending = sendingOne === m.id;
+                  const delivered = m.dispatch?.delivered;
+                  const failed = m.dispatch && !m.dispatch.delivered;
+
+                  return (
+                    <tr key={m.id} className="hover:bg-gray-50/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-[#1F2A44] text-sm leading-tight">{m.full_name}</p>
+                        <p className="text-xs text-gray-400 sm:hidden mt-0.5">{m.email}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 hidden sm:table-cell">{m.email}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span className="bg-[#2F5BEA]/10 text-[#2F5BEA] text-xs font-bold px-2 py-0.5 rounded-full">
+                          #{m.batch}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {delivered ? (
+                          <span className="flex items-center gap-1.5 text-[#2ECC71] text-xs font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> Delivered
+                          </span>
+                        ) : failed ? (
+                          <div>
+                            <span className="flex items-center gap-1.5 text-[#E74C3C] text-xs font-semibold">
+                              <XCircle className="w-3.5 h-3.5 flex-shrink-0" /> Failed
+                            </span>
+                            {m.dispatch?.last_error && (
+                              <p className="text-xs text-red-400 mt-0.5 truncate max-w-[150px]" title={m.dispatch.last_error}>
+                                {m.dispatch.last_error}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-[#F39C12] text-xs font-semibold">
+                            <Clock className="w-3.5 h-3.5 flex-shrink-0" /> Not Sent
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400 hidden lg:table-cell">
+                        {m.dispatch?.sent_at
+                          ? new Date(m.dispatch.sent_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {delivered ? (
+                          <button
+                            onClick={() => handleSendOne(m.id, m.email)}
+                            disabled={isSending || sendingAll}
+                            className="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                            {isSending
+                              ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending…</>
+                              : <><RefreshCw className="w-3 h-3" /> Resend</>}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSendOne(m.id, m.email)}
+                            disabled={isSending || sendingAll}
+                            className="inline-flex items-center gap-1.5 bg-[#8B5CF6] hover:bg-[#7c3aed] disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                            {isSending
+                              ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending…</>
+                              : <><Send className="w-3 h-3" /> {failed ? 'Resend' : 'Send'}</>}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Confirm send-all dialog */}
+      {confirmSendAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+          onClick={() => setConfirmSendAll(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-10 bg-[#8B5CF6]/10 rounded-2xl flex items-center justify-center mb-4">
+              <Send className="w-5 h-5 text-[#8B5CF6]" />
+            </div>
+            <h3 className="text-lg font-bold text-[#1F2A44] mb-1">Send Initial Passwords?</h3>
+            <p className="text-sm text-gray-500 mb-2">
+              This will send initial login passwords to{' '}
+              <span className="font-bold text-[#1F2A44]">{pendingCount} member{pendingCount !== 1 ? 's' : ''}</span>{' '}
+              who have not yet successfully received one.
+            </p>
+            <p className="text-xs text-gray-400 mb-5">
+              Already-delivered members are skipped. Each email shows their generated password and instructions to log in and change it.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleSendAll}
+                className="flex-1 flex items-center justify-center gap-2 bg-[#8B5CF6] hover:bg-[#7c3aed] text-white px-4 py-2.5 rounded-xl text-sm font-semibold">
+                <Send className="w-4 h-4" /> Yes, Send All
+              </button>
+              <button onClick={() => setConfirmSendAll(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
             </div>
           </div>
         </div>

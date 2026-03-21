@@ -1,44 +1,45 @@
 // src/pages/SubmitPost.tsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, Upload, CheckCircle, Clock, ArrowLeft, FileText } from 'lucide-react';
+import { Send, Upload, CheckCircle, Clock, ArrowLeft, FileText, User } from 'lucide-react';
 import { postApi } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 import MarkdownEditor from '../components/MarkdownEditor';
 
-function SuccessModal({ onClose }: { onClose: () => void }) {
+function SuccessModal({ onClose, approved }: { onClose: () => void; approved: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        {/* Top accent */}
         <div className="h-1.5 bg-gradient-to-r from-[#2F5BEA] via-[#F39C12] to-[#2ECC71]" />
         <div className="p-8 text-center">
-          {/* Icon */}
           <div className="relative inline-flex mb-6">
             <div className="w-20 h-20 bg-[#2ECC71]/10 rounded-full flex items-center justify-center">
               <CheckCircle className="w-10 h-10 text-[#2ECC71]" />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center border-2 border-white">
-              <Clock className="w-4 h-4 text-amber-500" />
-            </div>
+            {!approved && (
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center border-2 border-white">
+                <Clock className="w-4 h-4 text-amber-500" />
+              </div>
+            )}
           </div>
-
-          <h2 className="text-2xl font-extrabold text-[#1F2A44] mb-2">Post Submitted!</h2>
+          <h2 className="text-2xl font-extrabold text-[#1F2A44] mb-2">
+            {approved ? 'Post Published!' : 'Post Submitted!'}
+          </h2>
           <p className="text-gray-500 text-sm mb-6">
-            Thank you for your submission. Your post is now under review by our team.
+            {approved
+              ? 'Your post is now live and visible to everyone.'
+              : 'Thank you for your submission. Your post is now under review by our team.'}
           </p>
-
-          {/* Status card */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Review</span>
+          {!approved && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Review</span>
+              </div>
+              <p className="text-sm text-amber-700">An admin will review your post shortly.</p>
             </div>
-            <p className="text-sm text-amber-700">
-              An admin or moderator will review your post shortly. Once approved, it will appear publicly on the Posts page.
-            </p>
-          </div>
-
+          )}
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={onClose}
               className="flex-1 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors">
@@ -56,13 +57,18 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function SubmitPost() {
+  const { member, isMember } = useAuth();
+
   const [formData, setFormData] = useState({
-    title: '', content: '', author_name: '', author_batch: '',
+    title: '', content: '',
+    // Guest-only fields
+    author_name: '', author_batch: '', author_designation: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [approved, setApproved] = useState(false);
   const [error, setError] = useState('');
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,37 +80,39 @@ export default function SubmitPost() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-    setError('');
+    setSubmitting(true); setError('');
     try {
       const fd = new FormData();
       fd.append('title', formData.title);
       fd.append('content', formData.content);
-      fd.append('author_name', formData.author_name);
-      fd.append('author_batch', formData.author_batch);
+      if (isMember && member) {
+        // Use member profile data
+        fd.append('author_name', member.full_name);
+        fd.append('author_batch', String(member.batch));
+        if (member.job_title) fd.append('author_designation', member.job_title);
+      } else {
+        fd.append('author_name', formData.author_name);
+        fd.append('author_batch', formData.author_batch);
+        if (formData.author_designation) fd.append('author_designation', formData.author_designation);
+      }
       if (imageFile) fd.append('cover_image', imageFile);
-      await postApi.submit(fd);
+      const res = await postApi.submit(fd);
+      setApproved(!!(res as any)?.data?.is_published);
       setShowSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to submit post. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   const resetForm = () => {
-    setFormData({ title: '', content: '', author_name: '', author_batch: '' });
-    setImageFile(null);
-    setImagePreview(null);
-    setShowSuccess(false);
-    setError('');
+    setFormData({ title: '', content: '', author_name: '', author_batch: '', author_designation: '' });
+    setImageFile(null); setImagePreview(null); setShowSuccess(false); setError('');
   };
 
   const inputCls = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none transition-all bg-white';
 
   return (
     <div className="bg-[#F5F7FA] min-h-[calc(100vh-4rem)]">
-      {/* Hero */}
       <section className="relative bg-[#1F2A44] text-white overflow-hidden">
         <div className="absolute inset-0 opacity-5 pointer-events-none">
           <div className="absolute top-0 left-0 w-96 h-96 bg-[#F39C12] rounded-full -translate-x-1/2 -translate-y-1/2" />
@@ -113,7 +121,7 @@ export default function SubmitPost() {
         <div className="relative max-w-7xl mx-auto px-4 py-16 text-center">
           <div className="inline-block bg-[#2F5BEA]/20 border border-[#2F5BEA]/30 text-[#7BA3F5] text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5">Community</div>
           <h1 className="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight">Share Your Story</h1>
-          <p className="text-gray-300 text-base max-w-xl mx-auto">Write a post for the STATA community. Your submission will be reviewed before publishing.</p>
+          <p className="text-gray-300 text-base max-w-xl mx-auto">Write a post for the STATA community. {isMember ? 'Your post will be reviewed before publishing.' : 'Submissions are reviewed before publishing.'}</p>
         </div>
       </section>
 
@@ -137,29 +145,50 @@ export default function SubmitPost() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-7 space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>
-            )}
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
-            {/* Author info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Your Name <span className="text-red-400">*</span>
-                </label>
-                <input type="text" value={formData.author_name}
-                  onChange={e => setFormData({ ...formData, author_name: e.target.value })}
-                  required placeholder="Full name" className={inputCls} />
+            {/* Author info — show filled card for members, input fields for guests */}
+            {isMember && member ? (
+              <div className="flex items-center gap-3 bg-[#F5F7FA] border border-gray-100 rounded-xl px-4 py-3">
+                <div className="w-9 h-9 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  {member.full_name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#1F2A44]">{member.full_name}</p>
+                  <p className="text-xs text-gray-400">Batch {member.batch}{member.job_title ? ` · ${member.job_title}` : ''}</p>
+                </div>
+                <User className="w-4 h-4 text-gray-300 ml-auto" />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Batch <span className="text-red-400">*</span>
-                </label>
-                <input type="number" value={formData.author_batch} min={1} max={3000}
-                  onChange={e => setFormData({ ...formData, author_batch: e.target.value })}
-                  required placeholder="e.g. 26" className={inputCls} />
+            ) : (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Your Name <span className="text-red-400">*</span>
+                    </label>
+                    <input type="text" value={formData.author_name}
+                      onChange={e => setFormData({ ...formData, author_name: e.target.value })}
+                      required placeholder="Full name" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Batch <span className="text-red-400">*</span>
+                    </label>
+                    <input type="number" value={formData.author_batch} min={1} max={3000}
+                      onChange={e => setFormData({ ...formData, author_batch: e.target.value })}
+                      required placeholder="e.g. 26" className={inputCls} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Designation <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <input type="text" value={formData.author_designation}
+                    onChange={e => setFormData({ ...formData, author_designation: e.target.value })}
+                    placeholder="e.g. Statistician, ISRT" className={inputCls} />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Title */}
             <div>
@@ -204,14 +233,14 @@ export default function SubmitPost() {
               className="w-full bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-6 py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 text-sm">
               {submitting
                 ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting…</>
-                : <><Send className="w-4 h-4" /> Post</>
+                : <><Send className="w-4 h-4" /> Submit Post</>
               }
             </button>
           </form>
         </div>
       </section>
 
-      {showSuccess && <SuccessModal onClose={resetForm} />}
+      {showSuccess && <SuccessModal onClose={resetForm} approved={approved} />}
     </div>
   );
 }

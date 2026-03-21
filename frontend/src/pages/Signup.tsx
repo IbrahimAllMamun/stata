@@ -1,19 +1,21 @@
 // src/pages/Signup.tsx - Member Registration with email-first flow + optional profile photo
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, CheckCircle, User, Briefcase, Bell, Clock, Home, Search, AlertCircle, RefreshCw, Upload, Camera } from 'lucide-react';
+import { UserPlus, CheckCircle, User, Briefcase, Bell, Clock, Home, Search, AlertCircle, RefreshCw, Upload, Camera, Lock } from 'lucide-react';
 import { api, imageUrl } from '../lib/api';
 
 interface FormState {
   batch: string; full_name: string; email: string; phone_number: string;
   alternative_phone: string; job_title: string; organisation: string;
   organisation_address: string; notify_events: '' | 'true' | 'false'; blood_group: string;
+  password: string; confirm_password: string;
 }
 
 const INITIAL: FormState = {
   batch: '', full_name: '', email: '', phone_number: '',
   alternative_phone: '', job_title: '', organisation: '',
   organisation_address: '', notify_events: '', blood_group: '',
+  password: '', confirm_password: '',
 };
 
 const inputCls = (err: boolean) =>
@@ -91,6 +93,8 @@ export default function Register() {
         organisation_address: m.organisation_address ?? '',
         notify_events: m.notify_events === true ? 'true' : m.notify_events === false ? 'false' : '',
         blood_group: m.blood_group ?? '',
+        password: '',
+        confirm_password: '',
       });
       if (m.photo_url) {
         setExistingPhotoUrl(imageUrl(m.photo_url) ?? null);
@@ -129,6 +133,7 @@ export default function Register() {
     if (form.organisation) fd.append('organisation', form.organisation);
     if (form.organisation_address) fd.append('organisation_address', form.organisation_address);
     if (form.blood_group) fd.append('blood_group', form.blood_group);
+    if (form.password) fd.append('password', form.password);
     if (photo) fd.append('photo', photo);
     return fd;
   };
@@ -377,6 +382,35 @@ export default function Register() {
                   <input type="tel" value={form.alternative_phone} onChange={set('alternative_phone')} placeholder="+8801XXXXXXXXX" className={inputCls(false)} />
                 </div>
               </div>
+              {/* Password - only shown on new registration */}
+              {!isUpdate && (
+                <div className="space-y-4 pt-2 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Set a Password</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input type="password" value={form.password}
+                        onChange={e => { setForm(f => ({ ...f, password: e.target.value })); setErrors(prev => { const n = { ...prev }; delete n.password; return n; }); }}
+                        placeholder="At least 8 characters"
+                        className={`w-full pl-10 pr-4 py-3 border rounded-lg outline-none transition-all text-sm ${errors.password ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-300' : 'border-gray-200 focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent'}`} />
+                    </div>
+                    {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input type="password" value={form.confirm_password}
+                        onChange={e => { setForm(f => ({ ...f, confirm_password: e.target.value })); setErrors(prev => { const n = { ...prev }; delete n.confirm_password; return n; }); }}
+                        placeholder="Repeat your password"
+                        className={`w-full pl-10 pr-4 py-3 border rounded-lg outline-none transition-all text-sm ${errors.confirm_password ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-300' : 'border-gray-200 focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent'}`} />
+                    </div>
+                    {errors.confirm_password && <p className="mt-1 text-xs text-red-500">{errors.confirm_password}</p>}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Blood Group <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
                 <select value={form.blood_group} onChange={e => setForm(f => ({ ...f, blood_group: e.target.value }))}

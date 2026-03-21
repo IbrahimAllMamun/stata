@@ -1,12 +1,12 @@
 // src/pages/admin/Dashboard.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera, Trophy, Mail } from 'lucide-react';
+import { FileText, Calendar, Users, Plus, LogOut, BarChart2, Settings, UserCheck, Camera, Shield, Trophy, Mail } from 'lucide-react';
 import { adminApi, DashboardStats } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AdminDashboard() {
-  const { isAdmin, isFullAdmin, isModerator, logout, admin } = useAuth();
+  const { isAdmin, isFullAdmin, isModerator, logout, admin, member, memberLogout } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
               {isModerator ? 'Moderator Dashboard' : 'Admin Dashboard'}
             </h1>
             <p className="text-gray-500 text-sm flex items-center gap-2">
-              Logged in as <span className="font-semibold">{admin?.username}</span>
+              Logged in as <span className="font-semibold">{member?.full_name || admin?.username}</span>
               {isModerator && (
                 <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
                   Moderator
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
               )}
             </p>
           </div>
-          <button onClick={logout} className="flex items-center gap-2 text-gray-600 hover:text-[#E74C3C] transition-colors text-sm">
+          <button onClick={() => { memberLogout(); logout(); }} className="flex items-center gap-2 text-gray-600 hover:text-[#E74C3C] transition-colors text-sm">
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>
@@ -139,16 +139,29 @@ export default function AdminDashboard() {
           </Link>
 
           {isFullAdmin && (
-            <Link to="/admin/settings" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 bg-[#9B59B6] rounded-xl flex items-center justify-center group-hover:bg-[#F39C12] transition-colors">
-                  <Settings className="w-7 h-7 text-white" />
+            <>
+              <Link to="/admin/settings" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-14 h-14 bg-[#9B59B6] rounded-xl flex items-center justify-center group-hover:bg-[#F39C12] transition-colors">
+                    <Settings className="w-7 h-7 text-white" />
+                  </div>
+                  <Plus className="w-5 h-5 text-gray-300 group-hover:text-[#F39C12] transition-colors" />
                 </div>
-                <Plus className="w-5 h-5 text-gray-300 group-hover:text-[#F39C12] transition-colors" />
-              </div>
-              <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Committee Settings</h2>
-              <p className="text-gray-500 text-sm">Assign president & general secretary</p>
-            </Link>
+                <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Committee Settings</h2>
+                <p className="text-gray-500 text-sm">Assign president & general secretary</p>
+              </Link>
+
+              <Link to="/admin/accounts" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-14 h-14 bg-amber-500 rounded-xl flex items-center justify-center group-hover:bg-[#F39C12] transition-colors">
+                    <Shield className="w-7 h-7 text-white" />
+                  </div>
+                  <Plus className="w-5 h-5 text-gray-300 group-hover:text-[#F39C12] transition-colors" />
+                </div>
+                <h2 className="text-xl font-bold text-[#1F2A44] mb-1">Account Management</h2>
+                <p className="text-gray-500 text-sm">Manage admin and moderator roles</p>
+              </Link>
+            </>
           )}
 
           <Link to="/admin/aspl" className="bg-white p-7 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative overflow-hidden">
@@ -162,6 +175,7 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-bold text-[#1F2A44] mb-1">ASPL</h2>
             <p className="text-gray-500 text-sm">Applied Statistics Premier League auction</p>
           </Link>
+
         </div>
       </div>
     </div>

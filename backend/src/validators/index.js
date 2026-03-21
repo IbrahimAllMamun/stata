@@ -22,6 +22,7 @@ const registerSchema = Joi.object({
   notify_events: Joi.boolean().truthy('true').falsy('false').required()
     .messages({ 'any.required': 'notify_events selection is required' }),
   blood_group: Joi.string().valid(...['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional().allow('', null),
+  password: Joi.string().min(8).optional().allow('', null),
 });
 
 const updateMemberSchema = Joi.object({
@@ -63,6 +64,7 @@ const submitPostSchema = Joi.object({
   content: Joi.string().min(10).required(),
   author_name: Joi.string().trim().min(2).max(100).required(),
   author_batch: Joi.number().integer().min(1).max(3000).required(),
+  author_designation: Joi.string().trim().max(200).optional().allow('', null),
 });
 
 const eventSchema = Joi.object({

@@ -26,8 +26,16 @@ model Member {
   status               MemberStatus     @default(PENDING)
   created_at           DateTime         @default(now())
 
-  committee_members    CommitteeMember[]
-  update_requests      MemberUpdateRequest[]
+  // ── Member auth & role ───────────────────────────────────────────
+  role                 String           @default("member") // "member" | "mod" | "admin"
+  password             String?          // null = not yet set
+  reset_token          String?          // magic link token
+  reset_token_expires  DateTime?        // token expiry
+  must_change_password Boolean          @default(false)
+
+  committee_members         CommitteeMember[]
+  update_requests           MemberUpdateRequest[]
+  initial_password_dispatch InitialPasswordDispatch?
 
   @@index([batch])
   @@index([email])
@@ -151,9 +159,10 @@ model Post {
   cover_image  String?
   status       PostStatus @default(PENDING)
   published    Boolean    @default(false)
-  author_name  String
-  author_batch Int
-  created_by   String?
+  author_name        String
+  author_batch       Int
+  author_designation String?
+  created_by         String?
   created_at   DateTime   @default(now())
   updated_at   DateTime   @updatedAt
 
@@ -230,6 +239,25 @@ model GalleryPhoto {
   @@index([created_at])
   @@index([subject])
   @@map("gallery_photos")
+}
+
+// ── Initial password dispatch tracking ───────────────────────────────────────
+// Keeps one record per legacy member (no password). Stores the generated
+// plain-text initial password so it can be re-sent without regenerating it.
+
+model InitialPasswordDispatch {
+  id          String    @id @default(uuid())
+  member_id   String    @unique
+  password    String    // plain-text initial password
+  sent_at     DateTime?
+  delivered   Boolean   @default(false)
+  last_error  String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  member Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("initial_password_dispatches")
 }
 
 // ── Visitor Analytics ─────────────────────────────────────────────────────────

@@ -7,6 +7,8 @@ const upload = require('../config/upload');
 const { registerSchema, contactSchema, submitPostSchema, updateMemberSchema } = require('../validators');
 
 const { register, getMembers, exportCSV, getApprovedBatches, lookupMember, updateMember, updateMemberPhoto } = require('../controllers/member.controller');
+const { memberLogin, requestSetup, setPassword, changePassword, getMe } = require('../controllers/auth.controller');
+const { authenticateMember, optionalMemberAuth } = require('../middlewares/memberAuth');
 const { getCommittees } = require('../controllers/committee.controller');
 const { getPosts, getPostBySlug, submitPost } = require('../controllers/post.controller');
 const { getEvents, getEventBySlug } = require('../controllers/event.controller');
@@ -31,6 +33,13 @@ const contactLimiter = rateLimit({
   standardHeaders: true, legacyHeaders: false,
 });
 
+// ── Member Auth ──────────────────────────────────────────────────────────────
+router.post('/auth/login', memberLogin);
+router.post('/auth/request-setup', requestSetup);
+router.post('/auth/set-password', setPassword);
+router.post('/auth/change-password', authenticateMember, changePassword);
+router.get('/auth/me', authenticateMember, getMe);
+
 // Members
 router.post('/register', registerLimiter, upload.single('photo'), validate(registerSchema), register);
 router.get('/members', getMembers);
@@ -43,7 +52,7 @@ router.post('/update-member-photo', upload.single('photo'), updateMemberPhoto);
 // Posts (public)
 router.get('/posts', getPosts);
 router.get('/posts/:slug', getPostBySlug);
-router.post('/posts', postSubmitLimiter, upload.single('cover_image'), validate(submitPostSchema), submitPost);
+router.post('/posts', postSubmitLimiter, upload.single('cover_image'), optionalMemberAuth, validate(submitPostSchema), submitPost);
 
 // Events
 router.get('/events', getEvents);
