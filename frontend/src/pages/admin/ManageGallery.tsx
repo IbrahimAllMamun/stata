@@ -74,7 +74,7 @@ export default function ManageGallery() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const remaining = 10 - previews.length;
+    const remaining = 30 - previews.length;
     const toAdd = files.slice(0, remaining);
     const newPreviews: PreviewFile[] = toAdd.map(file => ({
       file,
@@ -161,7 +161,7 @@ export default function ManageGallery() {
           <div className="bg-[#1F2A44] px-6 py-4 flex items-center gap-3">
             <Upload className="w-5 h-5 text-white" />
             <h2 className="text-white font-semibold">Upload Photos</h2>
-            <span className="ml-auto text-gray-400 text-xs">Up to 10 at once</span>
+            <span className="ml-auto text-gray-400 text-xs">Up to 30 at once</span>
           </div>
 
           <div className="p-6 space-y-5">
@@ -248,9 +248,9 @@ export default function ManageGallery() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Images <span className="text-red-400">*</span>
-                <span className="font-normal text-gray-400 ml-1">({previews.length}/10 selected)</span>
+                <span className="font-normal text-gray-400 ml-1">({previews.length}/30 selected)</span>
               </label>
-              {previews.length < 10 && (
+              {previews.length < 30 && (
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#2F5BEA] hover:bg-[#2F5BEA]/5 transition-all cursor-pointer group"

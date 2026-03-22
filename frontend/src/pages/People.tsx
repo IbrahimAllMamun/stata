@@ -1,6 +1,6 @@
 // src/pages/People.tsx
-import { useEffect, useState } from 'react';
-import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase, Droplets, LogIn } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Users, Crown, Star, Search, ChevronDown, X, Mail, Phone, Building2, MapPin, Briefcase, Droplets, Lock } from 'lucide-react';
 import { api, Member, Committee, CommitteeMemberDetail, imageUrl } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,8 +16,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
   );
 }
 
-/* ── Member popup (All Members tab) ──────────────────────────────── */
-function MemberModal({ member, onClose, isMember }: { member: Member; onClose: () => void; isMember: boolean }) {
+function MemberModal({ member, onClose, isLoggedIn }: { member: Member; onClose: () => void; isLoggedIn: boolean }) {
   const photoSrc = imageUrl(member.photo_url);
   const isLeader = member.is_president_or_secretary;
   return (
@@ -55,19 +54,23 @@ function MemberModal({ member, onClose, isMember }: { member: Member; onClose: (
           <h2 className="text-xl font-bold text-[#1F2A44]">{member.full_name}</h2>
           <span className="bg-[#1F2A44] text-white text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Batch {member.batch}</span>
         </div>
+
         <div className="px-6 pb-6 space-y-3">
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={member.email} />
-          {isMember && member.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} />}
-          {isMember && member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />}
+          {/* Phone — logged-in only */}
+          {isLoggedIn && member.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={member.phone_number} />}
+          {isLoggedIn && member.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={member.alternative_phone} />}
           {member.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={member.blood_group} />}
           {member.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={member.job_title} />}
           {member.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={member.organisation} />}
-          {isMember && member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
-          {!isMember && (
-            <a href="/login"
-              className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors border-2 border-dashed border-[#2F5BEA]/30 text-[#2F5BEA] hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA]">
-              <LogIn className="w-4 h-4" /> Sign in to see full information
-            </a>
+          {/* Address — logged-in only */}
+          {isLoggedIn && member.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={member.organisation_address} />}
+          {/* Guest nudge */}
+          {!isLoggedIn && (
+            <p className="text-xs text-gray-400 pt-2 border-t border-gray-100 flex items-center gap-1.5">
+              <Lock className="w-3 h-3 flex-shrink-0" />
+              <span><a href="/login" onClick={onClose} className="text-[#2F5BEA] font-semibold hover:underline">Log in</a> to see phone number and address.</span>
+            </p>
           )}
         </div>
       </div>
@@ -75,9 +78,8 @@ function MemberModal({ member, onClose, isMember }: { member: Member; onClose: (
   );
 }
 
-/* ── Leader popup (Leaders tab) - identical layout to MemberModal ── */
-function LeaderModal({ person, role, year, onClose, isMember }: {
-  person: CommitteeMemberDetail; role: string; year: number; onClose: () => void; isMember: boolean;
+function LeaderModal({ person, role, year, onClose, isLoggedIn }: {
+  person: CommitteeMemberDetail; role: string; year: number; onClose: () => void; isLoggedIn: boolean;
 }) {
   const photoSrc = imageUrl(person.photo_url);
   const isPresident = role === 'President';
@@ -88,7 +90,6 @@ function LeaderModal({ person, role, year, onClose, isMember }: {
       onClick={onClose}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        {/* Same banner gradient as MemberModal, colour-coded by role */}
         <div className={`h-24 ${isPresident ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-[#2F5BEA] to-[#1F2A44]'}`} />
         <div className="px-6 -mt-14 flex justify-between items-end mb-4">
           {photoSrc
@@ -113,17 +114,20 @@ function LeaderModal({ person, role, year, onClose, isMember }: {
         </div>
         <div className="px-6 pb-6 space-y-3">
           <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={person.email} />
-          {isMember && person.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={person.phone_number} />}
-          {isMember && person.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={person.alternative_phone} />}
+          {/* Phone — logged-in only */}
+          {isLoggedIn && person.phone_number && <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={person.phone_number} />}
+          {isLoggedIn && person.alternative_phone && <DetailRow icon={<Phone className="w-4 h-4" />} label="Alt. Phone" value={person.alternative_phone} />}
           {person.blood_group && <DetailRow icon={<Droplets className="w-4 h-4" />} label="Blood Group" value={person.blood_group} />}
           {person.job_title && <DetailRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={person.job_title} />}
           {person.organisation && <DetailRow icon={<Building2 className="w-4 h-4" />} label="Organisation" value={person.organisation} />}
-          {isMember && person.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={person.organisation_address} />}
-          {!isMember && (
-            <a href="/login"
-              className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors border-2 border-dashed border-[#2F5BEA]/30 text-[#2F5BEA] hover:bg-[#2F5BEA] hover:text-white hover:border-[#2F5BEA]">
-              <LogIn className="w-4 h-4" /> Sign in to see full information
-            </a>
+          {/* Address — logged-in only */}
+          {isLoggedIn && person.organisation_address && <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={person.organisation_address} />}
+          {/* Guest nudge */}
+          {!isLoggedIn && (
+            <p className="text-xs text-gray-400 pt-2 border-t border-gray-100 flex items-center gap-1.5">
+              <Lock className="w-3 h-3 flex-shrink-0" />
+              <span><a href="/login" onClick={onClose} className="text-[#2F5BEA] font-semibold hover:underline">Log in</a> to see phone number and address.</span>
+            </p>
           )}
         </div>
       </div>
@@ -131,7 +135,6 @@ function LeaderModal({ person, role, year, onClose, isMember }: {
   );
 }
 
-/* ── Card shown in the Leaders grid ─────────────────────────────── */
 function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
   person: CommitteeMemberDetail | null; role: string; isCurrent: boolean;
   color: string; icon: React.ReactNode; onSelect: () => void;
@@ -152,29 +155,26 @@ function CommitteeCard({ person, role, isCurrent, color, icon, onSelect }: {
       onClick={onSelect}
       className={`group w-full bg-white rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer text-left flex flex-col ${isCurrent ? accent.border : 'border-gray-100'}`}
     >
-      {/* Coloured role header */}
       <div className={`${color} px-4 py-3 flex items-center gap-2`}>
         {icon}
         <span className="text-sm font-bold text-white tracking-wide">{role}</span>
       </div>
-      {/* Square full-width image */}
       <div className="w-full px-3 pt-3">
         <div className={`w-full aspect-square rounded-xl overflow-hidden ring-2 ${accent.ring}`}>
           {photoSrc
-            ? <img src={photoSrc} alt={person.full_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            : <div className={`w-full h-full ${color} flex items-center justify-center text-white text-5xl font-bold`}>
+            ? <img src={photoSrc} alt={person.full_name} className="w-full h-full object-cover" />
+            : <div className={`w-full h-full flex items-center justify-center text-white text-5xl font-bold ${color}`}>
               {person.full_name.charAt(0).toUpperCase()}
             </div>
           }
         </div>
       </div>
-      {/* Info footer — tinted to match card colour */}
-      <div className={`flex flex-col items-center pt-4 pb-5 px-4 flex-1 ${accent.footer} mt-3 border-t ${accent.border}`}>
-        <p className="font-bold text-[#1F2A44] text-center text-base leading-tight mb-2">{person.full_name}</p>
-        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold mb-2 ${accent.badge}`}>Batch {person.batch}</span>
-        {person.job_title && <p className="text-xs text-gray-600 text-center truncate w-full">{person.job_title}</p>}
-        {person.organisation && <p className="text-xs text-gray-500 text-center truncate w-full mt-0.5">{person.organisation}</p>}
-        <p className={`text-xs mt-3 font-semibold ${accent.link}`}>View details →</p>
+      <div className={`px-3 pt-3 pb-2 text-left ${accent.footer}`}>
+        <p className="font-bold text-[#1F2A44] text-sm mb-0.5 line-clamp-1">{person.full_name}</p>
+        <p className="text-xs text-gray-600">Batch {person.batch}</p>
+        {person.job_title && (
+          <p className={`text-xs leading-tight line-clamp-1 mt-1 ${accent.link}`}>{person.job_title}</p>
+        )}
       </div>
     </button>
   );
@@ -184,31 +184,118 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
 }
 
-/* ── Page ────────────────────────────────────────────────────────── */
+const ITEMS_PER_PAGE = 30;
+
 export default function People() {
-  const { isMember } = useAuth();
+  const { isLoggedIn } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [committees, setCommittees] = useState<Committee[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [loadingCommittees, setLoadingCommittees] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [batchFilter, setBatchFilter] = useState('');
   const [bloodGroupFilter, setBloodGroupFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   const [activeTab, setActiveTab] = useState<'members' | 'committees'>('members');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<{ person: CommitteeMemberDetail; role: string; year: number } | null>(null);
 
+  const [allBatches, setAllBatches] = useState<number[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Used to discard stale API responses when filters change mid-flight
+  const fetchIdRef = useRef(0);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Debounce search — 400ms after user stops typing
   useEffect(() => {
-    api.getMembers({ limit: 500 })
-      .then(res => setMembers(res.data))
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const buildParams = useCallback((page: number) => ({
+    page,
+    limit: ITEMS_PER_PAGE,
+    ...(batchFilter ? { batch: parseInt(batchFilter) } : {}),
+    ...(bloodGroupFilter ? { blood_group: bloodGroupFilter } : {}),
+  }), [batchFilter, bloodGroupFilter]);
+
+  // Reset + reload page 1 whenever any filter changes
+  useEffect(() => {
+    const fetchId = ++fetchIdRef.current;
+
+    setMembers([]);
+    setCurrentPage(1);
+    setHasMore(true);
+    setLoadingMembers(true);
+
+    api.getMembers(buildParams(1))
+      .then(res => {
+        if (fetchId !== fetchIdRef.current) return;
+        setMembers(res.data);
+        setTotalMembers(res.pagination?.total ?? res.data.length);
+        setHasMore(res.data.length >= ITEMS_PER_PAGE);
+      })
       .catch(console.error)
-      .finally(() => setLoadingMembers(false));
+      .finally(() => {
+        if (fetchId === fetchIdRef.current) setLoadingMembers(false);
+      });
+  }, [batchFilter, bloodGroupFilter, debouncedSearch, buildParams]);
+
+  // Load batches + committees once on mount
+  useEffect(() => {
+    api.getApprovedBatches()
+      .then(res => setAllBatches(res.data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
     api.getCommittees()
       .then(res => setCommittees(res.data))
       .catch(console.error)
       .finally(() => setLoadingCommittees(false));
   }, []);
 
+  // Append next page
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || loadingMembers) return;
+    setLoadingMore(true);
+    const nextPage = currentPage + 1;
+    try {
+      const res = await api.getMembers(buildParams(nextPage));
+      if (res.data.length > 0) {
+        setMembers(prev => [...prev, ...res.data]);
+        setCurrentPage(nextPage);
+        setHasMore(res.data.length >= ITEMS_PER_PAGE);
+        setTotalMembers(prev => res.pagination?.total ?? prev);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Error loading more members:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, loadingMembers, currentPage, buildParams]);
+
+  // Intersection observer fires loadMore when sentinel scrolls into view
+  useEffect(() => {
+    const el = observerTarget.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && activeTab === 'members') loadMore(); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore, activeTab]);
+
+  // Escape closes modals
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { setSelectedMember(null); setSelectedLeader(null); }
@@ -217,18 +304,23 @@ export default function People() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const batches = [...new Set(members.map(m => m.batch))].sort((a, b) => a - b);
-  const filtered = members
-    .filter(m => {
-      const matchBatch = batchFilter ? m.batch === parseInt(batchFilter) : true;
-      const matchBlood = bloodGroupFilter ? m.blood_group === bloodGroupFilter : true;
-      const matchSearch = searchQuery
-        ? m.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.email.toLowerCase().includes(searchQuery.toLowerCase())
-        : true;
-      return matchBatch && matchBlood && matchSearch;
-    })
-    .sort((a, b) => a.batch !== b.batch ? a.batch - b.batch : a.full_name.localeCompare(b.full_name));
+  // Client-side name/email search on top of server-filtered results
+  const filtered = members.filter(m => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return m.full_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+  });
+
+  // Group by batch
+  const byBatch: Record<number, Member[]> = {};
+  for (const m of filtered) {
+    if (!byBatch[m.batch]) byBatch[m.batch] = [];
+    byBatch[m.batch].push(m);
+  }
+  const batchNums = Object.keys(byBatch).map(Number).sort((a, b) => a - b);
+
+  // Batch dropdown — all batches from dedicated endpoint, never limited by pagination
+  const batchOptions = allBatches;
 
   const sortedCommittees = [...committees].sort((a, b) => b.acting_year - a.acting_year);
   const currentYear = sortedCommittees[0]?.acting_year ?? null;
@@ -257,7 +349,9 @@ export default function People() {
             className={`px-6 py-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'members' ? 'border-[#2F5BEA] text-[#2F5BEA]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
             <Users className="w-4 h-4" />
             All Members
-            {!loadingMembers && <span className="bg-[#2F5BEA] text-white text-xs px-2 py-0.5 rounded-full">{members.length}</span>}
+            {!loadingMembers && (
+              <span className="bg-[#2F5BEA] text-white text-xs px-2 py-0.5 rounded-full">{totalMembers}</span>
+            )}
           </button>
           <button onClick={() => setActiveTab('committees')}
             className={`px-6 py-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'committees' ? 'border-[#F39C12] text-[#F39C12]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
@@ -272,26 +366,39 @@ export default function People() {
         {/* ── All Members tab ── */}
         {activeTab === 'members' && (
           <div>
+            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="text" placeholder="Search by name or email..."
-                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm" />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm"
+                />
               </div>
               <div className="relative">
-                <select value={batchFilter} onChange={e => setBatchFilter(e.target.value)}
-                  className="appearance-none pl-4 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm min-w-[150px]">
+                <select
+                  value={batchFilter}
+                  onChange={e => setBatchFilter(e.target.value)}
+                  className="appearance-none pl-4 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm min-w-[150px]"
+                >
                   <option value="">All Batches</option>
-                  {batches.map(b => <option key={b} value={b}>Batch {b}</option>)}
+                  {batchOptions.map(b => <option key={b} value={b}>Batch {b}</option>)}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
               <div className="relative">
-                <select value={bloodGroupFilter} onChange={e => setBloodGroupFilter(e.target.value)}
-                  className="appearance-none pl-4 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm min-w-[150px]">
+                <select
+                  value={bloodGroupFilter}
+                  onChange={e => setBloodGroupFilter(e.target.value)}
+                  className="appearance-none pl-4 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2F5BEA] focus:border-transparent outline-none bg-white shadow-sm min-w-[150px]"
+                >
                   <option value="">All Blood Groups</option>
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                    <option key={bg} value={bg}>{bg}</option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
@@ -319,91 +426,84 @@ export default function People() {
                 <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                 <p className="text-gray-400 font-medium">No members found</p>
               </div>
-            ) : (() => {
-              // Group filtered members by batch (already sorted asc by batch then name)
-              const byBatch: Record<number, Member[]> = {};
-              for (const m of filtered) {
-                if (!byBatch[m.batch]) byBatch[m.batch] = [];
-                byBatch[m.batch].push(m);
-              }
-              const batchNums = Object.keys(byBatch).map(Number).sort((a, b) => a - b);
-              return (
-                <div className="space-y-10">
-                  {batchNums.map(batch => (
-                    <div key={batch}>
-                      {/* Batch header */}
-                      <div className="flex items-center gap-3 mb-5">
-                        <span className="bg-[#1F2A44] text-white text-sm font-bold px-4 py-1.5 rounded-full">
-                          Batch {batch}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">{byBatch[batch].length} member{byBatch[batch].length !== 1 ? 's' : ''}</span>
-                        <div className="flex-1 h-px bg-gray-200" />
-                      </div>
-                      {/* Member cards */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-                        {byBatch[batch].map(member => {
-                          const photoSrc = imageUrl(member.photo_url);
-                          const avatarBg = member.is_president_or_secretary
-                            ? 'bg-amber-500'
-                            : member.is_committee_member
-                              ? 'bg-[#2F5BEA]'
-                              : 'bg-[#1F2A44]';
-                          return (
-                            <button
-                              key={member.id}
-                              onClick={() => setSelectedMember(member)}
-                              className="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2F5BEA]/40 hover:-translate-y-1 transition-all duration-200 p-5 flex flex-col items-center text-center cursor-pointer w-full"
-                            >
-                              {/* Photo */}
-                              <div className="relative w-full px-3 pt-3 mb-3">
-                                <div className="relative w-full aspect-square rounded-xl overflow-hidden">
-                                  {photoSrc
-                                    ? <img src={photoSrc} alt={member.full_name}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                    : <div className={`w-full h-full flex items-center justify-center text-white text-4xl font-bold ${avatarBg}`}>
-                                      {member.full_name.charAt(0).toUpperCase()}
-                                    </div>
-                                  }
-                                  {member.is_president_or_secretary && (
-                                    <span className="absolute top-2 right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center shadow">
-                                      <Crown className="w-3 h-3 text-white" />
-                                    </span>
-                                  )}
-                                  {!member.is_president_or_secretary && member.is_committee_member && (
-                                    <span className="absolute top-2 right-2 w-6 h-6 bg-[#2F5BEA] rounded-full flex items-center justify-center shadow">
-                                      <Star className="w-3 h-3 text-white" />
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              {/* Name */}
-                              <p className="text-sm font-bold text-[#1F2A44] leading-tight line-clamp-2 mb-1 group-hover:text-[#2F5BEA] transition-colors">
-                                {member.full_name}
-                              </p>
-                              {/* Job title */}
-                              {member.job_title && (
-                                <p className="text-xs text-gray-600 line-clamp-1 leading-tight">
-                                  {member.job_title}
-                                </p>
-                              )}
-                              {/* Organisation */}
-                              {member.organisation && (
-                                <p className="text-[10px] text-gray-500 line-clamp-1 leading-tight mt-0.5">
-                                  {member.organisation}
-                                </p>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+            ) : (
+              <div className="space-y-10">
+                {batchNums.map(batch => (
+                  <div key={batch}>
+                    <div className="flex items-center gap-3 mb-5">
+                      <span className="bg-[#1F2A44] text-white text-sm font-bold px-4 py-1.5 rounded-full">
+                        Batch {batch}
+                      </span>
+                      <span className="text-xs text-gray-400 font-medium">
+                        {byBatch[batch].length} member{byBatch[batch].length !== 1 ? 's' : ''}
+                      </span>
+                      <div className="flex-1 h-px bg-gray-200" />
                     </div>
-                  ))}
-                  <p className="text-xs text-gray-400 font-medium text-right pt-2">
-                    Showing {filtered.length} of {members.length} members
-                  </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                      {byBatch[batch].map(member => {
+                        const photoSrc = imageUrl(member.photo_url);
+                        const avatarBg = member.is_president_or_secretary
+                          ? 'bg-amber-500'
+                          : member.is_committee_member ? 'bg-[#2F5BEA]' : 'bg-[#1F2A44]';
+                        return (
+                          <button
+                            key={member.id}
+                            onClick={() => setSelectedMember(member)}
+                            className="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2F5BEA]/40 hover:-translate-y-1 transition-all duration-200 p-5 flex flex-col items-center text-center cursor-pointer w-full"
+                          >
+                            <div className="relative w-full px-3 pt-3 mb-3">
+                              <div className="relative w-full aspect-square rounded-xl overflow-hidden">
+                                {photoSrc
+                                  ? <img src={photoSrc} alt={member.full_name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                  : <div className={`w-full h-full flex items-center justify-center text-white text-4xl font-bold ${avatarBg}`}>
+                                    {member.full_name.charAt(0).toUpperCase()}
+                                  </div>
+                                }
+                                {member.is_president_or_secretary && (
+                                  <span className="absolute top-2 right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center shadow">
+                                    <Crown className="w-3 h-3 text-white" />
+                                  </span>
+                                )}
+                                {!member.is_president_or_secretary && member.is_committee_member && (
+                                  <span className="absolute top-2 right-2 w-6 h-6 bg-[#2F5BEA] rounded-full flex items-center justify-center shadow">
+                                    <Star className="w-3 h-3 text-white" />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm font-bold text-[#1F2A44] leading-tight line-clamp-2 mb-1 group-hover:text-[#2F5BEA] transition-colors">
+                              {member.full_name}
+                            </p>
+                            {member.job_title && (
+                              <p className="text-xs text-gray-600 line-clamp-1 leading-tight">{member.job_title}</p>
+                            )}
+                            {member.organisation && (
+                              <p className="text-[10px] text-gray-500 line-clamp-1 leading-tight mt-0.5">{member.organisation}</p>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Infinite scroll sentinel */}
+                <div ref={observerTarget} className="py-8 flex flex-col items-center gap-2">
+                  {loadingMore && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 border-[3px] border-[#2F5BEA] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-gray-500 font-medium">Loading more members…</span>
+                    </div>
+                  )}
+                  {!hasMore && members.length > 0 && (
+                    <p className="text-xs text-gray-400 font-medium">
+                      Showing all {totalMembers} members
+                    </p>
+                  )}
                 </div>
-              );
-            })()}
+              </div>
+            )}
           </div>
         )}
 
@@ -459,14 +559,14 @@ export default function People() {
         )}
       </div>
 
-      {selectedMember && <MemberModal member={selectedMember} onClose={() => setSelectedMember(null)} isMember={isMember} />}
+      {selectedMember && <MemberModal member={selectedMember} onClose={() => setSelectedMember(null)} isLoggedIn={isLoggedIn} />}
       {selectedLeader && (
         <LeaderModal
           person={selectedLeader.person}
           role={selectedLeader.role}
           year={selectedLeader.year}
-          isMember={isMember}
           onClose={() => setSelectedLeader(null)}
+          isLoggedIn={isLoggedIn}
         />
       )}
     </div>

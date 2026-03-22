@@ -107,11 +107,19 @@ const uploadPhotos = async (req, res, next) => {
     );
     savedPaths.push(...processedPaths);
 
+    // req.admin is set from the member-table token (via authenticateMember shim).
+    // gallery_photos.created_by is a FK to the Admin table, so we must resolve
+    // the real Admin record by matching the token's email.
+    const adminRecord = await prisma.admin.findFirst({ where: { username: req.admin.username } });
+    if (!adminRecord) {
+      return res.status(403).json({ success: false, message: 'Admin record not found. Ensure your account exists in the admin table.' });
+    }
+
     const photoData = processedPaths.map((savedPath) => ({
       image_url: toUrlPath(savedPath),
       subject: subjectTrimmed,
       moment_date: momentDateObj,
-      created_by: req.admin.id,
+      created_by: adminRecord.id,
     }));
 
     await prisma.galleryPhoto.createMany({ data: photoData });
@@ -122,7 +130,7 @@ const uploadPhotos = async (req, res, next) => {
       data: { count: photoData.length },
     });
   } catch (err) {
-    for (const p of savedPaths) { try { fs.unlinkSync(p); } catch {} }
+    for (const p of savedPaths) { try { fs.unlinkSync(p); } catch { } }
     next(err);
   }
 };
@@ -131,7 +139,7 @@ const deletePhoto = async (req, res, next) => {
   try {
     const photo = await prisma.galleryPhoto.findUnique({ where: { id: req.params.id } });
     if (!photo) return res.status(404).json({ success: false, message: 'Photo not found' });
-    if (photo.image_url) try { fs.unlinkSync(toFilePath(photo.image_url)); } catch {}
+    if (photo.image_url) try { fs.unlinkSync(toFilePath(photo.image_url)); } catch { }
     await prisma.galleryPhoto.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Photo deleted' });
   } catch (err) { next(err); }

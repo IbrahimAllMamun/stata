@@ -86,7 +86,7 @@ router.delete('/events/:id', deleteEvent);
 // Gallery — admin and moderator
 router.get('/gallery', getAdminGallery);
 router.get('/gallery/subjects', getSubjectsByDate);
-router.post('/gallery', upload.array('images', 10), uploadPhotos);
+router.post('/gallery', upload.array('images', 30), uploadPhotos);
 router.delete('/gallery/:id', deletePhoto);
 
 // Contact messages — admin and moderator

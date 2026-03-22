@@ -94,13 +94,27 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow /uploads images to load
 }));
 
-// Rate limiting (global)
+// Rate limiting
+// Public read endpoints (gallery, members, posts, events, committees…) are
+// hit on every page load by every visitor — give them a generous allowance.
+const publicReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,                 // 600 GETs/min per IP — enough for normal browsing
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method !== 'GET', // only applies to GET requests
+});
+
+// Everything else (POST/PATCH/DELETE, admin routes, auth) stays strict
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET', // GETs handled by publicReadLimiter above
 });
+
+app.use(publicReadLimiter);
 app.use(globalLimiter);
 
 // Body parsing
