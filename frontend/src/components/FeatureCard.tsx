@@ -5,6 +5,28 @@ import { Quote, MessageSquare } from 'lucide-react';
 import { imageUrl, api, Member, Speech } from '../lib/api';
 
 
+// Module-level cache — fetched once per browser session, not on every render
+type MemberDataCache = { photos: Record<string, string | null>; jobTitles: Record<string, string | null> };
+let _memberDataCache: MemberDataCache | null = null;
+let _memberDataPromise: Promise<MemberDataCache> | null = null;
+
+async function getMemberData(): Promise<MemberDataCache | null> {
+    if (_memberDataCache) return _memberDataCache;
+    if (_memberDataPromise) return _memberDataPromise;
+    _memberDataPromise = api.getMembers({ limit: 10000 }).then(res => {
+        const photos: Record<string, string | null> = {};
+        const jobTitles: Record<string, string | null> = {};
+        for (const m of res.data) {
+            const key = m.email.toLowerCase();
+            photos[key] = (m as any).photo_url || null;
+            jobTitles[key] = (m as any).job_title || null;
+        }
+        _memberDataCache = { photos, jobTitles };
+        return _memberDataCache;
+    });
+    return _memberDataPromise;
+}
+
 // ─── Feature Card ──────────────────────────────────────────────────────────
 export function FeatureCard({ speeches }: { speeches: Speech[] }) {
     const [current, setCurrent] = useState(0);
@@ -15,34 +37,23 @@ export function FeatureCard({ speeches }: { speeches: Speech[] }) {
     const trackRef = useRef<HTMLDivElement>(null);
     const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [memberPhotos, setMemberPhotos] = useState<Record<string, string | null>>({});
+    const [memberJobTitles, setMemberJobTitles] = useState<Record<string, string | null>>({});
     const [loadingPhotos, setLoadingPhotos] = useState(false);
 
-    // Fetch member photos for speeches
+    // Fetch member photos + job titles — uses module-level cache, only one API
+    // call ever regardless of how many times FeatureCard mounts or re-renders.
     useEffect(() => {
-        const fetchMemberPhotos = async () => {
-            if (speeches.length === 0) return;
-            setLoadingPhotos(true);
-            try {
-                // Get all members
-                const res = await api.getMembers({ limit: 10000 });
-                const members = res.data as (Member & { photo_url?: string | null })[];
-
-                // Create map of email -> photo_url
-                const photoMap: Record<string, string | null> = {};
-                members.forEach(member => {
-                    photoMap[member.email.toLowerCase()] = member.photo_url || null;
-                });
-
-                setMemberPhotos(photoMap);
-            } catch (err) {
-                console.error('Failed to fetch member photos:', err);
-            } finally {
-                setLoadingPhotos(false);
-            }
-        };
-
-        fetchMemberPhotos();
-    }, [speeches]);
+        if (speeches.length === 0) return;
+        setLoadingPhotos(true);
+        getMemberData()
+            .then(data => {
+                if (!data) return;
+                setMemberPhotos(data.photos);
+                setMemberJobTitles(data.jobTitles);
+            })
+            .catch(err => console.error('Failed to fetch member data:', err))
+            .finally(() => setLoadingPhotos(false));
+    }, [speeches.length]);
 
     // How many cards visible at once depending on viewport
     const [perView, setPerView] = useState(3);
@@ -187,12 +198,15 @@ export function FeatureCard({ speeches }: { speeches: Speech[] }) {
                                             )}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-white font-semibold text-sm leading-none truncate">{speech.name}</p>
-                                                {speech.designation && (
-                                                    <p className="text-gray-400 text-xs mt-1 truncate">{speech.designation}</p>
-                                                )}
                                                 {speech.batch && (
-                                                    <p className="text-[#F39C12] text-xs font-semibold mt-0.5">Batch {speech.batch}</p>
+                                                    <p className="text-[#F39C12] text-xs font-semibold mt-1">Batch {speech.batch}</p>
                                                 )}
+                                                {(() => {
+                                                    const label = speech.designation || memberJobTitles[speech.email.toLowerCase()] || null;
+                                                    return label ? (
+                                                        <p className="text-gray-400 text-xs mt-0.5 truncate" title={label}>{label}</p>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                         </div>
                                     </div>

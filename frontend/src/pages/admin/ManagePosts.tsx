@@ -118,10 +118,6 @@ export default function ManagePosts() {
               className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2F5BEA] border border-gray-200 rounded-xl px-3 py-2 bg-white hover:border-[#2F5BEA] transition-colors">
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
-            <Link to="/admin/posts/new"
-              className="flex items-center gap-2 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm">
-              <Plus className="w-4 h-4" /> New Post
-            </Link>
           </div>
         </div>
 

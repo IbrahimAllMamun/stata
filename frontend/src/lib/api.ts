@@ -295,6 +295,9 @@ export const api = {
     return request<{ success: boolean; data: Member[]; pagination: Pagination }>(`/members?${qs}`);
   },
 
+  getApprovedBatches: () =>
+    request<{ success: boolean; data: number[] }>('/members/batches'),
+
   getCommittees: () =>
     request<{ success: boolean; data: Committee[] }>('/committees'),
 
