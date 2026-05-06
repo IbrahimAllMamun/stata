@@ -1,11 +1,12 @@
 # STATA — Student Welfare Organization of ISRT
 
-A full-stack web platform for **STATA**, the student welfare organization of the [Institute of Statistical Research and Training (ISRT)](https://www.isrt.ac.bd/), University of Dhaka.
+A full-stack web platform for **[Stata](https://www.stataisrt.org)**, the student welfare organization of the [Institute of Statistical Research and Training (ISRT)](https://www.isrt.ac.bd/), University of Dhaka.
 
 > **Mission:** Connecting Minds, Building Bonds, Nourishing Well-being.
 
 STATA organizes activities like BBQ parties, Iftar Mahfil, tours, cricket and football tournaments, and more — and serves as a bridge between current students and alumni for networking and mentorship.
 
+**Website Link:** https://www.stataisrt.org
 ---
 
 ## Repository Structure
