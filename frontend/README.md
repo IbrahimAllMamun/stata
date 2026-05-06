@@ -201,5 +201,5 @@ Image URLs are constructed using `VITE_UPLOAD_URL`.
 
 ## Support
 
-- Email: stata@isrt.ac.bd
+- Email: info@stataisrt.org
 - Built for the STATA community at ISRT, University of Dhaka.
