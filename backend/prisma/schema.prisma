@@ -1,0 +1,376 @@
+// prisma/schema.prisma
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.0.x", "debian-openssl-1.1.x", "rhel-openssl-1.0.x"]
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id                   String           @id @default(uuid())
+  batch                Int
+  full_name            String
+  email                String           @unique
+  phone_number         String
+  alternative_phone    String?
+  job_title            String?
+  organisation         String?
+  organisation_address String?
+  notify_events        Boolean
+  photo_url            String?
+  blood_group          String?
+  status               MemberStatus     @default(PENDING)
+  created_at           DateTime         @default(now())
+
+  // ── Member auth & role ───────────────────────────────────────────
+  role                 String           @default("member") // "member" | "mod" | "admin"
+  password             String?          // null = not yet set
+  reset_token          String?          // magic link token
+  reset_token_expires  DateTime?        // token expiry
+  must_change_password Boolean          @default(false)
+
+  committee_members         CommitteeMember[]
+  update_requests           MemberUpdateRequest[]
+  initial_password_dispatch InitialPasswordDispatch?
+
+  @@index([batch])
+  @@index([email])
+  @@index([status])
+  @@map("members")
+}
+
+model MemberUpdateRequest {
+  id                   String                    @id @default(uuid())
+  member_id            String
+  // Proposed new values (null = no change for that field)
+  batch                Int?
+  full_name            String?
+  phone_number         String?
+  alternative_phone    String?
+  job_title            String?
+  organisation         String?
+  organisation_address String?
+  notify_events        Boolean?
+  blood_group          String?
+  photo_url            String?
+  status               MemberUpdateStatus        @default(PENDING)
+  admin_note           String?
+  created_at           DateTime                  @default(now())
+  reviewed_at          DateTime?
+
+  member  Member  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@index([member_id])
+  @@index([status])
+  @@map("member_update_requests")
+}
+
+enum MemberUpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MemberStatus {
+  PENDING
+  APPROVED
+  ARCHIVED
+}
+
+model Admin {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  password   String
+  role       String   @default("admin")
+  created_at DateTime @default(now())
+
+  posts           Post[]
+  events          Event[]
+  gallery_photos  GalleryPhoto[]
+  email_campaigns EmailCampaign[]
+
+  @@map("admins")
+}
+
+model EmailCampaign {
+  id               String              @id @default(uuid())
+  subject          String
+  html_body        String
+  text_body        String
+  recipient_filter String              @default("ALL_NOTIFIABLE")
+  status           EmailCampaignStatus @default(DRAFT)
+  sent_count       Int                 @default(0)
+  failed_count     Int                 @default(0)
+  sent_at          DateTime?
+  created_by       String
+  created_at       DateTime            @default(now())
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([status])
+  @@index([created_at])
+  @@map("email_campaigns")
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SENT
+  FAILED
+}
+
+model Committee {
+  id          String   @id @default(uuid())
+  acting_year Int      @unique
+  created_at  DateTime @default(now())
+
+  members CommitteeMember[]
+
+  @@map("committees")
+}
+
+model CommitteeMember {
+  id           String    @id @default(uuid())
+  committee_id String
+  member_id    String
+  position     Position
+  created_at   DateTime  @default(now())
+
+  committee Committee @relation(fields: [committee_id], references: [id], onDelete: Cascade)
+  member    Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@unique([committee_id, position])
+  @@map("committee_members")
+}
+
+enum Position {
+  PRESIDENT
+  GENERAL_SECRETARY
+}
+
+model Post {
+  id           String     @id @default(uuid())
+  title        String
+  slug         String     @unique
+  content      String
+  cover_image  String?
+  status       PostStatus @default(PENDING)
+  published    Boolean    @default(false)
+  author_name        String
+  author_batch       Int
+  author_designation String?
+  created_by         String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  admin Admin? @relation(fields: [created_by], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@index([created_at])
+  @@map("posts")
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Event {
+  id           String   @id @default(uuid())
+  title        String
+  slug         String   @unique
+  description  String?
+  event_date   DateTime
+  location     String?
+  banner_image String?
+  is_upcoming  Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  created_by   String
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([slug])
+  @@index([event_date])
+  @@index([is_upcoming])
+  @@map("events")
+}
+
+model ContactMessage {
+  id          String        @id @default(uuid())
+  name        String
+  email       String
+  subject     String
+  message     String
+  batch       Int?
+  designation String?
+  status      MessageStatus @default(UNREAD)
+  featured    Boolean       @default(false)
+  created_at  DateTime      @default(now())
+
+  @@index([status])
+  @@index([featured])
+  @@index([created_at])
+  @@map("contact_messages")
+}
+
+enum MessageStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+model GalleryPhoto {
+  id          String   @id @default(uuid())
+  image_url   String
+  subject     String
+  moment_date DateTime
+  created_by  String
+  created_at  DateTime @default(now())
+
+  admin Admin @relation(fields: [created_by], references: [id])
+
+  @@index([moment_date])
+  @@index([created_at])
+  @@index([subject])
+  @@map("gallery_photos")
+}
+
+// ── Initial password dispatch tracking ───────────────────────────────────────
+// Keeps one record per legacy member (no password). Stores the generated
+// plain-text initial password so it can be re-sent without regenerating it.
+
+model InitialPasswordDispatch {
+  id          String    @id @default(uuid())
+  member_id   String    @unique
+  password    String    // plain-text initial password
+  sent_at     DateTime?
+  delivered   Boolean   @default(false)
+  last_error  String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  member Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("initial_password_dispatches")
+}
+
+// ── Visitor Analytics ─────────────────────────────────────────────────────────
+
+model VisitorLog {
+  id         Int      @id @default(autoincrement())
+  ip         String   @db.VarChar(45)
+  visited_at DateTime @default(now()) @db.Timestamptz()
+
+  @@index([ip])
+  @@index([visited_at])
+  @@map("visitor_logs")
+}
+
+// ── ASPL ─────────────────────────────────────────────────────────────────────
+
+enum AsplSport {
+  FOOTBALL
+  CRICKET
+  @@map("aspl_sport")
+}
+
+enum AsplSeasonStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  @@map("aspl_season_status")
+}
+
+enum AsplRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  @@map("aspl_registration_status")
+}
+
+model AsplSeason {
+  id               Int              @id @default(autoincrement())
+  name             String           @db.VarChar(100)
+  sport            AsplSport
+  status           AsplSeasonStatus @default(DRAFT)
+  max_squad_size   Int              @default(15)
+  min_squad_size   Int              @default(11)
+  min_bid_price    Int              @default(20)
+  starting_balance Int              @default(1000)
+  total_players    Int              @default(0)
+  registration_open Boolean         @default(false)
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+
+  teams   AsplTeam[]
+  players AsplPlayer[]
+  registrations AsplRegistration[]
+
+  @@map("aspl_seasons")
+}
+
+model AsplRegistration {
+  id               Int                    @id @default(autoincrement())
+  season_id        Int
+  email            String                 @db.VarChar(255)  // must match a Member.email
+  playing_position String                 @db.VarChar(20)
+  status           AsplRegistrationStatus @default(PENDING)
+  conflict_note    String?
+  admin_note       String?
+  player_sl        Int?                   // set when approved → links to AsplPlayer
+  created_at       DateTime               @default(now())
+  updated_at       DateTime               @updatedAt
+
+  season AsplSeason @relation(fields: [season_id], references: [id], onDelete: Cascade)
+
+  @@unique([email, season_id])
+  @@map("aspl_registrations")
+}
+
+model AsplPlayer {
+  sl               Int     @id @unique @map("sl")
+  season_id        Int
+  member_email     String  @db.VarChar(255)  // join key → Member.email
+  playing_position String  @db.VarChar(20)
+  status           Boolean @default(false)   // false=available, true=sold
+  randomized       Boolean @default(false)
+
+  season       AsplSeason       @relation(fields: [season_id], references: [id], onDelete: Cascade)
+  team_players AsplTeamPlayer[]
+
+  @@map("aspl_players")
+}
+
+model AsplTeam {
+  id         Int    @id @default(autoincrement())
+  season_id  Int
+  owner_name String @db.VarChar(100)
+  team_name  String @db.VarChar(255)
+  logo_url   String?
+  color      String @default("#2F5BEA") @db.VarChar(7)
+  balance    Int
+
+  season       AsplSeason       @relation(fields: [season_id], references: [id], onDelete: Cascade)
+  team_players AsplTeamPlayer[]
+
+  @@map("aspl_teams")
+}
+
+model AsplTeamPlayer {
+  id        Int @id @default(autoincrement())
+  team_id   Int
+  player_sl Int
+  price     Int
+
+  player AsplPlayer @relation(fields: [player_sl], references: [sl], onDelete: Cascade)
+  team   AsplTeam   @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@unique([player_sl, team_id])
+  @@map("aspl_team_players")
+}
