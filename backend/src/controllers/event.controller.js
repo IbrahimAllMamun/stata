@@ -26,7 +26,7 @@ const getEvents = async (req, res, next) => {
     const [events, total] = await Promise.all([
       prisma.event.findMany({
         where, skip, take: limit, orderBy,
-        include: { admin: { select: { id: true, username: true } } },
+        include: { creator: { select: { id: true, full_name: true } } },
       }),
       prisma.event.count({ where }),
     ]);
@@ -39,7 +39,7 @@ const getEventBySlug = async (req, res, next) => {
   try {
     const event = await prisma.event.findUnique({
       where: { slug: req.params.slug },
-      include: { admin: { select: { id: true, username: true } } },
+      include: { creator: { select: { id: true, full_name: true } } },
     });
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
     res.json({ success: true, data: event });
@@ -70,7 +70,7 @@ const createEvent = async (req, res, next) => {
         location: location || null,
         banner_image,
         is_upcoming,
-        created_by: req.admin.id,
+        created_by: req.member.id,
       },
     });
 

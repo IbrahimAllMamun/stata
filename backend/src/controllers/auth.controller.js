@@ -124,12 +124,23 @@ const requestSetup = async (req, res, next) => {
     const link = `${FRONTEND_URL}/set-password?token=${token}`;
     const isFirstTime = !member.password;
 
-    await sendBulkEmail({
+    const result = await sendBulkEmail({
       recipients: [member.email],
       subject: isFirstTime ? 'Set up your STATA account password' : 'Reset your STATA password',
       htmlBody: buildEmailHtml(member.full_name, link, isFirstTime, false),
       textBody: buildEmailText(member.full_name, link, isFirstTime),
+      transactional: true,
     });
+
+    // sendBulkEmail resolves even when every recipient failed. Without this check
+    // an SMTP outage looks identical to a successful send.
+    if (result.sent === 0) {
+      console.error('[auth] password reset email failed:', result.errors.join('; '));
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the email right now. Please try again shortly or contact an admin.',
+      });
+    }
 
     res.json({ success: true, message: 'If this email belongs to an approved member, a setup link has been sent.' });
   } catch (err) { next(err); }
@@ -237,12 +248,21 @@ const adminSendSetupEmail = async (req, res, next) => {
     const link = `${FRONTEND_URL}/set-password?token=${token}`;
     const isFirstTime = !member.password;
 
-    await sendBulkEmail({
+    const result = await sendBulkEmail({
       recipients: [member.email],
       subject: isFirstTime ? 'Your STATA account is approved — set your password' : 'Reset your STATA password',
       htmlBody: buildEmailHtml(member.full_name, link, isFirstTime, true),
       textBody: buildEmailText(member.full_name, link, isFirstTime),
+      transactional: true,
     });
+
+    if (result.sent === 0) {
+      console.error('[auth] admin setup email failed:', result.errors.join('; '));
+      return res.status(502).json({
+        success: false,
+        message: `Could not send to ${member.email}: ${result.errors[0] ?? 'SMTP error'}`,
+      });
+    }
 
     res.json({ success: true, message: `Setup email sent to ${member.email}.` });
   } catch (err) { next(err); }

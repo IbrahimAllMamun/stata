@@ -1,5 +1,5 @@
 // src/components/aspl/Slideshow.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { asplApi, AsplPlayer, AsplTeam, AsplSeason } from '../../lib/api';
 import LogoLoaderFull from '../LogoLoaderFull';
@@ -28,7 +28,7 @@ const Hint = ({ keys, label }: { keys: string[]; label: string }) => (
 );
 
 // ── BidPanel ─────────────────────────────────────────────────────────────────
-function BidPanel({ player, onSold }: { player: AsplPlayer | null; onSold: () => void }) {
+function BidPanel({ player, season, onSold }: { player: AsplPlayer | null; season: AsplSeason | null; onSold: () => void }) {
   const [teams, setTeams] = useState<AsplTeam[]>([]);
   const [teamCounts, setTeamCounts] = useState<Record<number, number>>({});
   const [selected, setSelected] = useState<AsplTeam | null>(null);
@@ -38,31 +38,50 @@ function BidPanel({ player, onSold }: { player: AsplPlayer | null; onSold: () =>
   const [msg, setMsg] = useState('');
   const [localSold, setLocalSold] = useState(false);
 
-  useEffect(() => {
-    asplApi.getTeams().then(ts => {
+  // Balances and squad counts change with every sale, so this re-runs after each
+  // confirmed bid — otherwise the auctioneer calls bids against stale numbers.
+  const refreshTeams = useCallback(async () => {
+    try {
+      const ts = await asplApi.getTeams(season?.id);
       setTeams(ts);
-      Promise.all(ts.map(t =>
+      const entries = await Promise.all(ts.map(t =>
         asplApi.getTeamPlayersByTeam(t.id)
           .then(rows => [t.id, rows.length] as [number, number])
           .catch(() => [t.id, 0] as [number, number])
-      )).then(entries => setTeamCounts(Object.fromEntries(entries)));
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+      ));
+      setTeamCounts(Object.fromEntries(entries));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [season?.id]);
+
+  useEffect(() => { refreshTeams(); }, [refreshTeams]);
 
   useEffect(() => { setSelected(null); setPrice(''); setStatus(null); setLocalSold(false); }, [player?.sl]);
 
-  const TARGET = 11;
+  const minSquad = season?.min_squad_size ?? 11;
+  const maxSquad = season?.max_squad_size ?? 15;
+  const minBid   = season?.min_bid_price  ?? 20;
+
+  const isFull = (t: AsplTeam) => (teamCounts[t.id] ?? 0) >= maxSquad;
+
+  // Mirrors the server rule: a team must keep enough to fill its remaining
+  // mandatory slots at the minimum bid price.
   const calcMax = (t: AsplTeam) => {
     const cnt = teamCounts[t.id] ?? 0;
-    const slots = Math.max(0, TARGET - cnt - 1);
-    return cnt < TARGET ? Math.max(0, t.balance - slots * 20) : t.balance;
+    if (cnt >= maxSquad) return 0;
+    const slots = Math.max(0, minSquad - cnt - 1);
+    return Math.max(0, t.balance - slots * minBid);
   };
 
   const priceNum = parseInt(price, 10);
   const maxBid = selected ? calcMax(selected) : null;
   const overMax = !isNaN(priceNum) && maxBid !== null && priceNum > maxBid;
+  const underMin = !isNaN(priceNum) && priceNum < minBid;
   const soldOut = localSold || !!player?.status;
-  const canSubmit = !soldOut && selected && !isNaN(priceNum) && priceNum > 0 && !overMax;
+  const canSubmit = !soldOut && !!selected && !isNaN(priceNum) && !underMin && !overMax;
 
   const handleSubmit = async () => {
     if (!canSubmit || !player || !selected) return;
@@ -72,9 +91,12 @@ function BidPanel({ player, onSold }: { player: AsplPlayer | null; onSold: () =>
       setMsg(`${player.name} sold to ${selected.team_name} for $${priceNum}`);
       setPrice(''); setSelected(null); setLocalSold(true);
       onSold();
+      refreshTeams();
     } catch (err: unknown) {
       setStatus('error');
       setMsg(err instanceof Error ? err.message : 'Something went wrong.');
+      // The server may have rejected because state moved on; resync.
+      refreshTeams();
     }
   };
 
@@ -102,19 +124,29 @@ function BidPanel({ player, onSold }: { player: AsplPlayer | null; onSold: () =>
           {teams.map(team => {
             const mb = calcMax(team);
             const sel = selected?.id === team.id;
+            const full = isFull(team);
+            const disabled = soldOut || full;
             return (
-              <button key={team.id} disabled={soldOut}
+              <button key={team.id} disabled={disabled}
                 onClick={() => { setSelected(sel ? null : team); setPrice(''); setStatus(null); }}
                 className="flex flex-col items-start px-3 py-2 rounded-xl text-sm transition-all w-full"
                 style={{
                   background: sel ? 'rgba(245,200,66,0.15)' : 'rgba(255,255,255,0.04)',
                   border: sel ? '1px solid rgba(245,200,66,0.5)' : '1px solid rgba(255,255,255,0.06)',
-                  color: 'var(--white)', opacity: soldOut ? 0.4 : 1, fontFamily: 'fredoka',
+                  color: 'var(--white)', opacity: disabled ? 0.4 : 1, fontFamily: 'fredoka',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
                 }}>
-                <span className="text-xs leading-tight truncate w-full">{team.team_name}</span>
+                <div className="flex items-center justify-between w-full gap-1">
+                  <span className="text-xs leading-tight truncate">{team.team_name}</span>
+                  <span className="text-[10px] shrink-0" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>
+                    {teamCounts[team.id] ?? 0}/{maxSquad}
+                  </span>
+                </div>
                 <div className="flex items-center justify-between w-full mt-1">
                   <span className="text-sm" style={{ color: 'var(--accent)', fontFamily: 'kanit' }}>${team.balance}</span>
-                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>max ${mb}</span>
+                  <span className="text-xs" style={{ color: full ? '#fca5a5' : 'var(--muted)', fontFamily: 'kanit' }}>
+                    {full ? 'FULL' : `max $${mb}`}
+                  </span>
                 </div>
               </button>
             );
@@ -128,16 +160,17 @@ function BidPanel({ player, onSold }: { player: AsplPlayer | null; onSold: () =>
             <span className="text-[10px]" style={{ color: overMax ? '#fca5a5' : 'var(--muted)', fontFamily: 'kanit' }}>max ${maxBid}</span>
           )}
         </div>
-        <input type="number" min={1} max={maxBid ?? undefined} disabled={soldOut}
+        <input type="number" min={minBid} max={maxBid ?? undefined} disabled={soldOut}
           className="rounded-lg px-4 py-2 text-xl outline-none w-full"
           style={{
             background: 'rgba(255,255,255,0.05)', fontFamily: 'kanit',
-            border: overMax ? '1px solid rgba(229,62,62,0.7)' : '1px solid rgba(245,200,66,0.25)',
-            color: overMax ? '#fca5a5' : 'var(--white)',
+            border: (overMax || underMin) ? '1px solid rgba(229,62,62,0.7)' : '1px solid rgba(245,200,66,0.25)',
+            color: (overMax || underMin) ? '#fca5a5' : 'var(--white)',
           }}
-          placeholder="Enter amount" value={price}
+          placeholder={`Min $${minBid}`} value={price}
           onChange={e => { setPrice(e.target.value); setStatus(null); }} />
         {overMax && <p className="text-[10px]" style={{ color: '#fca5a5', fontFamily: 'kanit' }}>Exceeds max bid of ${maxBid}</p>}
+        {underMin && !overMax && <p className="text-[10px]" style={{ color: '#fca5a5', fontFamily: 'kanit' }}>Minimum bid is ${minBid}</p>}
       </div>
       <button disabled={!canSubmit} onClick={handleSubmit}
         className="w-full py-3 rounded-xl text-sm tracking-widest transition-all"
@@ -212,8 +245,10 @@ function RandomPopup({ visible, onClose, playerSL, loading: loadingRandom }: {
 export default function Slideshow() {
   const [players, setPlayers] = useState<AsplPlayer[]>([]);
   const [season, setSeason] = useState<AsplSeason | null>(null);
-  const [currentSL, setCurrentSL] = useState(1);
-  const [fetchSL, setFetchSL] = useState(1); // debounced - only triggers DB fetch
+  // Player numbers are globally unique across seasons, so navigation walks the
+  // season's player list by index rather than counting SL 1..n.
+  const [idx, setIdx] = useState(0);
+  const [fetchIdx, setFetchIdx] = useState(0); // debounced - only triggers DB fetch
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [player, setPlayer] = useState<AsplPlayer | null>(null);
   const [animKey, setAnimKey] = useState(0);
@@ -235,7 +270,7 @@ export default function Slideshow() {
       })
       .then(ps => {
         setPlayers(ps);
-        if (ps.length) { setCurrentSL(ps[0].sl); setFetchSL(ps[0].sl); }
+        if (ps.length) { setIdx(0); setFetchIdx(0); }
       })
       .catch(console.error)
       .finally(() => setLoadingPlayers(false));
@@ -247,10 +282,12 @@ export default function Slideshow() {
 
   useEffect(() => {
     if (!players.length) return;
+    const target = players[fetchIdx];
+    if (!target) return;
     if (retryRef.current) clearTimeout(retryRef.current);
 
     const load = () => {
-      asplApi.getPlayerBySL(fetchSL)
+      asplApi.getPlayerBySL(target.sl, season?.id)
         .then(p => {
           setPlayer(p);
           setIsSold(false);
@@ -264,9 +301,21 @@ export default function Slideshow() {
     };
     load();
     return () => { if (retryRef.current) clearTimeout(retryRef.current); };
-  }, [fetchSL, players.length]);
+  }, [fetchIdx, players, season?.id]);
 
   const totalPlayers = players.length || 1;
+
+  // Search box takes a player number; resolve it to its position in the list.
+  const indexOfSL = useCallback(
+    (sl: number) => players.findIndex(p => p.sl === sl),
+    [players]
+  );
+
+  const goTo = useCallback((next: number) => {
+    setIdx(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setFetchIdx(next), 150);
+  }, []);
 
   useEffect(() => {
     const go = (e: KeyboardEvent) => {
@@ -275,8 +324,8 @@ export default function Slideshow() {
         setRandomVisible(true); setLoadingRandom(true);
         asplApi.getRandomPlayer(season?.id).then(p => {
           setRandomSL(p.sl);
-          setCurrentSL(p.sl);
-          setFetchSL(p.sl);
+          const target = indexOfSL(p.sl);
+          if (target >= 0) { setIdx(target); setFetchIdx(target); }
         }).catch(console.error).finally(() => setLoadingRandom(false));
         return;
       }
@@ -284,32 +333,32 @@ export default function Slideshow() {
       if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); setSearchOpen(v => !v); if (!searchOpen) setTimeout(() => inputRef.current?.focus(), 50); return; }
       if (e.code === 'ArrowLeft') {
         e.preventDefault();
-        setCurrentSL(s => {
-          const next = s > 1 ? s - 1 : totalPlayers;
+        setIdx(i => {
+          const next = i > 0 ? i - 1 : totalPlayers - 1;
           if (debounceRef.current) clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => setFetchSL(next), 150);
+          debounceRef.current = setTimeout(() => setFetchIdx(next), 150);
           return next;
         });
       }
       if (e.code === 'ArrowRight') {
         e.preventDefault();
-        setCurrentSL(s => {
-          const next = s < totalPlayers ? s + 1 : 1;
+        setIdx(i => {
+          const next = i < totalPlayers - 1 ? i + 1 : 0;
           if (debounceRef.current) clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => setFetchSL(next), 150);
+          debounceRef.current = setTimeout(() => setFetchIdx(next), 150);
           return next;
         });
       }
       if (e.code === 'Enter' && searchOpen) {
         e.preventDefault();
-        const n = parseInt(inputValue, 10);
-        if (!isNaN(n) && n >= 1 && n <= totalPlayers) { setCurrentSL(n); setFetchSL(n); setInputValue(''); setSearchOpen(false); }
+        const target = indexOfSL(parseInt(inputValue, 10));
+        if (target >= 0) { goTo(target); setInputValue(''); setSearchOpen(false); }
       }
       if (e.code === 'Escape') setSearchOpen(false);
     };
     window.addEventListener('keydown', go);
     return () => window.removeEventListener('keydown', go);
-  }, [inputValue, searchOpen, totalPlayers]);
+  }, [inputValue, searchOpen, totalPlayers, indexOfSL, goTo, season?.id]);
 
   if (loadingPlayers) return (
     <div className="fixed inset-0 pitch-bg flex items-center justify-center aspl-root">
@@ -330,7 +379,7 @@ export default function Slideshow() {
             </div>
             <div>
               <p className="text-[10px] tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>PLAYER NO.</p>
-              <p className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>{currentSL} / {totalPlayers}</p>
+              <p className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'fredoka' }}>{idx + 1} / {totalPlayers}</p>
             </div>
           </div>
         </div>
@@ -400,7 +449,7 @@ export default function Slideshow() {
 
         {/* RIGHT */}
         <section key={animKey + 'form'} className="w-80 shrink-0 flex items-center justify-center anim-left delay-2">
-          <BidPanel player={player} onSold={() => setIsSold(true)} />
+          <BidPanel player={player} season={season} onSold={() => setIsSold(true)} />
         </section>
       </main>
 
@@ -408,22 +457,24 @@ export default function Slideshow() {
       {searchOpen && (() => {
         const n = parseInt(inputValue, 10);
         const isEmpty = inputValue === '';
-        const isValid = !isEmpty && !isNaN(n) && n >= 1 && n <= totalPlayers;
+        const target = isEmpty ? -1 : indexOfSL(n);
+        const isValid = target >= 0;
         const isInvalid = !isEmpty && !isValid;
-        const jump = () => { if (isValid) { setCurrentSL(n); setFetchSL(n); setInputValue(''); setSearchOpen(false); } };
+        const jump = () => { if (isValid) { goTo(target); setInputValue(''); setSearchOpen(false); } };
+        const slRange = players.length ? `${players[0].sl} – ${players[players.length - 1].sl}` : '';
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(10,22,40,0.85)', backdropFilter: 'blur(12px)' }}>
             <div className="glass rounded-2xl p-6 flex flex-col gap-3 anim-up" style={{ minWidth: 360 }}>
               <p className="text-xs tracking-widest" style={{ color: 'var(--muted)', fontFamily: 'kanit' }}>JUMP TO PLAYER</p>
               <div className="flex gap-2">
-                <input ref={inputRef} type="number" min={1} max={totalPlayers}
+                <input ref={inputRef} type="number"
                   className="flex-1 rounded-lg px-4 py-3 text-2xl outline-none"
                   style={{
                     background: 'var(--pitch-light)', fontFamily: 'kanit',
                     border: `2px solid ${isInvalid ? 'rgba(229,62,62,0.8)' : 'var(--gold)'}`,
                     color: isInvalid ? '#fca5a5' : 'var(--white)',
                   }}
-                  placeholder={`1 – ${totalPlayers}`} value={inputValue}
+                  placeholder={slRange} value={inputValue}
                   onChange={e => {
                     const raw = e.target.value;
                     // block decimals and anything that isn't a plain integer
@@ -444,7 +495,7 @@ export default function Slideshow() {
               </div>
               {isInvalid && (
                 <p className="text-[10px] tracking-wide" style={{ color: '#fca5a5', fontFamily: 'kanit' }}>
-                  ENTER A NUMBER BETWEEN 1 AND {totalPlayers}
+                  NO PLAYER #{inputValue} IN THIS SEASON ({slRange})
                 </p>
               )}
               {!isInvalid && <p className="text-xs" style={{ color: 'var(--muted)' }}>Press <kbd className="kbd">Esc</kbd> to close</p>}

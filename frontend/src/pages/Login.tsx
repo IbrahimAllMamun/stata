@@ -1,6 +1,6 @@
 // src/pages/Login.tsx - Unified login for all roles (member / mod / admin)
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { LogIn, Lock, Mail, AlertCircle, KeyRound, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { memberAuthApi } from '../lib/api';
@@ -25,10 +25,18 @@ export default function Login() {
 
   const { memberLogin, isLoggedIn, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Where to land after signing in: the guarded page the user originally asked
+  // for (set by ProtectedRoute), else the role's default landing page.
+  const from = (location.state as { from?: string } | null)?.from;
+  const fallback = isAdmin ? '/admin/dashboard' : '/account';
+  // A non-admin can't be sent to an /admin URL — that would bounce straight back here.
+  const destination = from && (isAdmin || !from.startsWith('/admin')) ? from : fallback;
 
   useEffect(() => {
-    if (isLoggedIn) navigate(isAdmin ? '/admin/dashboard' : '/account', { replace: true });
-  }, [isLoggedIn]);
+    if (isLoggedIn) navigate(destination, { replace: true });
+  }, [isLoggedIn, destination]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +46,9 @@ export default function Login() {
     if (err) {
       setError(err);
       if (ns) setNeedsSetup(true);
-    } else {
-      navigate('/account');
     }
+    // On success the isLoggedIn effect above performs the redirect — doing it
+    // here too would navigate using the stale pre-login role.
   };
 
   const handleRequestSetup = async (e: React.FormEvent) => {

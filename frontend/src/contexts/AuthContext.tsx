@@ -43,12 +43,6 @@ interface AuthContextType {
   memberLogin: (email: string, password: string) => Promise<{ error: string | null; needsSetup?: boolean }>;
   memberLogout: () => void;
   setMemberUser: (m: MemberUser) => void;
-
-  // Legacy admin login kept for old Admin table fallback during transition
-  // TODO: remove after all admins are migrated to member table
-  admin: { id: string; username: string; role: string } | null;
-  login: (username: string, password: string) => Promise<{ error: Error | null }>;
-  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,42 +57,42 @@ function parseJwtPayload(token: string) {
   }
 }
 
-// Legacy imports for old Admin table login (kept during transition)
-import { adminApi, getToken, setToken, removeToken } from '../lib/api';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<MemberUser | null>(null);
-  const [legacyAdmin, setLegacyAdmin] = useState<{ id: string; username: string; role: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Restore member session
-    const memberToken = getMemberToken();
-    if (memberToken) {
-      const payload = parseJwtPayload(memberToken);
-      if (payload && payload.email) {
-        // Refresh from API to get latest role/status
-        memberAuthApi.me().then((res: any) => {
-          if (res.success) setMember(res.data);
-          else removeMemberToken();
-        }).catch(() => removeMemberToken());
-      } else {
-        removeMemberToken();
-      }
-    }
+    let cancelled = false;
 
-    // Legacy admin token restore
-    const adminToken = getToken();
-    if (adminToken) {
-      const payload = parseJwtPayload(adminToken);
-      if (payload && !payload.email) {
-        setLegacyAdmin({ id: payload.id, username: payload.username, role: payload.role });
-      } else {
-        removeToken();
+    // `loading` must stay true until the restore has settled. It is async, so
+    // clearing it early would briefly report a logged-in member as anonymous and
+    // bounce guarded routes to /login on a cold page load.
+    const restore = async () => {
+      const memberToken = getMemberToken();
+      if (memberToken) {
+        const payload = parseJwtPayload(memberToken);
+        if (payload && payload.email) {
+          // Refresh from API to get latest role/status
+          try {
+            const res: any = await memberAuthApi.me();
+            if (res.success) {
+              if (!cancelled) setMember(res.data);
+            } else {
+              removeMemberToken();
+            }
+          } catch {
+            removeMemberToken();
+          }
+        } else {
+          removeMemberToken();
+        }
       }
-    }
 
-    setLoading(false);
+      if (!cancelled) setLoading(false);
+    };
+
+    restore();
+    return () => { cancelled = true; };
   }, []);
 
   // ── Member login ───────────────────────────────────────────────────────────
@@ -117,38 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const memberLogout = () => { removeMemberToken(); setMember(null); };
   const setMemberUser = (m: MemberUser) => setMember(m);
 
-  // ── Legacy admin login ─────────────────────────────────────────────────────
-  const login = async (username: string, password: string) => {
-    try {
-      const res = await adminApi.login(username, password);
-      setToken(res.data.token);
-      setLegacyAdmin(res.data.admin);
-      return { error: null };
-    } catch (err) {
-      return { error: err as Error };
-    }
-  };
-
-  const logout = () => { removeToken(); setLegacyAdmin(null); };
-
   // ── Derived state ──────────────────────────────────────────────────────────
-  // Member table roles take priority; legacy admin is fallback
   const memberRole = member?.role ?? null;
-  const effectiveRole = memberRole ?? (legacyAdmin ? legacyAdmin.role : null);
 
-  const isLoggedIn = !!member || !!legacyAdmin;
+  const isLoggedIn = !!member;
   const isMember = !!member;
   const isStaff = memberRole === 'admin' || memberRole === 'mod';
-  const isModerator = effectiveRole === 'mod' || effectiveRole === 'moderator';
-  const isAdmin = effectiveRole === 'admin' || effectiveRole === 'mod' || effectiveRole === 'moderator';
-  const isFullAdmin = effectiveRole === 'admin';
+  const isModerator = memberRole === 'mod';
+  const isAdmin = isStaff;          // admin panel access — admin or mod
+  const isFullAdmin = memberRole === 'admin';
 
   return (
     <AuthContext.Provider value={{
       member, loading,
       isLoggedIn, isMember, isStaff, isModerator, isAdmin, isFullAdmin,
       memberLogin, memberLogout, setMemberUser,
-      admin: legacyAdmin, login, logout,
     }}>
       {children}
     </AuthContext.Provider>

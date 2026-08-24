@@ -214,6 +214,7 @@ async function dispatchPasswordToMember(member) {
       subject: 'Your STATA Login Password',
       htmlBody: buildInitialPasswordEmailHtml(member.full_name, plainPassword),
       textBody: buildInitialPasswordEmailText(member.full_name, plainPassword),
+      transactional: true,
     });
 
     await prisma.initialPasswordDispatch.update({

@@ -89,7 +89,7 @@ All admin routes require `Authorization: Bearer <token>` header.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/admin/login` | Get JWT token |
+| POST | `/api/auth/login` | Get JWT token (member email + password) |
 | GET | `/api/admin/dashboard` | Stats overview |
 | POST | `/api/admin/committee` | Create committee year |
 | POST | `/api/admin/committee/assign` | Assign president/secretary + image upload |

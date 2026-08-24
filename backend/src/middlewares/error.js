@@ -1,6 +1,17 @@
 // src/middlewares/error.js
 const errorHandler = (err, req, res, next) => {
+  // The client hung up mid-upload (navigated away, closed the tab, lost signal).
+  // There is no socket left to answer on, and it is not a fault worth a stack
+  // trace, so note it and stop.
+  if (err.message === 'Request aborted' || err.code === 'ECONNABORTED' || req.destroyed) {
+    console.warn(`[abort] client disconnected during ${req.method} ${req.originalUrl}`);
+    return;
+  }
+
   console.error(err.stack);
+
+  // Once headers are out, Express must handle the failure itself.
+  if (res.headersSent) return next(err);
 
   // Multer errors
   if (err.code === 'LIMIT_FILE_SIZE') {

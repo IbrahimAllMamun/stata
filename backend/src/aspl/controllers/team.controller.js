@@ -107,10 +107,35 @@ const updateTeam = async (req, res) => {
 
 // DELETE /api/aspl/teams/:id
 const deleteTeam = async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid team id.' });
   try {
-    await prisma.asplTeam.delete({ where: { id: parseInt(req.params.id) } });
-    return res.json({ message: 'Team deleted.' });
+    const released = await prisma.$transaction(async (tx) => {
+      const team = await tx.asplTeam.findUnique({ where: { id } });
+      if (!team) throw Object.assign(new Error('Team not found.'), { status: 404 });
+
+      // The bid rows cascade away with the team, but the players they point at
+      // would stay flagged sold and drop out of the auction pool for good.
+      const bids = await tx.asplTeamPlayer.findMany({
+        where: { team_id: id },
+        select: { player_sl: true },
+      });
+      if (bids.length) {
+        await tx.asplPlayer.updateMany({
+          where: { sl: { in: bids.map(b => b.player_sl) } },
+          data:  { status: false },
+        });
+      }
+      await tx.asplTeam.delete({ where: { id } });
+      return bids.length;
+    });
+    return res.json({
+      message: released
+        ? `Team deleted. ${released} player(s) returned to the auction pool.`
+        : 'Team deleted.',
+    });
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     if (err.code === 'P2025') return res.status(404).json({ error: 'Team not found.' });
     console.error('deleteTeam error:', err);
     return res.status(500).json({ error: 'Internal server error.' });

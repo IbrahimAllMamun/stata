@@ -2,31 +2,54 @@
  * emailService.js
  * Handles outbound email (bulk + individual) and inbox reading via IMAP.
  *
- * Two email accounts:
- *   no-reply@stataisrt.org  → bulk campaigns  (EMAIL_FROM / SMTP_USER)
- *   info@stataisrt.org      → individual send + inbox reading (INFO_EMAIL / INFO_EMAIL_PASS)
+ * Sending and receiving are deliberately split across two providers:
+ *
+ *   SEND    → Resend (SMTP_*). One provider-level credential signs for every
+ *             From address on the verified domain.
+ *   RECEIVE → the domain's real mailbox host (IMAP_*). Resend is send-only, and
+ *             stataisrt.org's MX points at Google, so inbound mail for info@
+ *             lives there — that is what the Communications inbox reads.
+ *
+ * From addresses:
+ *   no-reply@ → bulk campaigns and password resets (EMAIL_FROM)
+ *   info@     → individual replies and inbox (INFO_EMAIL)
  */
 
 const nodemailer = require('nodemailer');
 
-// ── SMTP transport (bulk — no-reply@) ─────────────────────────────────────────
-function createTransport(user, pass) {
+// ── SMTP transport ────────────────────────────────────────────────────────────
+// Credentials are provider-level, not per-mailbox: Resend authenticates every
+// sender as the literal user `resend` with an API key, so a From address can no
+// longer double as the SMTP username. Callers may still pass explicit
+// credentials for a host that does want per-mailbox auth.
+function createTransport(user = process.env.SMTP_USER, pass = process.env.SMTP_PASS) {
+  const port = parseInt(process.env.SMTP_PORT || '465');
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: process.env.SMTP_SECURE === 'true',
+    port,
+    // Implicit TLS on 465, STARTTLS on 587/2587. Deriving this from the port
+    // when SMTP_SECURE is unset avoids the silent hang that `587 + secure:true`
+    // produces, which is a combination the old .env.example shipped.
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
     auth: { user, pass },
     pool: true,
     maxConnections: 5,
     maxMessages: 100,
     rateDelta: 1000,
     rateLimit: 10,
+    // The previous host routinely took 10-19s to complete connect+greeting,
+    // which overran nodemailer's 30s greeting default under any added latency.
+    connectionTimeout: 60000,
+    greetingTimeout: 60000,
+    socketTimeout: 120000,
   });
 }
 
 // ── Batch helpers ─────────────────────────────────────────────────────────────
 const BATCH_SIZE = 50;
 const BATCH_DELAY_MS = 2000;
+// Resend's batch endpoint accepts up to 100 messages per request.
+const RESEND_BATCH_SIZE = 100;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const chunk = (arr, size) => {
   const out = [];
@@ -34,16 +57,107 @@ const chunk = (arr, size) => {
   return out;
 };
 
+// ── Resend HTTP transport ─────────────────────────────────────────────────────
+// Preferred over SMTP when RESEND_API_KEY is set: it speaks HTTPS on 443, so it
+// is immune to the outbound SMTP port blocking that is common on shared hosts,
+// and it avoids the slow connect+greeting that forced the 60s timeouts above.
+// SMTP remains the fallback so the provider can still be swapped via .env alone.
+let resendClient;
+function getResend() {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (resendClient === undefined) {
+    try {
+      const { Resend } = require('resend');
+      resendClient = new Resend(process.env.RESEND_API_KEY);
+    } catch (err) {
+      throw new Error('RESEND_API_KEY is set but the resend package is missing. Run: npm install resend');
+    }
+  }
+  return resendClient;
+}
+
+// Resend returns { data, error } rather than throwing.
+function resendError(error) {
+  if (!error) return null;
+  return error.message || error.name || JSON.stringify(error);
+}
+
 // ── Send bulk campaign (from no-reply@) ───────────────────────────────────────
-async function sendBulkEmail({ recipients, subject, htmlBody, textBody }) {
+async function sendBulkEmail({ recipients, subject, htmlBody, textBody, transactional = false }) {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = `"${process.env.EMAIL_FROM_NAME || 'STATA'}" <${process.env.EMAIL_FROM || user}>`;
 
-  const transporter = createTransport(user, pass);
-  const batches = chunk(recipients, BATCH_SIZE);
+  // Password resets and account setup links are transactional, not campaigns.
+  // Marking them `Precedence: bulk` or attaching an unsubscribe header tells
+  // Gmail they are promotional, which costs placement on exactly the messages
+  // that must arrive. Suppressing auto-responders is still wanted either way.
+  const headers = transactional
+    ? { 'X-Auto-Response-Suppress': 'OOF, AutoReply' }
+    : {
+        'List-Unsubscribe': `<mailto:${process.env.EMAIL_FROM || user}?subject=Unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'Precedence': 'bulk',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+      };
+
   let totalSent = 0, totalFailed = 0;
   const errors = [];
+
+  const resend = getResend();
+  if (resend) {
+    // Single-recipient sends — every password reset and account setup link —
+    // go through the primary endpoint rather than the batch one, so the
+    // transactional headers above are carried verbatim.
+    if (recipients.length === 1) {
+      try {
+        const { data, error } = await resend.emails.send({
+          from, to: [recipients[0]], subject, html: htmlBody, text: textBody, headers,
+        });
+        const msg = resendError(error);
+        if (msg) return { sent: 0, failed: 1, errors: [`${recipients[0]}: ${msg}`] };
+        return { sent: 1, failed: 0, errors: [], messageId: data?.id };
+      } catch (err) {
+        return { sent: 0, failed: 1, errors: [`${recipients[0]}: ${err.message}`] };
+      }
+    }
+
+    // One request per 100 recipients instead of one SMTP transaction each.
+    const groups = chunk(recipients, RESEND_BATCH_SIZE);
+    for (let gi = 0; gi < groups.length; gi++) {
+      const group = groups[gi];
+      try {
+        const { data, error } = await resend.batch.send(
+          group.map(recipient => ({
+            from, to: [recipient], subject, html: htmlBody, text: textBody, headers,
+          }))
+        );
+        const msg = resendError(error);
+        if (msg) {
+          totalFailed += group.length;
+          errors.push(`${group.length} recipient(s): ${msg}`);
+        } else {
+          // Shape is { data: [{ id }, ...] }; fall back to the group size if the
+          // payload is ever returned flat.
+          const ids = data?.data ?? data ?? [];
+          const accepted = Array.isArray(ids) ? ids.length : group.length;
+          totalSent += accepted;
+          if (accepted < group.length) {
+            totalFailed += group.length - accepted;
+            errors.push(`${group.length - accepted} recipient(s) not accepted by Resend`);
+          }
+        }
+      } catch (err) {
+        totalFailed += group.length;
+        errors.push(`${group.length} recipient(s): ${err.message}`);
+      }
+      if (gi < groups.length - 1) await sleep(BATCH_DELAY_MS);
+    }
+    return { sent: totalSent, failed: totalFailed, errors };
+  }
+
+  const transporter = createTransport(user, pass);
+  const batches = chunk(recipients, BATCH_SIZE);
 
   for (let bi = 0; bi < batches.length; bi++) {
     await Promise.allSettled(batches[bi].map(async (recipient) => {
@@ -54,12 +168,7 @@ async function sendBulkEmail({ recipients, subject, htmlBody, textBody }) {
           subject,
           html: htmlBody,
           text: textBody,
-          headers: {
-            'List-Unsubscribe': `<mailto:${process.env.EMAIL_FROM || user}?subject=Unsubscribe>`,
-            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-            'Precedence': 'bulk',
-            'X-Auto-Response-Suppress': 'OOF, AutoReply',
-          },
+          headers,
         });
         totalSent++;
       } catch (err) {
@@ -78,10 +187,35 @@ async function sendIndividualEmail({ to, subject, body, replyToMessageId }) {
   const infoEmail = process.env.INFO_EMAIL;
   const infoPass = process.env.INFO_EMAIL_PASS;
   if (!infoEmail) throw new Error('INFO_EMAIL not set in .env');
-  if (!infoPass) throw new Error('INFO_EMAIL_PASS not set in .env');
   const from = `"STATA" <${infoEmail}>`;
 
-  const transporter = createTransport(infoEmail, infoPass);
+  // Authenticate with the provider credential, not the mailbox password:
+  // INFO_EMAIL_PASS is now only the IMAP password for saving to Sent, and is
+  // not required to send.
+  const resend = getResend();
+  if (resend) {
+    const payload = {
+      from, to: [to], subject,
+      text: body,
+      html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.6;color:#374151;max-width:600px">${body.replace(/\n/g, '<br>')}</div>`,
+    };
+    if (replyToMessageId) {
+      payload.headers = { 'In-Reply-To': replyToMessageId, References: replyToMessageId };
+    }
+    const { data, error } = await resend.emails.send(payload);
+    const msg = resendError(error);
+    if (msg) throw new Error(`Resend: ${msg}`);
+
+    // Keep the Sent copy working — Resend cannot store one, the mailbox host does.
+    try {
+      await appendToSent({ mailOptions: { ...payload, to, date: new Date() }, infoEmail, infoPass });
+    } catch (err) {
+      console.warn('[IMAP] Could not save to Sent folder:', err.message);
+    }
+    return { messageId: data?.id };
+  }
+
+  const transporter = createTransport();
 
   const mailOptions = {
     from,
@@ -113,13 +247,27 @@ async function sendIndividualEmail({ to, subject, body, replyToMessageId }) {
 }
 
 // ── Append message to INBOX.Sent ──────────────────────────────────────────────
+// ── Mailbox naming ────────────────────────────────────────────────────────────
+// Dovecot (cPanel/Webuzo) exposes the Sent folder as "INBOX.Sent", while Gmail
+// exposes it as "[Gmail]/Sent Mail". The admin UI requests the Dovecot name, so
+// translate for the host actually in use rather than change the API contract.
+function resolveFolder(name) {
+  const isGmail = /gmail|googlemail|google/i.test(process.env.IMAP_HOST || '');
+  if (isGmail && /^(INBOX\.Sent|sent)$/i.test(name)) {
+    return process.env.IMAP_SENT_FOLDER || '[Gmail]/Sent Mail';
+  }
+  return name;
+}
+
 function appendToSent({ mailOptions, infoEmail, infoPass }) {
   let Imap;
   try { Imap = require('imap'); } catch (e) { return Promise.resolve(); }
 
   const imapHost = process.env.IMAP_HOST;
   const imapPort = parseInt(process.env.IMAP_PORT || '993');
-  if (!imapHost) return Promise.resolve();
+  // Saving to Sent is optional. Without a mailbox host or password there is
+  // nothing to append to, so skip rather than open a doomed connection.
+  if (!imapHost || !infoPass) return Promise.resolve();
 
   // Build a raw RFC2822 message to append
   const { to, subject, text, date } = mailOptions;
@@ -150,7 +298,7 @@ function appendToSent({ mailOptions, infoEmail, infoPass }) {
     imap.once('ready', () => {
       // Ensure INBOX.Sent exists, create if not
       imap.getBoxes((err, boxes) => {
-        const sentFolder = 'INBOX.Sent';
+        const sentFolder = resolveFolder('INBOX.Sent');
         const append = () => {
           imap.append(rawMessage, { mailbox: sentFolder, flags: ['\\Seen'] }, (appendErr) => {
             if (appendErr) console.warn('[IMAP] Append error:', appendErr.message);
@@ -216,7 +364,7 @@ async function fetchInbox({ limit = 30, folder = 'INBOX' } = {}) {
     });
 
     imap.once('ready', () => {
-      imap.openBox(folder, true, (err, box) => {
+      imap.openBox(resolveFolder(folder), true, (err, box) => {
         if (err) { console.error('[IMAP] openBox error:', err.message); imap.end(); return reject(err); }
 
         const total = box.messages.total;
@@ -271,11 +419,19 @@ async function fetchInbox({ limit = 30, folder = 'INBOX' } = {}) {
 
 
 async function verifySmtpConnection() {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const transporter = createTransport(user, pass);
+  const resend = getResend();
+  if (resend) {
+    // No connection to open — exercise the credential with a cheap authenticated
+    // call so an invalid or revoked API key surfaces here rather than mid-send.
+    const { error } = await resend.apiKeys.list();
+    const msg = resendError(error);
+    if (msg) throw new Error(`Resend API key rejected: ${msg}`);
+    return { transport: 'resend' };
+  }
+  const transporter = createTransport();
   await transporter.verify();
   transporter.close();
+  return { transport: 'smtp', host: process.env.SMTP_HOST };
 }
 
 module.exports = { sendBulkEmail, sendIndividualEmail, verifySmtpConnection, fetchInbox };

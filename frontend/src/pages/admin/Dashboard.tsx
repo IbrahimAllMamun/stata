@@ -6,7 +6,7 @@ import { adminApi, DashboardStats } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AdminDashboard() {
-  const { isAdmin, isFullAdmin, isModerator, logout, admin, member, memberLogout } = useAuth();
+  const { isAdmin, isFullAdmin, isModerator, member, memberLogout } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
               {isModerator ? 'Moderator Dashboard' : 'Admin Dashboard'}
             </h1>
             <p className="text-gray-500 text-sm flex items-center gap-2">
-              Logged in as <span className="font-semibold">{member?.full_name || admin?.username}</span>
+              Logged in as <span className="font-semibold">{member?.full_name}</span>
               {isModerator && (
                 <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
                   Moderator
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
               )}
             </p>
           </div>
-          <button onClick={() => { memberLogout(); logout(); }} className="flex items-center gap-2 text-gray-600 hover:text-[#E74C3C] transition-colors text-sm">
+          <button onClick={memberLogout} className="flex items-center gap-2 text-gray-600 hover:text-[#E74C3C] transition-colors text-sm">
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>

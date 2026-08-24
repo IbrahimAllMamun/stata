@@ -1,17 +1,16 @@
 // src/routes/admin.routes.js
 const express = require('express');
 const router = express.Router();
-const { authenticate, requireRole } = require('../middlewares/auth');
 const { authenticateMember, requireMemberRole } = require('../middlewares/memberAuth');
 const validate = require('../middlewares/validate');
 const upload = require('../config/upload');
 
 const {
-  loginSchema, committeeSchema, assignMemberSchema,
+  committeeSchema, assignMemberSchema,
   postSchema, updatePostSchema, eventSchema, updateEventSchema,
 } = require('../validators');
 
-const { login, getDashboardStats, listAdmins, createAccount, deleteAccount, changePassword, createModerator } = require('../controllers/admin.controller');
+const { getDashboardStats } = require('../controllers/admin.controller');
 const { createCommittee, assignMember, deleteCommitteeMember, deleteCommittee } = require('../controllers/committee.controller');
 const { createPost, updatePost, deletePost, togglePublish, getAdminPosts, approvePost, rejectPost, getPendingPostCount } = require('../controllers/post.controller');
 const { createEvent, updateEvent, deleteEvent } = require('../controllers/event.controller');
@@ -22,14 +21,12 @@ const { uploadPhotos, deletePhoto, getAdminGallery, getSubjectsByDate } = requir
 const { sendCampaign, getCampaigns, previewRecipients, verifySMTP, sendIndividual, getInbox, getInboxUnreadCount } = require('../controllers/email.controller');
 const { getStatus: getInitialPwStatus, sendAll: sendInitialPwAll, sendOne: sendInitialPwOne } = require('../controllers/initialPassword.controller');
 
-// Public auth
-router.post('/login', validate(loginSchema), login);
-
-// All routes below require authentication (admin OR moderator)
+// All routes require authentication (admin OR moderator)
 // Uses member table tokens — role field drives access
 router.use(authenticateMember);
-// Compatibility shim: expose req.member as req.admin so existing controllers work
-router.use((req, res, next) => { if (req.member && !req.admin) req.admin = req.member; next(); });
+// authenticateMember only proves "some member is logged in"; without this the
+// routes below would be open to every approved alumnus, not just staff.
+router.use(requireMemberRole('admin', 'mod'));
 
 // Dashboard
 router.get('/dashboard', getDashboardStats);
@@ -54,13 +51,6 @@ router.get('/member-updates', getMemberUpdateRequests);
 router.get('/member-updates/count', getPendingUpdateCount);
 router.post('/member-updates/:id/approve', approveMemberUpdate);
 router.post('/member-updates/:id/reject', rejectMemberUpdate);
-
-// Moderator management — admin only
-router.post('/moderators', requireMemberRole('admin'), createModerator);
-router.get('/accounts', requireMemberRole('admin'), listAdmins);
-router.post('/accounts', requireMemberRole('admin'), createAccount);
-router.delete('/accounts/:id', requireMemberRole('admin'), deleteAccount);
-router.patch('/accounts/:id/password', requireMemberRole('admin'), changePassword);
 
 // Committee — admin only
 router.post('/committee', requireMemberRole('admin'), validate(committeeSchema), createCommittee);

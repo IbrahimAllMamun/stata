@@ -1,0 +1,14 @@
+psql -h localhost -p 5432 -U stataisr_dbuser -d stataisr_db
+
+
+postgres://stataisr_dbuser:sTATa_IsrT_5822@103.65.138.222:5432/stataisr_db
+
+
+
+
+
+
+INSERT INTO public.events (id,title,slug,description,event_date,location,banner_image,is_upcoming,created_at,updated_at,created_by) VALUES ('59ad728c-65fb-43e0-94d0-9fe6ccbba7a8','ASPL 2026 (Football)','aspl-2026-football','Event description goes here.','2026-09-28 00:00:00','Event Location','',true,NOW(),NOW(),'bc4ecab4-7bd6-4e66-a743-04e7f973f1e3');
+
+
+'bc4ecab4-7bd6-4e66-a743-04e7f973f1e3'

@@ -22,7 +22,7 @@ interface Campaign {
   id: string; subject: string; html_body: string; text_body: string;
   recipient_filter: RecipientFilter; status: CampaignStatus;
   sent_count: number; failed_count: number; sent_at: string | null;
-  created_at: string; admin: { username: string };
+  created_at: string; creator: { full_name: string } | null;
 }
 interface InboxEmail {
   id: string | null; from: string; to: string; subject: string;
@@ -652,7 +652,7 @@ function CampaignsSection({ showToast }: { showToast: (m: string, ok?: boolean) 
                   </div>
                   <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-gray-400">
                     <span>{c.sent_at ? new Date(c.sent_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date(c.created_at).toLocaleDateString()}</span>
-                    <span>·</span><span>by {c.admin.username}</span>
+                    <span>·</span><span>by {c.creator?.full_name ?? 'Unknown'}</span>
                     {c.status === 'SENT' && <><span>·</span><span className="text-green-600 font-semibold">{c.sent_count} sent</span>{c.failed_count > 0 && <span className="text-red-500 font-semibold">{c.failed_count} failed</span>}</>}
                     <span className="bg-gray-100 px-2 py-0.5 rounded-full">{FILTER_LABELS[c.recipient_filter]}</span>
                   </div>

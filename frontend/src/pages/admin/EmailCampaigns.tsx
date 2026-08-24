@@ -23,7 +23,7 @@ interface Campaign {
   failed_count: number;
   sent_at: string | null;
   created_at: string;
-  admin: { username: string };
+  creator: { full_name: string } | null;
 }
 
 interface RecipientPreview {
@@ -199,7 +199,7 @@ function CampaignCard({ c }: { c: Campaign }) {
                 : new Date(c.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
             <span className="text-xs text-gray-300">·</span>
-            <span className="text-xs text-gray-400">by {c.admin.username}</span>
+            <span className="text-xs text-gray-400">by {c.creator?.full_name ?? 'Unknown'}</span>
             {c.status === 'SENT' && (
               <>
                 <span className="text-xs text-gray-300">·</span>

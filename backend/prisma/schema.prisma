@@ -37,6 +37,12 @@ model Member {
   update_requests           MemberUpdateRequest[]
   initial_password_dispatch InitialPasswordDispatch?
 
+  // ── Authored content ─────────────────────────────────────────────
+  posts                     Post[]
+  events                    Event[]
+  gallery_photos            GalleryPhoto[]
+  email_campaigns           EmailCampaign[]
+
   @@index([batch])
   @@index([email])
   @@index([status])
@@ -81,17 +87,19 @@ enum MemberStatus {
   ARCHIVED
 }
 
+/// Deprecated — retained as a read-only archive of the pre-migration
+/// authorship data and the legacy credentials. Nothing in the application
+/// reads or writes it: authentication runs off `members`, and the four
+/// `created_by` columns that used to reference this table now point at
+/// `members.id`. Kept rather than dropped so a mis-mapped backfill stays
+/// recoverable — drop it in a follow-up migration once production
+/// attribution has been verified.
 model Admin {
   id         String   @id @default(uuid())
   username   String   @unique
   password   String
   role       String   @default("admin")
   created_at DateTime @default(now())
-
-  posts           Post[]
-  events          Event[]
-  gallery_photos  GalleryPhoto[]
-  email_campaigns EmailCampaign[]
 
   @@map("admins")
 }
@@ -106,10 +114,10 @@ model EmailCampaign {
   sent_count       Int                 @default(0)
   failed_count     Int                 @default(0)
   sent_at          DateTime?
-  created_by       String
+  created_by       String?
   created_at       DateTime            @default(now())
 
-  admin Admin @relation(fields: [created_by], references: [id])
+  creator Member? @relation(fields: [created_by], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([created_at])
@@ -166,7 +174,7 @@ model Post {
   created_at   DateTime   @default(now())
   updated_at   DateTime   @updatedAt
 
-  admin Admin? @relation(fields: [created_by], references: [id])
+  creator Member? @relation(fields: [created_by], references: [id], onDelete: SetNull)
 
   @@index([slug])
   @@index([status])
@@ -191,9 +199,9 @@ model Event {
   is_upcoming  Boolean  @default(true)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
-  created_by   String
+  created_by   String?
 
-  admin Admin @relation(fields: [created_by], references: [id])
+  creator Member? @relation(fields: [created_by], references: [id], onDelete: SetNull)
 
   @@index([slug])
   @@index([event_date])
@@ -230,10 +238,10 @@ model GalleryPhoto {
   image_url   String
   subject     String
   moment_date DateTime
-  created_by  String
+  created_by  String?
   created_at  DateTime @default(now())
 
-  admin Admin @relation(fields: [created_by], references: [id])
+  creator Member? @relation(fields: [created_by], references: [id], onDelete: SetNull)
 
   @@index([moment_date])
   @@index([created_at])

@@ -27,7 +27,7 @@ export default function Navigation() {
   const [asplVisible, setAsplVisible] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { isAdmin, isFullAdmin, isModerator, logout, admin, loading: authLoading, member, isMember, isStaff, memberLogout } = useAuth();
+  const { isAdmin, isFullAdmin, isModerator, loading: authLoading, member, isMember, isStaff, memberLogout } = useAuth();
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -70,7 +70,6 @@ export default function Navigation() {
     const handle401 = (err: any) => {
       if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('unauthorized') || err?.message?.toLowerCase().includes('no token') || err?.message?.toLowerCase().includes('invalid') || err?.message?.toLowerCase().includes('expired')) {
         memberLogout();
-        logout();
       }
     };
 
@@ -88,7 +87,7 @@ export default function Navigation() {
     fetchAll();
     const t = setInterval(fetchAll, 60000);
     return () => clearInterval(t);
-  }, [authLoading, isAdmin, location.pathname, logout]);
+  }, [authLoading, isAdmin, location.pathname, memberLogout]);
 
   // Clear badge when visiting that section
   useEffect(() => {
@@ -154,9 +153,9 @@ export default function Navigation() {
                     }`}>
                   {member?.photo_url
                     ? <img src={imageUrl(member.photo_url) || ''} alt="" className="w-7 h-7 rounded-full object-cover border border-white/30 flex-shrink-0" />
-                    : <div className="w-7 h-7 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{(member?.full_name || admin?.username || '?').charAt(0).toUpperCase()}</div>
+                    : <div className="w-7 h-7 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{(member?.full_name || '?').charAt(0).toUpperCase()}</div>
                   }
-                  <span>{member?.full_name?.split(' ')[0] || admin?.username}</span>
+                  <span>{member?.full_name?.split(' ')[0]}</span>
                   {isModerator && (
                     <span className="bg-[#2F5BEA]/30 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded">mod</span>
                   )}
@@ -171,7 +170,7 @@ export default function Navigation() {
                   <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in">
                     <div className="bg-gradient-to-r from-[#1F2A44] to-[#2F5BEA] px-4 py-3">
                       <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">Admin Panel</p>
-                      <p className="text-white font-bold text-sm mt-0.5 truncate">{member?.full_name || admin?.username}</p>
+                      <p className="text-white font-bold text-sm mt-0.5 truncate">{member?.full_name}</p>
                     </div>
                     <div className="py-1.5">
                       <Link to="/admin"
@@ -227,7 +226,7 @@ export default function Navigation() {
                       </Link>
                     </div>
                     <div className="border-t border-gray-100 px-4 py-2">
-                      <button onClick={() => { memberLogout(); logout(); }}
+                      <button onClick={memberLogout}
                         className="w-full flex items-center gap-2 text-sm text-red-500 hover:text-red-600 py-1.5 transition-colors font-medium">
                         <LogOut className="w-4 h-4" /> Sign out
                       </button>
@@ -333,11 +332,11 @@ export default function Navigation() {
                   {member?.photo_url
                     ? <img src={imageUrl(member.photo_url) || ''} alt="" className="w-9 h-9 rounded-full object-cover border border-white/20 flex-shrink-0" />
                     : <div className="w-9 h-9 rounded-full bg-[#2F5BEA] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                      {(member?.full_name || admin?.username || '?').charAt(0).toUpperCase()}
+                      {(member?.full_name || '?').charAt(0).toUpperCase()}
                     </div>
                   }
                   <div className="min-w-0 flex-1">
-                    <p className="text-white text-sm font-semibold truncate">{member?.full_name || admin?.username}</p>
+                    <p className="text-white text-sm font-semibold truncate">{member?.full_name}</p>
                     <p className="text-gray-400 text-xs truncate">{member?.email || (isFullAdmin ? 'Admin' : 'Moderator')}</p>
                   </div>
                   {isModerator && !isFullAdmin && (
@@ -389,7 +388,7 @@ export default function Navigation() {
                     <UserCheck className="w-4 h-4 text-[#2ECC71]" /> Update Profile
                   </Link>
                 </div>
-                <button onClick={() => { memberLogout(); logout(); setIsOpen(false); }}
+                <button onClick={() => { memberLogout(); setIsOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors mt-1 border-t border-white/10 pt-3">
                   <LogOut className="w-4 h-4" /> Sign out
                 </button>

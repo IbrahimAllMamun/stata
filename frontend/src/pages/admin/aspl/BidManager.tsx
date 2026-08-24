@@ -1,6 +1,6 @@
 // src/pages/admin/aspl/BidManager.tsx
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft, RefreshCw, Trash2, Check, X, ChevronDown,
   DollarSign, AlertCircle, Search, Trophy
@@ -141,6 +141,12 @@ function BidRow({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function BidManager() {
+  // Reachable both as /admin/aspl/bids (active season) and
+  // /admin/aspl/seasons/:seasonId/bid/:teamId (scoped to one team).
+  const { seasonId, teamId } = useParams();
+  const scopedSeasonId = seasonId ? parseInt(seasonId) : undefined;
+  const scopedTeamId = teamId ? parseInt(teamId) : undefined;
+
   const [season, setSeason] = useState<AsplSeason | null>(null);
   const [bids, setBids] = useState<AsplTeamPlayer[]>([]);
   const [teams, setTeams] = useState<AsplTeam[]>([]);
@@ -148,14 +154,18 @@ export default function BidManager() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [filterTeam, setFilterTeam] = useState<number | 'ALL'>('ALL');
+  const [filterTeam, setFilterTeam] = useState<number | 'ALL'>(
+    scopedTeamId && !isNaN(scopedTeamId) ? scopedTeamId : 'ALL'
+  );
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [scopedSeasonId]);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true); else setRefreshing(true);
     try {
-      const s = await asplApi.getActiveSeason().catch(() => null);
+      const s = scopedSeasonId && !isNaN(scopedSeasonId)
+        ? await asplApi.getSeasonById(scopedSeasonId).catch(() => null)
+        : await asplApi.getActiveSeason().catch(() => null);
       setSeason(s);
       const [bs, ts] = await Promise.all([
         asplApi.getTeamPlayers(s?.id),
@@ -168,10 +178,14 @@ export default function BidManager() {
   };
 
   const handleSaved = (updated: AsplTeamPlayer) => {
+    const previous = bids.find(b => b.id === updated.id);
     setBids(bs => bs.map(b => b.id === updated.id ? updated : b));
-    // also update team balances in teams list
     setTeams(ts => ts.map(t => {
+      // The charged team's balance comes back on the response; the team the
+      // player left has to be refunded locally or its card shows a stale figure.
       if (t.id === updated.team_id) return { ...t, balance: updated.team.balance };
+      if (previous && previous.team_id !== updated.team_id && t.id === previous.team_id)
+        return { ...t, balance: t.balance + previous.price };
       return t;
     }));
   };

@@ -125,11 +125,11 @@ function PostCard({ post }: { post: Post }) {
       <div className="p-5 flex flex-col flex-1">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs text-gray-400">{formatDate(post.created_at)}</span>
-          {post.admin && (
+          {post.creator && (
             <span className="text-xs text-gray-300">·</span>
           )}
-          {post.admin && (
-            <span className="text-xs text-gray-400">{post.admin.username}</span>
+          {post.creator && (
+            <span className="text-xs text-gray-400">{post.creator.full_name}</span>
           )}
         </div>
         <h3 className="font-bold text-[#1F2A44] text-lg mb-2 line-clamp-2 group-hover:text-[#2F5BEA] transition-colors">{post.title}</h3>

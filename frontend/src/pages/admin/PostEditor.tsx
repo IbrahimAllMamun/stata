@@ -9,7 +9,7 @@ import MarkdownEditor from '../../components/MarkdownEditor';
 export default function PostEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, admin, loading: authLoading } = useAuth();
+  const { isAdmin, member, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingPost, setLoadingPost] = useState(!!id);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -43,12 +43,12 @@ export default function PostEditor() {
     }
   }, [id]);
 
-  // Pre-fill author name with admin username for new posts
+  // Pre-fill the byline with the signed-in member's name for new posts
   useEffect(() => {
-    if (!id && admin?.username && !formData.author_name) {
-      setFormData(f => ({ ...f, author_name: admin.username }));
+    if (!id && member?.full_name && !formData.author_name) {
+      setFormData(f => ({ ...f, author_name: member.full_name }));
     }
-  }, [admin, id]);
+  }, [member, id]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

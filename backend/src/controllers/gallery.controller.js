@@ -107,19 +107,13 @@ const uploadPhotos = async (req, res, next) => {
     );
     savedPaths.push(...processedPaths);
 
-    // req.admin is set from the member-table token (via authenticateMember shim).
-    // gallery_photos.created_by is a FK to the Admin table, so we must resolve
-    // the real Admin record by matching the token's email.
-    const adminRecord = await prisma.admin.findFirst({ where: { username: req.admin.username } });
-    if (!adminRecord) {
-      return res.status(403).json({ success: false, message: 'Admin record not found. Ensure your account exists in the admin table.' });
-    }
+    const created_by = req.member.id;
 
     const photoData = processedPaths.map((savedPath) => ({
       image_url: toUrlPath(savedPath),
       subject: subjectTrimmed,
       moment_date: momentDateObj,
-      created_by: adminRecord.id,
+      created_by,
     }));
 
     await prisma.galleryPhoto.createMany({ data: photoData });
@@ -151,7 +145,7 @@ const getAdminGallery = async (req, res, next) => {
       orderBy: [{ moment_date: 'desc' }, { created_at: 'desc' }],
       select: {
         id: true, image_url: true, subject: true, moment_date: true, created_at: true,
-        admin: { select: { id: true, username: true } },
+        creator: { select: { id: true, full_name: true } },
       },
     });
 

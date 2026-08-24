@@ -3,28 +3,100 @@ const prisma = require('../../config/database');
 
 const includeRelations = { player: true, team: true };
 
+const fail = (message, status) => Object.assign(new Error(message), { status });
+
+// AsplPlayer only stores member_email, so squad lists would otherwise render as
+// "#910001". Contact details are attached only for logged-in members.
+async function enrichRecords(records, includeContact) {
+  if (!records.length) return records;
+  const emails = [...new Set(records.map(r => r.player?.member_email).filter(Boolean))];
+  if (!emails.length) return records;
+
+  const members = await prisma.member.findMany({
+    where: { email: { in: emails } },
+    select: { email: true, full_name: true, batch: true, phone_number: true, photo_url: true },
+  });
+  const map = Object.fromEntries(members.map(m => [m.email, m]));
+
+  return records.map(r => {
+    if (!r.player) return r;
+    const m = map[r.player.member_email];
+    return {
+      ...r,
+      player: {
+        ...r.player,
+        name:      m?.full_name ?? r.player.member_email,
+        batch:     m?.batch     ?? null,
+        photo_url: m?.photo_url ?? null,
+        ...(includeContact
+          ? { phone: m?.phone_number ?? null }
+          : { member_email: undefined, phone: null }),
+      },
+    };
+  });
+}
+
+// A team must keep enough money to still fill its remaining mandatory squad slots
+// at the minimum bid price, so an early overbid can't leave it unable to field a side.
+function maxAffordable(team, season, squadSize) {
+  const slotsAfterThis = Math.max(0, season.min_squad_size - squadSize - 1);
+  return team.balance - slotsAfterThis * season.min_bid_price;
+}
+
+// Shared validation for buying/reassigning a player. Returns the resolved season.
+async function assertBidAllowed(tx, { player, team, price, excludeRecordId }) {
+  if (player.season_id !== team.season_id)
+    throw fail('Player and team belong to different seasons.', 400);
+
+  const season = await tx.asplSeason.findUnique({ where: { id: team.season_id } });
+  if (!season) throw fail('Season not found.', 404);
+  if (season.status === 'COMPLETED')
+    throw fail('This season is completed. Bidding is closed.', 400);
+
+  if (price < season.min_bid_price)
+    throw fail(`Minimum bid for this season is $${season.min_bid_price}.`, 400);
+
+  const squadSize = await tx.asplTeamPlayer.count({
+    where: { team_id: team.id, ...(excludeRecordId ? { id: { not: excludeRecordId } } : {}) },
+  });
+  if (squadSize >= season.max_squad_size)
+    throw fail(`${team.team_name} already has the maximum of ${season.max_squad_size} players.`, 400);
+
+  const ceiling = maxAffordable(team, season, squadSize);
+  if (price > ceiling) {
+    const slotsAfterThis = Math.max(0, season.min_squad_size - squadSize - 1);
+    throw slotsAfterThis > 0 && ceiling < team.balance
+      ? fail(`Max bid is $${ceiling}. ${team.team_name} must reserve $${slotsAfterThis * season.min_bid_price} for ${slotsAfterThis} more required player(s).`, 400)
+      : fail(`Insufficient balance. ${team.team_name} has $${team.balance} available.`, 400);
+  }
+  return season;
+}
+
 // GET /api/aspl/team-players?season_id=X
 // GET /api/aspl/team-players/:id  → all players for a given team
 const getTeamPlayers = async (req, res) => {
   const { id } = req.params;
   const { season_id } = req.query;
+  const includeContact = !!req.member;
   try {
     if (id !== undefined) {
-      const team = await prisma.asplTeam.findUnique({ where: { id: parseInt(id) } });
+      const teamId = parseInt(id);
+      if (isNaN(teamId)) return res.status(400).json({ detail: 'Invalid team id.' });
+      const team = await prisma.asplTeam.findUnique({ where: { id: teamId } });
       if (!team) return res.status(404).json({ detail: 'Team not found.' });
       const records = await prisma.asplTeamPlayer.findMany({
-        where: { team_id: parseInt(id) },
+        where: { team_id: teamId },
         include: includeRelations,
         orderBy: { id: 'asc' },
       });
-      return res.json(records);
+      return res.json(await enrichRecords(records, includeContact));
     }
     const records = await prisma.asplTeamPlayer.findMany({
       where: season_id ? { team: { season_id: parseInt(season_id) } } : undefined,
       include: includeRelations,
       orderBy: { id: 'asc' },
     });
-    return res.json(records);
+    return res.json(await enrichRecords(records, includeContact));
   } catch (err) {
     console.error('getTeamPlayers error:', err);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -34,26 +106,45 @@ const getTeamPlayers = async (req, res) => {
 // POST /api/aspl/team-players/create
 const createTeamPlayer = async (req, res) => {
   const { player: playerSL, team: teamId, price } = req.body;
-  if (!playerSL || !teamId || price === undefined) {
+  if (playerSL === undefined || teamId === undefined || price === undefined) {
     return res.status(400).json({ error: 'player, team, and price are required.' });
   }
+
+  const sl        = parseInt(playerSL);
+  const team_id   = parseInt(teamId);
+  const bid       = parseInt(price);
+  if (isNaN(sl) || isNaN(team_id)) return res.status(400).json({ error: 'player and team must be numbers.' });
+  if (isNaN(bid) || bid <= 0)      return res.status(400).json({ error: 'price must be a positive number.' });
+
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const player = await tx.asplPlayer.findUnique({ where: { sl: parseInt(playerSL) } });
-      if (!player)       throw Object.assign(new Error('Player not found.'), { status: 404 });
-      if (player.status) throw Object.assign(new Error('Player is already sold.'), { status: 400 });
+      const player = await tx.asplPlayer.findUnique({ where: { sl } });
+      if (!player)       throw fail('Player not found.', 404);
+      if (player.status) throw fail('Player is already sold.', 400);
 
-      const team = await tx.asplTeam.findUnique({ where: { id: parseInt(teamId) } });
-      if (!team)              throw Object.assign(new Error('Team not found.'), { status: 404 });
-      if (team.balance < price) throw Object.assign(new Error('Insufficient balance.'), { status: 400 });
+      const team = await tx.asplTeam.findUnique({ where: { id: team_id } });
+      if (!team) throw fail('Team not found.', 404);
 
-      const record = await tx.asplTeamPlayer.create({
-        data: { team_id: parseInt(teamId), player_sl: parseInt(playerSL), price },
+      await assertBidAllowed(tx, { player, team, price: bid });
+
+      // Conditional updates so two concurrent confirms can't both succeed:
+      // the loser's WHERE no longer matches and its count comes back 0.
+      const claimed = await tx.asplPlayer.updateMany({
+        where: { sl, status: false },
+        data:  { status: true },
+      });
+      if (claimed.count === 0) throw fail('Player was just sold to another team.', 409);
+
+      const charged = await tx.asplTeam.updateMany({
+        where: { id: team_id, balance: { gte: bid } },
+        data:  { balance: { decrement: bid } },
+      });
+      if (charged.count === 0) throw fail('Insufficient balance.', 400);
+
+      return tx.asplTeamPlayer.create({
+        data: { team_id, player_sl: sl, price: bid },
         include: includeRelations,
       });
-      await tx.asplPlayer.update({ where: { sl: parseInt(playerSL) }, data: { status: true } });
-      await tx.asplTeam.update({ where: { id: parseInt(teamId) }, data: { balance: { decrement: price } } });
-      return record;
     });
     return res.status(201).json(result);
   } catch (err) {
@@ -70,8 +161,15 @@ const updateTeamPlayer = async (req, res) => {
   const recordId = parseInt(req.params.id);
   const { team_id: newTeamId, price: newPrice } = req.body;
 
+  if (isNaN(recordId)) return res.status(400).json({ error: 'Invalid bid id.' });
   if (newTeamId === undefined && newPrice === undefined) {
     return res.status(400).json({ error: 'Provide team_id or price to update.' });
+  }
+  if (newPrice !== undefined && (isNaN(parseInt(newPrice)) || parseInt(newPrice) <= 0)) {
+    return res.status(400).json({ error: 'price must be a positive number.' });
+  }
+  if (newTeamId !== undefined && isNaN(parseInt(newTeamId))) {
+    return res.status(400).json({ error: 'team_id must be a number.' });
   }
 
   try {
@@ -80,7 +178,7 @@ const updateTeamPlayer = async (req, res) => {
         where: { id: recordId },
         include: includeRelations,
       });
-      if (!existing) throw Object.assign(new Error('Bid not found.'), { status: 404 });
+      if (!existing) throw fail('Bid not found.', 404);
 
       const oldTeamId = existing.team_id;
       const oldPrice  = existing.price;
@@ -89,47 +187,47 @@ const updateTeamPlayer = async (req, res) => {
 
       const teamChanged  = targetTeamId !== oldTeamId;
       const priceChanged = targetPrice  !== oldPrice;
-
       if (!teamChanged && !priceChanged) return existing;
 
-      // Validate uniqueness if team changed
       if (teamChanged) {
         const conflict = await tx.asplTeamPlayer.findUnique({
           where: { player_sl_team_id: { player_sl: existing.player_sl, team_id: targetTeamId } },
         });
-        if (conflict) throw Object.assign(new Error('Player is already in that team.'), { status: 400 });
+        if (conflict) throw fail('Player is already in that team.', 400);
       }
 
-      // Refund old team
+      // Refund the old team first so a same-team re-price is measured against
+      // the budget the team would actually have.
       await tx.asplTeam.update({
         where: { id: oldTeamId },
-        data: { balance: { increment: oldPrice } },
+        data:  { balance: { increment: oldPrice } },
       });
 
-      // Charge new team
       const newTeam = await tx.asplTeam.findUnique({ where: { id: targetTeamId } });
-      if (!newTeam) throw Object.assign(new Error('Target team not found.'), { status: 404 });
-      if (newTeam.balance < targetPrice) {
-        throw Object.assign(new Error(`Insufficient balance. ${newTeam.team_name} has $${newTeam.balance + (teamChanged ? 0 : oldPrice)} available.`), { status: 400 });
-      }
-      await tx.asplTeam.update({
-        where: { id: targetTeamId },
-        data: { balance: { decrement: targetPrice } },
+      if (!newTeam) throw fail('Target team not found.', 404);
+
+      await assertBidAllowed(tx, {
+        player: existing.player,
+        team: newTeam,
+        price: targetPrice,
+        excludeRecordId: recordId,
       });
 
-      // Update the record
-      const updated = await tx.asplTeamPlayer.update({
+      const charged = await tx.asplTeam.updateMany({
+        where: { id: targetTeamId, balance: { gte: targetPrice } },
+        data:  { balance: { decrement: targetPrice } },
+      });
+      if (charged.count === 0) throw fail(`Insufficient balance. ${newTeam.team_name} has $${newTeam.balance} available.`, 400);
+
+      return tx.asplTeamPlayer.update({
         where: { id: recordId },
-        data: { team_id: targetTeamId, price: targetPrice },
+        data:  { team_id: targetTeamId, price: targetPrice },
         include: includeRelations,
       });
-
-      // If team changed, update player.status = true (still sold)
-      // player_sl stays the same, just reassigned
-
-      return updated;
     });
-    return res.json(result);
+    // The caller swaps this row straight into its table, so it needs the same
+    // enrichment the list endpoint provides or the player name reverts to an id.
+    return res.json((await enrichRecords([result], true))[0]);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('updateTeamPlayer error:', err);
@@ -140,10 +238,11 @@ const updateTeamPlayer = async (req, res) => {
 // DELETE /api/aspl/team-players/:id  — removes bid, refunds team, marks player unsold
 const deleteTeamPlayer = async (req, res) => {
   const recordId = parseInt(req.params.id);
+  if (isNaN(recordId)) return res.status(400).json({ error: 'Invalid bid id.' });
   try {
     await prisma.$transaction(async (tx) => {
       const existing = await tx.asplTeamPlayer.findUnique({ where: { id: recordId } });
-      if (!existing) throw Object.assign(new Error('Bid not found.'), { status: 404 });
+      if (!existing) throw fail('Bid not found.', 404);
 
       await tx.asplTeamPlayer.delete({ where: { id: recordId } });
       await tx.asplPlayer.update({ where: { sl: existing.player_sl }, data: { status: false } });

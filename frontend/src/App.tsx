@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 
@@ -41,8 +41,20 @@ import BidManager from './pages/admin/aspl/BidManager';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAuth();
-  if (loading) return null;
-  return isAdmin ? <>{children}</> : <Navigate to="/login" replace />;
+  const location = useLocation();
+
+  // Never redirect while auth is still resolving — the URL the user asked for
+  // would be replaced by /login before we know whether they are an admin.
+  if (loading) return (
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[#F5F7FA]">
+      <div className="w-8 h-8 border-4 border-[#2F5BEA] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  // Carry the attempted URL so Login can send them back after signing in.
+  return isAdmin
+    ? <>{children}</>
+    : <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
 }
 
 function AppRoutes() {
@@ -87,6 +99,7 @@ function AppRoutes() {
         <Route path="accounts" element={<ManageAdmins />} />
         <Route path="aspl" element={<AsplAdmin />} />
 
+        <Route path="aspl/bids" element={<BidManager />} />
         <Route path="aspl/seasons/:id" element={<SeasonDetail />} />
         <Route path="aspl/seasons/:seasonId/bid/:teamId" element={<BidManager />} />
       </Route>

@@ -38,11 +38,6 @@ const updateMemberSchema = Joi.object({
   blood_group: Joi.string().valid(...['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional().allow('', null),
 });
 
-const loginSchema = Joi.object({
-  username: Joi.string().required(),
-  password: Joi.string().required(),
-});
-
 const postSchema = Joi.object({
   title: Joi.string().trim().min(3).max(200).required(),
   content: Joi.string().min(10).required(),
@@ -101,7 +96,7 @@ const contactSchema = Joi.object({
 });
 
 module.exports = {
-  registerSchema, updateMemberSchema, loginSchema,
+  registerSchema, updateMemberSchema,
   postSchema, updatePostSchema, submitPostSchema,
   eventSchema, updateEventSchema,
   committeeSchema, assignMemberSchema,

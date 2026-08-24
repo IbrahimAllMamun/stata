@@ -7,7 +7,7 @@ A full-stack web platform for **[Stata](https://www.stataisrt.org)**, the studen
 STATA organizes activities like BBQ parties, Iftar Mahfil, tours, cricket and football tournaments, and more — and serves as a bridge between current students and alumni for networking and mentorship.
 
 **Website Link:** https://www.stataisrt.org
----
+---------------------------------------
 
 ## Repository Structure
 
@@ -21,15 +21,15 @@ stata-main/
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
-| Backend | Node.js, Express.js |
-| Database | PostgreSQL + Prisma ORM |
-| Auth | JWT (admin), Member-based auth |
-| Email | Nodemailer (SMTP) + IMAP |
-| Image Processing | Sharp, Multer |
-| Deployment | Vercel (frontend), Node server (backend) |
+| Layer            | Technology                               |
+| ---------------- | ---------------------------------------- |
+| Frontend         | React 18, TypeScript, Vite, Tailwind CSS |
+| Backend          | Node.js, Express.js                      |
+| Database         | PostgreSQL + Prisma ORM                  |
+| Auth             | JWT (admin), Member-based auth           |
+| Email            | Nodemailer (SMTP) + IMAP                 |
+| Image Processing | Sharp, Multer                            |
+| Deployment       | Vercel (frontend), Node server (backend) |
 
 ---
 
@@ -78,6 +78,7 @@ Frontend runs at `http://localhost:5173`
 ## Features
 
 ### Public
+
 - Home page with hero section and latest posts
 - Events listing (upcoming & past)
 - Gallery, About, Contact pages
@@ -85,12 +86,14 @@ Frontend runs at `http://localhost:5173`
 - People/members directory
 
 ### Member
+
 - Registration and login
 - Member account management, profile updates, password change
 - Submit blog posts
 - ASPL (league) registration and player lookup
 
 ### Admin
+
 - Dashboard with statistics
 - Manage members, posts, events, gallery
 - Email campaigns and communications

@@ -1,11 +1,6 @@
 // src/lib/api.ts
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-export const getToken = (): string | null => localStorage.getItem('stata_token');
-export const setToken = (token: string) => localStorage.setItem('stata_token', token);
-export const removeToken = () => localStorage.removeItem('stata_token');
-
-// Member auth tokens stored separately
 export const getMemberToken = (): string | null => localStorage.getItem('stata_member_token');
 export const setMemberToken = (token: string) => localStorage.setItem('stata_member_token', token);
 export const removeMemberToken = () => localStorage.removeItem('stata_member_token');
@@ -20,8 +15,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { method = 'GET', body, isFormData = false } = options;
 
   const headers: Record<string, string> = {};
-  // Prefer member token (unified auth); fall back to legacy admin token
-  const token = getMemberToken() || getToken();
+  const token = getMemberToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!isFormData && body) headers['Content-Type'] = 'application/json';
 
@@ -85,7 +79,7 @@ export interface Post {
   author_batch: number;
   created_at: string;
   updated_at: string;
-  admin?: { id: string; username: string };
+  creator?: { id: string; full_name: string } | null;
 }
 
 export interface Event {
@@ -99,7 +93,7 @@ export interface Event {
   is_upcoming: boolean;
   created_at: string;
   updated_at: string;
-  admin?: { id: string; username: string };
+  creator?: { id: string; full_name: string } | null;
 }
 
 export interface CommitteeMemberDetail {
@@ -179,7 +173,7 @@ export interface GalleryPhoto {
   subject: string;
   moment_date: string;
   created_at: string;
-  admin?: { id: string; username: string };
+  creator?: { id: string; full_name: string } | null;
 }
 
 export interface GallerySubjectGroup {
@@ -376,12 +370,6 @@ export const memberAuthApi = {
 };
 
 export const adminApi = {
-  login: (username: string, password: string) =>
-    request<{
-      success: boolean;
-      data: { token: string; admin: { id: string; username: string; role: string } };
-    }>('/admin/login', { method: 'POST', body: { username, password } }),
-
   getDashboard: () =>
     request<{ success: boolean; data: DashboardStats }>('/admin/dashboard'),
 
@@ -534,29 +522,6 @@ export const adminApi = {
       body: { admin_note },
     }),
 
-  createModerator: (username: string, password: string) =>
-    request<{ success: boolean; data: { id: string; username: string; role: string } }>('/admin/moderators', {
-      method: 'POST',
-      body: { username, password },
-    }),
-
-  // Account management
-  listAccounts: () =>
-    request<{ success: boolean; data: { id: string; username: string; role: string; created_at: string }[] }>('/admin/accounts'),
-
-  createAccount: (username: string, password: string, role: 'admin' | 'moderator') =>
-    request<{ success: boolean; message: string; data: { id: string; username: string; role: string } }>('/admin/accounts', {
-      method: 'POST', body: { username, password, role },
-    }),
-
-  deleteAccount: (id: string) =>
-    request<{ success: boolean; message: string }>(`/admin/accounts/${id}`, { method: 'DELETE' }),
-
-  changePassword: (id: string, password: string) =>
-    request<{ success: boolean; message: string }>(`/admin/accounts/${id}/password`, {
-      method: 'PATCH', body: { password },
-    }),
-
   deleteCommittee: (id: string) =>
     request<{ success: boolean; message: string }>(`/admin/committee/${id}`, { method: 'DELETE' }),
 
@@ -568,7 +533,7 @@ export const adminApi = {
     const qs = new URLSearchParams();
     if (filters.batch !== undefined && filters.batch !== '') qs.set('batch', String(filters.batch));
     if (filters.notify_events !== undefined && filters.notify_events !== '') qs.set('notify_events', String(filters.notify_events));
-    const token = getMemberToken() || getToken();
+    const token = getMemberToken();
     const url = `${BASE_URL}/admin/members/export-csv${qs.toString() ? '?' + qs.toString() : ''}`;
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   },
@@ -664,7 +629,7 @@ const ASPL_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 async function asplRequest<T>(path: string, options: RequestOptions & { isFormData?: boolean; formBody?: FormData } = {}): Promise<T> {
   const { method = 'GET', body, isFormData = false, formBody } = options;
   const headers: Record<string, string> = {};
-  const token = getMemberToken() || getToken();
+  const token = getMemberToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!isFormData && body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${ASPL_BASE}/aspl${path}`, {
@@ -737,6 +702,20 @@ export interface AsplRegistration {
   } | null;
 }
 
+// Public season roster — every registrant, approved or pending. No contact details.
+export interface AsplRosterEntry {
+  id: number;
+  season_id: number;
+  playing_position: string;
+  registration_status: 'PENDING' | 'APPROVED';
+  player_sl: number | null;
+  sold: boolean;
+  name: string;
+  batch: number | null;
+  photo_url?: string | null;
+  created_at: string;
+}
+
 export interface AsplTeam {
   id: number;
   season_id: number;
@@ -778,7 +757,8 @@ export const asplApi = {
   // Players
   getPlayers: (seasonId?: number) =>
     asplRequest<AsplPlayer[]>(seasonId ? `/players?season_id=${seasonId}` : '/players'),
-  getPlayerBySL: (sl: number) => asplRequest<AsplPlayer>(`/players/${sl}`),
+  getPlayerBySL: (sl: number, seasonId?: number) =>
+    asplRequest<AsplPlayer>(seasonId ? `/players/${sl}?season_id=${seasonId}` : `/players/${sl}`),
   getRandomPlayer: (seasonId?: number) =>
     asplRequest<AsplPlayer>(seasonId ? `/players/random?season_id=${seasonId}` : '/players/random'),
 
@@ -815,10 +795,14 @@ export const asplApi = {
     ),
   checkRegistration: (email: string, seasonId: number) =>
     asplRequest<AsplRegistration>(`/registrations/check?email=${encodeURIComponent(email)}&season_id=${seasonId}`),
-  getPendingRegistrationCount: () =>
-    asplRequest<{ success: boolean; data: { count: number } }>('/registrations/pending-count'),
+  getPendingRegistrationCount: (seasonId?: number) =>
+    asplRequest<{ success: boolean; data: { count: number } }>(
+      seasonId ? `/registrations/pending-count?season_id=${seasonId}` : '/registrations/pending-count'
+    ),
+  getRoster: (seasonId: number) =>
+    asplRequest<AsplRosterEntry[]>(`/registrations/roster?season_id=${seasonId}`),
   lookupRegistration: async (email: string, seasonId: number) => {
-    const token = getMemberToken() || getToken();
+    const token = getMemberToken();
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${ASPL_BASE}/aspl/registrations/lookup?email=${encodeURIComponent(email)}&season_id=${seasonId}`, { headers });

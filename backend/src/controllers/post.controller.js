@@ -18,7 +18,7 @@ const getPosts = async (req, res, next) => {
           id: true, title: true, slug: true, cover_image: true,
           status: true, published: true, author_name: true, author_batch: true, author_designation: true,
           created_at: true, updated_at: true,
-          admin: { select: { id: true, username: true } },
+          creator: { select: { id: true, full_name: true } },
         },
       }),
       prisma.post.count({ where }),
@@ -31,7 +31,7 @@ const getPostBySlug = async (req, res, next) => {
   try {
     const post = await prisma.post.findUnique({
       where: { slug: req.params.slug },
-      include: { admin: { select: { id: true, username: true } } },
+      include: { creator: { select: { id: true, full_name: true } } },
     });
     if (!post || post.status !== 'APPROVED' || !post.published) {
       return res.status(404).json({ success: false, message: 'Post not found' });
@@ -96,7 +96,7 @@ const getAdminPosts = async (req, res, next) => {
           id: true, title: true, slug: true, content: true, cover_image: true,
           status: true, published: true, author_name: true, author_batch: true, author_designation: true,
           created_at: true, updated_at: true,
-          admin: { select: { id: true, username: true } },
+          creator: { select: { id: true, full_name: true } },
         },
       }),
       prisma.post.count({ where }),
@@ -146,14 +146,24 @@ const createPost = async (req, res, next) => {
     }
     const cover_image = savedPath ? toUrlPath(savedPath) : null;
 
+    // Fall back to the signed-in member's name when the byline is left blank.
+    let byline = author_name?.trim();
+    if (!byline) {
+      const me = await prisma.member.findUnique({
+        where: { id: req.member.id },
+        select: { full_name: true },
+      });
+      byline = me?.full_name || req.member.email || 'STATA';
+    }
+
     const post = await prisma.post.create({
       data: {
         title, slug, content, cover_image,
-        author_name: (author_name || req.admin.username).trim(),
+        author_name: byline,
         author_batch: author_batch ? parseInt(author_batch) : 0,
         status: 'APPROVED',
         published: published !== undefined ? published : true,
-        created_by: req.admin.id,
+        created_by: req.member.id,
       },
     });
     res.status(201).json({ success: true, message: 'Post created', data: post });

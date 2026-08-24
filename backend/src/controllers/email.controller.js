@@ -59,7 +59,7 @@ const sendCampaign = async (req, res, next) => {
         text_body: text_body?.trim() || '',
         recipient_filter,
         status: 'DRAFT',
-        created_by: req.admin.id,
+        created_by: req.member.id,
       },
     });
 
@@ -103,7 +103,7 @@ const getCampaigns = async (req, res, next) => {
         orderBy: { created_at: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-        include: { admin: { select: { username: true } } },
+        include: { creator: { select: { id: true, full_name: true } } },
       }),
       prisma.emailCampaign.count(),
     ]);

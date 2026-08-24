@@ -44,16 +44,33 @@ async function processImage(buffer, mimetype = '', opts = {}) {
 
   let workingBuffer = buffer;
   if (HEIC_MIME_TYPES.has(mimetype) || isHeicBuffer(buffer)) {
-    workingBuffer = await heicToJpeg(buffer);
+    try {
+      workingBuffer = await heicToJpeg(buffer);
+    } catch (err) {
+      // Not actually HEIC. Browsers routinely mislabel iOS uploads, and the
+      // `mif1` brand in isHeicBuffer is shared with AVIF, so a decode failure
+      // here usually means the buffer is a format sharp reads natively.
+      // Falling through beats rejecting a perfectly valid photo.
+      workingBuffer = buffer;
+    }
   }
 
   const outputPath = path.join(uploadDir, `${uuidv4()}.webp`);
 
-  await sharp(workingBuffer)
-    .rotate()
-    .resize({ width: maxWidth, height: maxHeight, fit: 'inside', withoutEnlargement: true })
-    .webp({ quality })
-    .toFile(outputPath);
+  try {
+    await sharp(workingBuffer)
+      .rotate()
+      .resize({ width: maxWidth, height: maxHeight, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality })
+      .toFile(outputPath);
+  } catch (err) {
+    // Clean up a partial file before surfacing something the uploader can act on.
+    try { fs.unlinkSync(outputPath); } catch { /* nothing written */ }
+    throw Object.assign(
+      new Error('That image could not be read. Please upload a JPEG, PNG, WebP, or HEIC photo.'),
+      { status: 400, cause: err }
+    );
+  }
 
   return outputPath;
 }
