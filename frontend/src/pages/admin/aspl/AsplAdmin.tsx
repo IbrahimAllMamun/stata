@@ -29,12 +29,13 @@ export default function AsplAdmin() {
   const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setVisible(asplApi.getSettings().visible);
+    asplApi.getSettings().then(s => setVisible(s.visible));
     load();
   }, []);
 
@@ -46,12 +47,26 @@ export default function AsplAdmin() {
       .finally(() => setLoading(false));
   };
 
-  const handleToggle = () => {
+  // Now a server write, so it can fail — show the new state optimistically but
+  // put the switch back if the save does not land, rather than reporting
+  // "Saved" over a setting no visitor will ever see.
+  const handleToggle = async () => {
+    if (savingVisibility) return;
     const next = !visible;
     setVisible(next);
-    asplApi.saveSettings({ visible: next });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSavingVisibility(true);
+    setError('');
+    try {
+      const saved = await asplApi.saveSettings({ visible: next });
+      setVisible(saved.visible);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setVisible(!next);
+      setError(err instanceof Error ? err.message : 'Failed to save ASPL visibility.');
+    } finally {
+      setSavingVisibility(false);
+    }
   };
 
   const handleActivate = async (id: number) => {
@@ -127,7 +142,13 @@ export default function AsplAdmin() {
           </div>
           <div className="flex items-center gap-3">
             {saved && <span className="text-xs text-[#2ECC71] font-medium">Saved</span>}
-            <button onClick={handleToggle}>
+            <button
+              onClick={handleToggle}
+              disabled={savingVisibility}
+              role="switch"
+              aria-checked={visible}
+              aria-label="Show the ASPL button in site navigation"
+              className="disabled:opacity-50 disabled:cursor-not-allowed">
               {visible
                 ? <ToggleRight className="w-10 h-10 text-[#2ECC71] hover:text-green-600 transition-colors" />
                 : <ToggleLeft className="w-10 h-10 text-gray-300 hover:text-gray-400 transition-colors" />}

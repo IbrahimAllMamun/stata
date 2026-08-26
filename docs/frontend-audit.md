@@ -261,3 +261,67 @@ Drawer behaviour verified in headless Chromium (anonymous, member and admin sess
 390×844, 900×800 and 1100×800): scroll-lock on/off, Escape and backdrop dismissal, focus in
 and out, section visibility per role and per breakpoint, and correct positioning over the
 blurred sticky header.
+
+---
+
+## Addendum — 2026-08-26, follow-up
+
+Two site-wide defects found while investigating "the ASPL button is missing on my
+phone but shows on my laptop". Both are fixed; both were invisible to `tsc`,
+`eslint` and the build, which is why the original pass missed them.
+
+### 20. ASPL navigation visibility was a per-browser setting — **Fixed**
+
+`asplApi.getSettings()` read `localStorage.getItem('aspl_settings')` and
+`saveSettings()` wrote to it. There was no server call and no settings table.
+
+So the admin panel's toggle — labelled **"Visible to all visitors"** — only ever
+changed the navigation of the single browser the admin clicked it in. Every other
+visitor, and the same admin on any second device, read the `{"visible":false}`
+default and saw no ASPL link. The reported laptop/phone split was not a
+responsive-layout bug at all: the laptop simply had the localStorage entry and
+the phone never did.
+
+Fixed by making it real server state:
+
+- New `app_settings` table (generic key/value, migration
+  `20260826110000_app_settings`), so future operator flags need no further
+  migration.
+- `GET /api/aspl/settings` (public — every visitor's navigation depends on it)
+  and `PATCH /api/aspl/settings` (staff only).
+- `asplApi.getSettings()` / `saveSettings()` now talk to the server.
+  `localStorage` survives **only as a cache of the last known value**, so a slow
+  or failed request does not flash the wrong navigation. The server always wins.
+- `Navigation` seeds from that cache, fetches once on mount (not on every route
+  change, as it did when the read was free), and refreshes on an
+  `aspl-settings-changed` event so the admin toggle updates the nav live.
+- The admin toggle is now a network write, so it reverts and surfaces an error if
+  the save fails instead of reporting "Saved" over a setting nobody will see.
+
+Deploy the backend before the frontend. If the frontend goes first, the settings
+request 404s and each browser falls back to its cached value — the pre-existing
+behaviour, so no regression, but the fix does not take effect until the API ships.
+
+### 21. Any non-2xx from `/visitors/stats` white-screened the entire site — **Fixed**
+
+```ts
+getStats: () => fetch(`${BASE_URL}/visitors/stats`).then(r => r.json()),
+```
+
+No `res.ok` check, no `.catch()`, no shape check. `Footer` did `.then(setStats)`
+and then `stats.today.toLocaleString()`. Any non-2xx response carrying a JSON body
+— a 500, a restart window, a JSON-shaped proxy error — was stored as `stats`, and
+the `.toLocaleString()` call threw.
+
+`Footer` renders inside `Layout`, so this took down **every page on the site**,
+not just the footer. Reproduced exactly: with that endpoint returning 500, the
+whole app rendered nothing but the error card. Before finding #2 added the error
+boundary, it was a blank white page.
+
+Now the fetch checks the status, validates that `today` and `lifetime` are
+actually numbers, and falls back to `null` — which the existing
+`stats ? … : '-'` rendering already handles.
+
+This is the strongest argument yet for finding #16 (no tests, no CI): both of
+these are behavioural, both are severe, and no amount of type-checking would have
+caught either.
