@@ -1,9 +1,9 @@
 // src/pages/MemberAccount.tsx
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  LogOut, RefreshCw, Lock, Mail, Phone,
+  RefreshCw, Lock, Mail, Phone,
   Briefcase, Building2, MapPin, Droplets,
-  Bell, Calendar, AlertCircle, Edit2,
+  Bell, Calendar, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { imageUrl } from '../lib/api';
@@ -23,7 +23,7 @@ function InfoItem({ icon, label, value, color = 'text-[#2F5BEA]' }: {
 }
 
 export default function MemberAccount() {
-  const { member, memberLogout } = useAuth();
+  const { member } = useAuth();
   const navigate = useNavigate();
 
   if (!member) { navigate('/login', { replace: true }); return null; }

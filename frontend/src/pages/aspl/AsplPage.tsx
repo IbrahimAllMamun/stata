@@ -241,7 +241,7 @@ function TeamCard({ team, startingBalance, onClick }: { team: AsplTeam; starting
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AsplPage() {
-  const { isMember, isLoggedIn } = useAuth();
+  const { isLoggedIn } = useAuth();
   const [season, setSeason] = useState<AsplSeason | null>(null);
   const [teams, setTeams] = useState<AsplTeam[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,6 @@
 // src/components/aspl/RegistrationForm.tsx
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, CheckCircle2, ChevronDown, User, ArrowRight, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
+import { X, Upload, CheckCircle2, ChevronDown, User, AlertCircle, UserPlus, Briefcase, Building2, Phone, Mail, Hash, RefreshCw } from 'lucide-react';
 import { asplApi, AsplSeason, AsplRegistration, imageUrl } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -14,31 +14,34 @@ type Step = 'form' | 'success';
 const INPUT = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30 transition-all';
 const LABEL = 'block text-[11px] tracking-widest text-white/40 mb-1.5 uppercase';
 
-export default function RegistrationForm({ season, onClose }: Props) {
-  const { member: loggedInMember, isMember } = useAuth();
-
-  // If not logged in, show login prompt
-  if (!isMember || !loggedInMember) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ background: 'rgba(6,12,26,0.85)', backdropFilter: 'blur(8px)' }}
-        onClick={onClose}>
-        <div className="w-full max-w-sm rounded-2xl p-8 text-center"
-          style={{ background: 'var(--pitch-mid)', border: '1px solid rgba(255,255,255,0.1)' }}
-          onClick={e => e.stopPropagation()}>
-          <div className="w-14 h-14 rounded-full bg-[#2F5BEA]/20 flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="w-7 h-7 text-[#2F5BEA]" />
-          </div>
-          <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>Sign In Required</h3>
-          <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>You must be a logged-in STATA member to register for ASPL.</p>
-          <div className="flex gap-3">
-            <a href="/login" className="flex-1 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold transition-colors text-center">Sign In</a>
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors text-center" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)' }}>Cancel</button>
-          </div>
+// Rendered when an anonymous visitor opens the registration modal. Split out so
+// RegistrationForm can run every hook before choosing which view to return —
+// an early return above the hooks changes the hook count between renders and
+// crashes React once the auth state settles.
+function SignInPrompt({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(6,12,26,0.85)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-8 text-center"
+        style={{ background: 'var(--pitch-mid)', border: '1px solid rgba(255,255,255,0.1)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="w-14 h-14 rounded-full bg-[#2F5BEA]/20 flex items-center justify-center mx-auto mb-4">
+          <UserPlus className="w-7 h-7 text-[#2F5BEA]" />
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'fredoka' }}>Sign In Required</h3>
+        <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>You must be a logged-in STATA member to register for ASPL.</p>
+        <div className="flex gap-3">
+          <a href="/login" className="flex-1 bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white py-2.5 rounded-xl text-sm font-semibold transition-colors text-center">Sign In</a>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors text-center" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)' }}>Cancel</button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+export default function RegistrationForm({ season, onClose }: Props) {
+  const { member: loggedInMember, isMember } = useAuth();
 
   // Logged-in member flow
   const [step, setStep] = useState<Step>('form');
@@ -73,19 +76,11 @@ export default function RegistrationForm({ season, onClose }: Props) {
       }
     }).catch(() => { });
   }, [loggedInMember]);
+
+  // Every hook above runs unconditionally; only the returned view is conditional.
+  if (!isMember || !loggedInMember) return <SignInPrompt onClose={onClose} />;
   const isUpdate = !!existingReg;
 
-  const resetForm = () => {
-    setPosition('');
-    setPhoto(null);
-    if (loggedInMember?.photo_url) {
-      const src = imageUrl(loggedInMember.photo_url);
-      if (src) setPhotoPreview(src);
-    } else {
-      setPhotoPreview(null);
-    }
-    setFormError('');
-  };
 
   // ── Step 2: submit ─────────────────────────────────────────────────────────
   const handleSubmit = async () => {

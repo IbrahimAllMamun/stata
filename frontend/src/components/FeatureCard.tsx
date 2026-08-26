@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Quote, MessageSquare } from 'lucide-react';
-import { imageUrl, api, Member, Speech } from '../lib/api';
+import { imageUrl, api, Speech } from '../lib/api';
 
 
 // Module-level cache — fetched once per browser session, not on every render
@@ -38,21 +38,18 @@ export function FeatureCard({ speeches }: { speeches: Speech[] }) {
     const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [memberPhotos, setMemberPhotos] = useState<Record<string, string | null>>({});
     const [memberJobTitles, setMemberJobTitles] = useState<Record<string, string | null>>({});
-    const [loadingPhotos, setLoadingPhotos] = useState(false);
 
     // Fetch member photos + job titles — uses module-level cache, only one API
     // call ever regardless of how many times FeatureCard mounts or re-renders.
     useEffect(() => {
         if (speeches.length === 0) return;
-        setLoadingPhotos(true);
         getMemberData()
             .then(data => {
                 if (!data) return;
                 setMemberPhotos(data.photos);
                 setMemberJobTitles(data.jobTitles);
             })
-            .catch(err => console.error('Failed to fetch member data:', err))
-            .finally(() => setLoadingPhotos(false));
+            .catch(err => console.error('Failed to fetch member data:', err));
     }, [speeches.length]);
 
     // How many cards visible at once depending on viewport
@@ -169,7 +166,7 @@ export function FeatureCard({ speeches }: { speeches: Speech[] }) {
                             transition: dragging ? 'none' : 'transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94)',
                         }}
                     >
-                        {speeches.map((speech, i) => {
+                        {speeches.map(speech => {
                             const memberPhoto = memberPhotos[speech.email.toLowerCase()];
                             const photoSrc = memberPhoto ? imageUrl(memberPhoto) : null;
                             return (

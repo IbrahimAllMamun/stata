@@ -23,6 +23,17 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      // A bare `catch {}` is how this codebase marks a failure it deliberately
+      // ignores; flagging every one of them buried the real findings.
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      // `_name` is the established convention here for a binding that has to
+      // exist (destructuring position, callback arity) but is not used.
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+        destructuredArrayIgnorePattern: '^_',
+      }],
     },
   }
 );
