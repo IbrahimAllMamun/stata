@@ -8,12 +8,18 @@ const { getPlayers, getRandomPlayer } = require('../controllers/player.controlle
 const { getTeams, getTeamById, getTeamsBySeason, createTeam, updateTeam, deleteTeam } = require('../controllers/team.controller');
 const { getTeamPlayers, createTeamPlayer, updateTeamPlayer, deleteTeamPlayer } = require('../controllers/teamPlayer.controller');
 const { getSeasons, getSeasonById, getActiveSeason, createSeason, updateSeason, deleteSeason } = require('../controllers/season.controller');
+const { getAsplSettings, updateAsplSettings } = require('../controllers/settings.controller');
 const { register, updatePlayerDetails, checkRegistration, lookupRegistration, getRoster, getRegistrations, approveRegistration, rejectRegistration, deleteRegistration, getPendingRegistrationCount } = require('../controllers/registration.controller');
 
 const router = express.Router();
 
 // Staff-only guard for every ASPL management action.
 const staffOnly = [authenticateMember, requireMemberRole('admin', 'mod')];
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+// Public read: the navigation on every visitor's device depends on it.
+router.get('/settings', getAsplSettings);
+router.patch('/settings', staffOnly, updateAsplSettings);
 
 // ── Seasons ───────────────────────────────────────────────────────────────────
 router.get('/seasons/active', getActiveSeason);

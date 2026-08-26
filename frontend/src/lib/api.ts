@@ -193,8 +193,15 @@ export interface GalleryDateEntry {
 
 export const visitorApi = {
   track: () => fetch(`${BASE_URL}/track`, { method: 'POST' }).catch(() => { }),
-  getStats: (): Promise<{ today: number; lifetime: number }> =>
-    fetch(`${BASE_URL}/visitors/stats`).then(r => r.json()),
+  getStats: (): Promise<{ today: number; lifetime: number } | null> =>
+    fetch(`${BASE_URL}/visitors/stats`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d =>
+        typeof d?.today === 'number' && typeof d?.lifetime === 'number'
+          ? { today: d.today, lifetime: d.lifetime }
+          : null
+      )
+      .catch(() => null),
 };
 export const contactApi = {
   submit: (data: { name: string; email: string; subject: string; message: string; batch?: string; designation?: string }) =>
@@ -739,6 +746,15 @@ export interface AsplSettings {
   visible: boolean;
 }
 
+export const ASPL_SETTINGS_EVENT = 'aspl-settings-changed';
+const ASPL_SETTINGS_CACHE_KEY = 'aspl_settings';
+const ASPL_SETTINGS_DEFAULT: AsplSettings = { visible: false };
+
+function cacheAsplSettings(settings: AsplSettings) {
+  try { localStorage.setItem(ASPL_SETTINGS_CACHE_KEY, JSON.stringify(settings)); }
+  catch { /* private mode / quota — the server stays the source of truth */ }
+}
+
 export const FOOTBALL_POSITIONS = ['GK', 'DEF', 'LB', 'RB', 'CDM', 'CM', 'MID', 'LW', 'RW', 'CF', 'FWD'];
 export const CRICKET_POSITIONS = ['BAT', 'BOWL', 'AR', 'WK'];
 
@@ -823,12 +839,41 @@ export const asplApi = {
     asplRequest<{ message: string }>(`/registrations/${id}`, { method: 'DELETE' }),
 
   // Settings
-  getSettings: (): AsplSettings => {
-    try { return JSON.parse(localStorage.getItem('aspl_settings') || '{"visible":false}'); }
-    catch { return { visible: false }; }
+  //
+  // These used to live only in localStorage, which made the "visible to all
+  // visitors" toggle a per-browser preference: the ASPL link appeared in the one
+  // browser where an admin flipped it and nowhere else. They are server state
+  // now. The localStorage entry survives purely as a cache of the last known
+  // value, so a slow or failed request does not flash the wrong navigation.
+  getCachedSettings: (): AsplSettings => {
+    try {
+      const raw = localStorage.getItem(ASPL_SETTINGS_CACHE_KEY);
+      return raw ? { visible: !!JSON.parse(raw).visible } : { ...ASPL_SETTINGS_DEFAULT };
+    } catch { return { ...ASPL_SETTINGS_DEFAULT }; }
   },
-  saveSettings: (settings: AsplSettings): void => {
-    localStorage.setItem('aspl_settings', JSON.stringify(settings));
+  getSettings: async (): Promise<AsplSettings> => {
+    try {
+      const res = await fetch(`${ASPL_BASE}/aspl/settings`);
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      const settings: AsplSettings = { visible: !!(await res.json()).visible };
+      cacheAsplSettings(settings);
+      return settings;
+    } catch {
+      // Unreachable or not-yet-deployed backend: keep showing whatever this
+      // browser last saw rather than blanking the navigation.
+      return asplApi.getCachedSettings();
+    }
+  },
+  saveSettings: async (settings: AsplSettings): Promise<AsplSettings> => {
+    const saved = await asplRequest<AsplSettings>('/settings', {
+      method: 'PATCH',
+      body: { visible: settings.visible },
+    });
+    const next: AsplSettings = { visible: !!saved.visible };
+    cacheAsplSettings(next);
+    // Let an open Navigation in this tab pick the change up without a reload.
+    window.dispatchEvent(new CustomEvent(ASPL_SETTINGS_EVENT));
+    return next;
   },
 
   // Helpers

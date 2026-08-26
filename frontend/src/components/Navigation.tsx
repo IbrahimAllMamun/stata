@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Menu, X, LogOut, LayoutDashboard, Settings, UserCheck, FileText, Calendar, MessageSquare, PenLine, Trophy, Shield, User } from 'lucide-react';
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { adminApi, asplApi, imageUrl } from '../lib/api';
+import { adminApi, asplApi, imageUrl, ASPL_SETTINGS_EVENT } from '../lib/api';
 import LogoLoaderFull from './LogoLoaderFull';
 
 const DRAWER_ANIM_MS = 300;
@@ -62,7 +62,7 @@ export default function Navigation() {
   const [unreadInbox, setUnreadInbox] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoKey, setLogoKey] = useState(0);
-  const [asplVisible, setAsplVisible] = useState(false);
+  const [asplVisible, setAsplVisible] = useState(() => asplApi.getCachedSettings().visible);
 
   // The drawer stays mounted for one animation cycle after closing so it can
   // slide back out, and is unmounted afterwards to keep it out of the tab order.
@@ -96,9 +96,20 @@ export default function Navigation() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // ASPL visibility is a server setting, so this is a request rather than a
+  // localStorage read — fetch it once on mount instead of on every navigation,
+  // and listen for the admin toggle so it still updates without a reload.
   useEffect(() => {
-    setAsplVisible(asplApi.getSettings().visible);
-  }, [location.pathname]);
+    let cancelled = false;
+
+    const refresh = () => {
+      asplApi.getSettings().then(s => { if (!cancelled) setAsplVisible(s.visible); });
+    };
+
+    refresh();
+    window.addEventListener(ASPL_SETTINGS_EVENT, refresh);
+    return () => { cancelled = true; window.removeEventListener(ASPL_SETTINGS_EVENT, refresh); };
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
