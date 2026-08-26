@@ -1,10 +1,12 @@
 // src/pages/admin/aspl/SeasonForm.tsx
 import { useState } from 'react';
-import { X, Footprints, CircleDot } from 'lucide-react';
+import { X, Footprints, CircleDot, AlertTriangle } from 'lucide-react';
 import { asplApi, AsplSeason, AsplSport } from '../../../lib/api';
 
 interface Props {
-  onCreated: (s: AsplSeason) => void;
+  /** Present for edit, absent for create. */
+  season?: AsplSeason;
+  onSaved: (s: AsplSeason) => void;
   onClose: () => void;
 }
 
@@ -39,18 +41,35 @@ function NumberInput({ value, onChange, min, max }: { value: number; onChange: (
   );
 }
 
-export default function SeasonForm({ onCreated, onClose }: Props) {
-  const [name, setName] = useState('');
-  const [sport, setSport] = useState<AsplSport>('FOOTBALL');
-  const [maxSquad, setMaxSquad] = useState(15);
-  const [minSquad, setMinSquad] = useState(11);
-  const [minBid, setMinBid] = useState(20);
-  const [balance, setBalance] = useState(1000);
-  const [totalPlayers, setTotalPlayers] = useState(0);
+function Warning({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-xs">
+      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-px" />
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+export default function SeasonForm({ season, onSaved, onClose }: Props) {
+  const isEdit = !!season;
+
+  const [name, setName] = useState(season?.name ?? '');
+  const [sport, setSport] = useState<AsplSport>(season?.sport ?? 'FOOTBALL');
+  const [maxSquad, setMaxSquad] = useState(season?.max_squad_size ?? 15);
+  const [minSquad, setMinSquad] = useState(season?.min_squad_size ?? 11);
+  const [minBid, setMinBid] = useState(season?.min_bid_price ?? 20);
+  const [balance, setBalance] = useState(season?.starting_balance ?? 1000);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const selectedSport = SPORT_OPTIONS.find(s => s.value === sport)!;
+
+  // Positions are stored on each registration as plain strings from the sport
+  // that was selected at the time, so switching sport strands them: a squad of
+  // GK/DEF/MID rows under a cricket season matches none of BAT/BOWL/AR/WK.
+  const squadCount = (season?._count?.players ?? 0) + (season?._count?.registrations ?? 0);
+  const sportChanged = isEdit && sport !== season!.sport;
+  const teamCount = season?._count?.teams ?? 0;
 
   const handleSubmit = async () => {
     if (!name.trim()) { setError('Season name is required.'); return; }
@@ -58,18 +77,20 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
     setSubmitting(true);
     setError('');
     try {
-      const season = await asplApi.createSeason({
+      const payload = {
         name: name.trim(),
         sport,
         max_squad_size: maxSquad,
         min_squad_size: minSquad,
         min_bid_price: minBid,
         starting_balance: balance,
-        total_players: totalPlayers,
-      });
-      onCreated(season);
+      };
+      const saved = isEdit
+        ? await asplApi.updateSeason(season!.id, payload)
+        : await asplApi.createSeason(payload);
+      onSaved(saved);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create season.');
+      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? 'save' : 'create'} season.`);
     } finally {
       setSubmitting(false);
     }
@@ -82,10 +103,12 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-bold text-[#1F2A44]">New Season</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Configure your ASPL season settings</p>
+            <h2 className="text-lg font-bold text-[#1F2A44]">{isEdit ? 'Edit Season' : 'New Season'}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {isEdit ? `Updating ${season!.name}` : 'Configure your ASPL season settings'}
+            </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -131,6 +154,19 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
                 ))}
               </div>
             </div>
+
+            {sportChanged && squadCount > 0 && (
+              <div className="mt-3">
+                <Warning>
+                  <p>
+                    <span className="font-semibold">Switching from {season!.sport} to {sport}</span> leaves the{' '}
+                    {squadCount} existing player{squadCount > 1 ? 's' : ''} on this season holding{' '}
+                    {season!.sport} positions, which are not {sport} positions.
+                  </p>
+                  <p>Each of them will need their position set again.</p>
+                </Warning>
+              </div>
+            )}
           </Field>
 
           {/* Squad sizes */}
@@ -144,6 +180,21 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
                 <NumberInput value={maxSquad} onChange={setMaxSquad} min={minSquad} />
               </Field>
             </div>
+
+            {/* Squad limits are not enforced retroactively, so say so rather than
+                letting an admin assume existing squads were re-checked. */}
+            {isEdit && teamCount > 0 && (
+              (minSquad !== season!.min_squad_size || maxSquad !== season!.max_squad_size) && (
+                <div className="mt-3">
+                  <Warning>
+                    <p>
+                      New limits apply to future squad changes only — the {teamCount} existing
+                      team{teamCount > 1 ? 's are' : ' is'} not re-checked against them.
+                    </p>
+                  </Warning>
+                </div>
+              )
+            )}
           </div>
 
           {/* Financial settings */}
@@ -157,20 +208,31 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
                 <NumberInput value={minBid} onChange={setMinBid} min={1} />
               </Field>
             </div>
-          </div>
 
-          {/* Total players */}
-          <Field label="Total Players" hint="Number of players in the auction pool (can update later)">
-            <NumberInput value={totalPlayers} onChange={setTotalPlayers} min={0} />
-          </Field>
+            {isEdit && balance !== season!.starting_balance && teamCount > 0 && (
+              <div className="mt-3">
+                <Warning>
+                  <p>Changing the starting balance does not refund or re-bill bids already placed.</p>
+                </Warning>
+              </div>
+            )}
+          </div>
 
           {/* Summary */}
           <div className="bg-[#F5F7FA] rounded-xl p-4 text-xs text-gray-500 space-y-1">
             <p className="font-semibold text-[#1F2A44] text-sm mb-2">Summary</p>
-            <p>Season will be created as <span className="font-semibold text-gray-700">Draft</span> - activate it when ready</p>
+            {isEdit
+              ? <p>Status stays <span className="font-semibold text-gray-700">{season!.status}</span> — use Activate on the season list to change it</p>
+              : <p>Season will be created as <span className="font-semibold text-gray-700">Draft</span> - activate it when ready</p>}
             <p>Each team gets <span className="font-semibold text-gray-700">${balance}</span> to bid, min bid of <span className="font-semibold text-gray-700">${minBid}</span></p>
             <p>Teams must field {minSquad}–{maxSquad} players</p>
             <p>Positions available: {selectedSport.positions.join(', ')}</p>
+            {isEdit && (
+              <p>
+                Player pool: <span className="font-semibold text-gray-700">{season!.total_players}</span>{' '}
+                — counted live from registered players, not set here
+              </p>
+            )}
           </div>
         </div>
 
@@ -182,7 +244,9 @@ export default function SeasonForm({ onCreated, onClose }: Props) {
           </button>
           <button onClick={handleSubmit} disabled={submitting || !name.trim()}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-[#2F5BEA] hover:bg-[#1a3fc7] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-            {submitting ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Creating…</> : 'Create Season'}
+            {submitting
+              ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> {isEdit ? 'Saving…' : 'Creating…'}</>
+              : (isEdit ? 'Save Changes' : 'Create Season')}
           </button>
         </div>
       </div>

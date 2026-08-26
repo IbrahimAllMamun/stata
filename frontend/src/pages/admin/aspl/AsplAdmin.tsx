@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   Trophy, Plus, Eye, EyeOff, ToggleLeft, ToggleRight,
   ChevronRight, Footprints, CircleDot, Clock, CheckCircle2,
-  PlayCircle, Trash2, Users, Monitor
+  PlayCircle, Trash2, Users, Monitor, Pencil
 } from 'lucide-react';
 import { asplApi, AsplSeason } from '../../../lib/api';
 import SeasonForm from './SeasonForm';
@@ -31,6 +31,8 @@ export default function AsplAdmin() {
   const [saved, setSaved] = useState(false);
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  // The season being edited; null while the form is in create mode.
+  const [editing, setEditing] = useState<AsplSeason | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [error, setError] = useState('');
 
@@ -86,10 +88,15 @@ export default function AsplAdmin() {
     finally { setDeleting(null); }
   };
 
-  const handleCreated = (season: AsplSeason) => {
-    setSeasons(s => [season, ...s]);
+  const handleSaved = (season: AsplSeason) => {
+    setSeasons(s => editing
+      ? s.map(x => (x.id === season.id ? { ...x, ...season } : x))
+      : [season, ...s]);
     setShowForm(false);
+    setEditing(null);
   };
+
+  const closeForm = () => { setShowForm(false); setEditing(null); };
 
   const activeSeason = seasons.find(s => s.status === 'ACTIVE');
 
@@ -216,12 +223,18 @@ export default function AsplAdmin() {
                       <PlayCircle className="w-3.5 h-3.5" /> Activate
                     </button>
                   )}
+                  <button onClick={() => setEditing(season)}
+                    aria-label={`Edit ${season.name}`}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-[#1F2A44] px-3 py-1.5 rounded-lg transition-colors">
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
                   <Link to={`/admin/aspl/seasons/${season.id}`}
                     className="flex items-center gap-1.5 text-xs font-semibold text-[#2F5BEA] border border-[#2F5BEA]/20 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
                     <Users className="w-3.5 h-3.5" /> Manage
                     <ChevronRight className="w-3 h-3" />
                   </Link>
                   <button onClick={() => handleDelete(season.id)} disabled={deleting === season.id}
+                    aria-label={`Delete ${season.name}`}
                     className="p-1.5 text-gray-300 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -238,7 +251,14 @@ export default function AsplAdmin() {
         </div>
       </div>
 
-      {showForm && <SeasonForm onCreated={handleCreated} onClose={() => setShowForm(false)} />}
+      {(showForm || editing) && (
+        <SeasonForm
+          key={editing?.id ?? 'new'}
+          season={editing ?? undefined}
+          onSaved={handleSaved}
+          onClose={closeForm}
+        />
+      )}
     </div>
   );
 }
