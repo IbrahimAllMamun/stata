@@ -62,7 +62,7 @@ export default function ManageEvents() {
   };
 
   // Strip markdown for preview in the card
-  const stripMd = (s: string) => s.replace(/[#*`>_\[\]()-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 100);
+  const stripMd = (s: string) => s.replace(/[#*`>_[\]()-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 100);
 
   if (!isAdmin) return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">

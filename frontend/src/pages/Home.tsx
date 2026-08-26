@@ -1,8 +1,8 @@
 // src/pages/Home.tsx
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Users, Heart, Trophy, ArrowRight, MapPin, Clock, FileText, ChevronRight, Quote, MessageSquare } from 'lucide-react';
-import { api, Post, Event, imageUrl, speechApi, Speech, Member } from '../lib/api';
+import { Calendar, Users, Heart, Trophy, ArrowRight, MapPin, Clock, FileText, ChevronRight } from 'lucide-react';
+import { api, Post, Event, imageUrl, speechApi, Speech } from '../lib/api';
 import { FeatureCard } from '../components/FeatureCard';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

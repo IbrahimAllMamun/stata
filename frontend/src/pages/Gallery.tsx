@@ -163,7 +163,7 @@ export default function Gallery() {
   const toggleYear = (year: string) => {
     setExpandedYears(prev => {
       const s = new Set(prev);
-      s.has(year) ? s.delete(year) : s.add(year);
+      if (s.has(year)) s.delete(year); else s.add(year);
       return s;
     });
   };

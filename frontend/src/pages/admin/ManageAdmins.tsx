@@ -298,18 +298,12 @@ export default function ManageAdmins() {
     }
   }, [allMembers, showToast]);
 
-  if (!isFullAdmin) return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[#F5F7FA]">
-      <div className="text-center">
-        <Shield className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-        <p className="text-gray-500 font-semibold">Admin access required</p>
-      </div>
-    </div>
+  const admins = useMemo(() => allMembers.filter(m => m.role === 'admin'), [allMembers]);
+  const mods = useMemo(() => allMembers.filter(m => m.role === 'mod'), [allMembers]);
+  const members = useMemo(
+    () => allMembers.filter(m => !m.role || m.role === 'member'),
+    [allMembers]
   );
-
-  const admins = allMembers.filter(m => m.role === 'admin');
-  const mods = allMembers.filter(m => m.role === 'mod');
-  const members = allMembers.filter(m => !m.role || m.role === 'member');
 
   const memberBatches = useMemo(
     () => [...new Set(members.map(m => m.batch))].sort((a, b) => a - b),
@@ -331,6 +325,15 @@ export default function ManageAdmins() {
     });
     return list;
   }, [members, memberBatch, memberSearch, memberSort]);
+
+  if (!isFullAdmin) return (
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[#F5F7FA]">
+      <div className="text-center">
+        <Shield className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+        <p className="text-gray-500 font-semibold">Admin access required</p>
+      </div>
+    </div>
+  );
 
   const currentId = currentMember?.id || '';
 
